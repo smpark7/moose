@@ -39,13 +39,6 @@ protected:
   // Variable numberings
   unsigned int _epsilon_var_number;
 
-  // Parameters
-  const Real _Cmu;
-  const Real _sigk;
-  const Real _sigeps;
-  const Real _C1eps;
-  const Real _C2eps;
-
   // Material properties
   const MaterialProperty<Real> & _diff_k;
   const MaterialProperty<Real> & _d_diff_k_d_k;

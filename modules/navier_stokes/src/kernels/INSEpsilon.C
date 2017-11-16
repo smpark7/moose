@@ -1,109 +1,64 @@
-#include "INSK.h"
+#include "INSEpsilon.h"
 
 template <>
 InputParameters
-validParams<INSK>()
+validParams<INSEpsilon>()
 {
   InputParameters params = validParams<INSScalar>();
-  params.addRequiredCoupledVar("epsilon", "turbulent dissipation");
+  params.addRequiredCoupledVar("kin", "turbulent kinetic energy");
   return params;
 }
 
-INSK::INSK(const InputParameters & parameters)
+INSEpsilon::INSEpsilon(const InputParameters & parameters)
   : INSScalar(parameters),
-    _epsilon(coupledValue("epsilon")),
-    _grad_epsilon(coupledGradient("epsilon")),
-    _epsilon_var_number(coupled("epsilon")),
-    _diff_k(getMaterialProperty<Real>("diff_k")),
-    _d_diff_k_d_k(getMaterialProperty<Real>("d_diff_k_d_k")),
-    _grad_diff_k(getMaterialProperty<RealVectorValue>("grad_diff_k")),
-    _d_grad_diff_k_d_k(getMaterialProperty<RealVectorValue>("d_grad_diff_k_d_k")),
-    _d_grad_diff_k_d_grad_k(getMaterialProperty<Real>("d_grad_diff_k_d_grad_k")),
+    _kin(coupledValue("kin")),
+    _grad_kin(coupledGradient("kin")),
+    _kin_var_number(coupled("kin")),
+    _diff_epsilon(getMaterialProperty<Real>("diff_epsilon")),
+    _d_diff_epsilon_d_epsilon(getMaterialProperty<Real>("d_diff_epsilon_d_epsilon")),
+    _grad_diff_epsilon(getMaterialProperty<RealVectorValue>("grad_diff_epsilon")),
+    _d_grad_diff_epsilon_d_epsilon(
+        getMaterialProperty<RealVectorValue>("d_grad_diff_epsilon_d_epsilon")),
+    _d_grad_diff_epsilon_d_grad_epsilon(
+        getMaterialProperty<Real>("d_grad_diff_epsilon_d_grad_epsilon")),
     _nu_turb(getMaterialProperty<Real>("nu_turb")),
-    _d_nu_turb_d_k(getMaterialProperty<Real>("d_nu_turb_d_k"))
+    _d_nu_turb_d_epsilon(getMaterialProperty<Real>("d_nu_turb_d_epsilon")),
+    _C1eps(1.44),
+    _C2eps(1.92)
 {
 }
 
 Real
-INSK::diffusivity()
+INSEpsilon::diffusivity()
 {
-  return _diff_k[_qp];
+  return _diff_epsilon[_qp];
 }
 
 RealVectorValue
-INSK::grad_diffusivity()
+INSEpsilon::grad_diffusivity()
 {
-  return _grad_diff_k[_qp];
+  return _grad_diff_epsilon[_qp];
 }
 
 Real
-INSK::d_diff_d_uj()
+INSEpsilon::d_diff_d_uj()
 {
-  return _d_diff_k_d_k[_qp] * _phi[_j][_qp];
+  return _d_diff_epsilon_d_epsilon[_qp] * _phi[_j][_qp];
 }
 
 RealVectorValue
-INSK::d_grad_diff_d_uj()
+INSEpsilon::d_grad_diff_d_uj()
 {
-  return _d_grad_diff_k_d_k[_qp] * _phi[_j][_qp] +
-         _d_grad_diff_k_d_grad_k[_qp] * _grad_phi[_j][_qp];
+  return _d_grad_diff_epsilon_d_epsilon[_qp] * _phi[_j][_qp] +
+         _d_grad_diff_epsilon_d_grad_epsilon[_qp] * _grad_phi[_j][_qp];
 }
 
 Real
-INSK::strongSink()
+INSEpsilon::strongSink()
 {
   // Turbulent dissipative sink part
-  Real dissipative_part = _epsilon[_qp];
+  Real dissipative_part = _C2eps * _u[_qp] * _u[_qp] / _kin[_qp];
 
-  // Source term from velocity gradients
-  Real strain_tensor_double_dot_product = 0.;
-  for (int m = 0; m < 3; m++)
-  {
-    for (int n = 0; n < 3; n++)
-    {
-      Real Em;
-      switch (m)
-      {
-        case 0:
-          Em = _grad_u_vel[_qp](n);
-          break;
-        case 1:
-          Em = _grad_v_vel[_qp](n);
-          break;
-        case 2:
-          Em = _grad_w_vel[_qp](n);
-          break;
-        default:
-          mooseError("Unrecognized index");
-      }
-      Real En;
-      switch (n)
-      {
-        case 0:
-          En = _grad_u_vel[_qp](m);
-          break;
-        case 1:
-          En = _grad_v_vel[_qp](m);
-          break;
-        case 2:
-          En = _grad_w_vel[_qp](m);
-          break;
-        default:
-          mooseError("Unrecognized index");
-      }
-      Real Emn = Em + En;
-      strain_tensor_double_dot_product += Emn * Emn;
-    }
-  }
-
-  Real source_part = -0.5 * _nu_turb[_qp] * strain_tensor_double_dot_product;
-
-  return dissipative_part + source_part;
-}
-
-Real
-INSK::strongSinkJac()
-{
   // Source term from velocity gradients
   Real strain_tensor_double_dot_product = 0.;
   for (int m = 0; m < 3; m++)
@@ -145,7 +100,62 @@ INSK::strongSinkJac()
     }
   }
 
-  Real source_part = -0.5 * _d_nu_turb_d_k[_qp] * _phi[_j][_qp] * strain_tensor_double_dot_product;
+  Real source_part =
+      -_C1eps * 0.5 * _nu_turb[_qp] * _u[_qp] / _kin[_qp] * strain_tensor_double_dot_product;
 
-  return source_part;
+  return dissipative_part + source_part;
+}
+
+Real
+INSEpsilon::strongSinkJac()
+{
+  // Turbulent dissipative sink part
+  Real dissipative_part = 2. * _C2eps * _u[_qp] * _phi[_j][_qp] / _kin[_qp];
+
+  // Source term from velocity gradients
+  Real strain_tensor_double_dot_product = 0.;
+  for (int m = 0; m < 3; m++)
+  {
+    for (int n = 0; n < 3; n++)
+    {
+      Real Em;
+      switch (m)
+      {
+        case 0:
+          Em = _grad_u_vel[_qp](n);
+          break;
+        case 1:
+          Em = _grad_v_vel[_qp](n);
+          break;
+        case 2:
+          Em = _grad_w_vel[_qp](n);
+          break;
+        default:
+          mooseError("Unrecognized index");
+      }
+      Real En;
+      switch (n)
+      {
+        case 0:
+          En = _grad_u_vel[_qp](m);
+          break;
+        case 1:
+          En = _grad_v_vel[_qp](m);
+          break;
+        case 2:
+          En = _grad_w_vel[_qp](m);
+          break;
+        default:
+          mooseError("Unrecognized index");
+      }
+      Real Emn = (Em + En);
+      strain_tensor_double_dot_product += Emn * Emn;
+    }
+  }
+
+  Real source_part =
+      -_C1eps * 0.5 / _kin[_qp] * strain_tensor_double_dot_product *
+      (_d_nu_turb_d_epsilon[_qp] * _phi[_j][_qp] * _u[_qp] + _nu_turb[_qp] * _phi[_j][_qp]);
+
+  return dissipative_part + source_part;
 }
