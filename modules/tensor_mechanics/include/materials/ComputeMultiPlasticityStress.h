@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTEMULTIPLASTICITYSTRESS_H
+#define COMPUTEMULTIPLASTICITYSTRESS_H
 
 #include "ComputeStressBase.h"
 #include "MultiPlasticityDebugger.h"
@@ -97,22 +95,17 @@ protected:
   /// whether to perform the rotations necessary in finite-strain simulations
   bool _perform_finite_strain_rotations;
 
-  /// Name of the elasticity tensor material property
-  const std::string _elasticity_tensor_name;
-  /// Elasticity tensor material property
-  const MaterialProperty<RankFourTensor> & _elasticity_tensor;
-
   /// plastic strain
   MaterialProperty<RankTwoTensor> & _plastic_strain;
 
   /// Old value of plastic strain
-  const MaterialProperty<RankTwoTensor> & _plastic_strain_old;
+  MaterialProperty<RankTwoTensor> & _plastic_strain_old;
 
   /// internal parameters
   MaterialProperty<std::vector<Real>> & _intnl;
 
   /// old values of internal parameters
-  const MaterialProperty<std::vector<Real>> & _intnl_old;
+  MaterialProperty<std::vector<Real>> & _intnl_old;
 
   /// yield functions
   MaterialProperty<std::vector<Real>> & _yf;
@@ -133,7 +126,7 @@ protected:
   MaterialProperty<RealVectorValue> & _n;
 
   /// old value of transverse direction
-  const MaterialProperty<RealVectorValue> & _n_old;
+  MaterialProperty<RealVectorValue> & _n_old;
 
   /// strain increment (coming from ComputeIncrementalSmallStrain, for example)
   const MaterialProperty<RankTwoTensor> & _strain_increment;
@@ -145,10 +138,10 @@ protected:
   const MaterialProperty<RankTwoTensor> & _rotation_increment;
 
   /// Old value of stress
-  const MaterialProperty<RankTwoTensor> & _stress_old;
+  MaterialProperty<RankTwoTensor> & _stress_old;
 
   /// Old value of elastic strain
-  const MaterialProperty<RankTwoTensor> & _elastic_strain_old;
+  MaterialProperty<RankTwoTensor> & _elastic_strain_old;
 
   /// whether Cosserat mechanics should be used
   bool _cosserat;
@@ -163,7 +156,7 @@ protected:
   MaterialProperty<RankTwoTensor> * _couple_stress;
 
   /// the old value of Cosserat couple-stress
-  const MaterialProperty<RankTwoTensor> * _couple_stress_old;
+  MaterialProperty<RankTwoTensor> * _couple_stress_old;
 
   /// derivative of couple-stress w.r.t. curvature
   MaterialProperty<RankFourTensor> * _Jacobian_mult_couple;
@@ -589,6 +582,12 @@ protected:
                                            const std::vector<Real> & cumulative_pm);
 
 private:
-  RankTwoTensor rot(const RankTwoTensor & tens);
+  /// True if this is the first timestep (timestep < 2). In the first timestep,
+  /// an initial stress is needed to subdivide.  This boolean variable
+  /// eliminates the use of the _app.isRestarting() in this class.
+  /// This boolean is delcared as a reference so that the variable is restartable
+  /// data:  if we restart, the code will not think it is the first timestep again.
+  bool & _step_one;
 };
 
+#endif // COMPUTEMULTIPLASTICITYSTRESS_H

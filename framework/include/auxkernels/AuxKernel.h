@@ -1,16 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef AUXKERNEL_H
+#define AUXKERNEL_H
 
 #include "MooseObject.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h" // for name() in mooseError calls
 #include "SetupInterface.h"
 #include "CoupleableMooseVariableDependencyIntermediateInterface.h"
 #include "MaterialPropertyInterface.h"
@@ -24,19 +30,13 @@
 #include "BlockRestrictable.h"
 #include "BoundaryRestrictable.h"
 #include "Restartable.h"
+#include "ZeroInterface.h"
 #include "MeshChangedInterface.h"
 #include "VectorPostprocessorInterface.h"
-#include "MooseVariableInterface.h"
-#include "MemberTemplateMacros.h"
 
 // forward declarations
-template <typename ComputeValueType>
-class AuxKernelTempl;
-
-typedef AuxKernelTempl<Real> AuxKernel;
-typedef AuxKernelTempl<RealVectorValue> VectorAuxKernel;
-
 class SubProblem;
+class AuxKernel;
 class AuxiliarySystem;
 class SystemBase;
 class MooseMesh;
@@ -44,34 +44,32 @@ class MooseMesh;
 template <>
 InputParameters validParams<AuxKernel>();
 
-template <>
-InputParameters validParams<VectorAuxKernel>();
-
 /**
  * Base class for creating new auxiliary kernels and auxiliary boundary conditions.
  *
  */
-template <typename ComputeValueType>
-class AuxKernelTempl : public MooseObject,
-                       public MooseVariableInterface<ComputeValueType>,
-                       public BlockRestrictable,
-                       public BoundaryRestrictable,
-                       public SetupInterface,
-                       public CoupleableMooseVariableDependencyIntermediateInterface,
-                       public FunctionInterface,
-                       public UserObjectInterface,
-                       public TransientInterface,
-                       public MaterialPropertyInterface,
-                       public PostprocessorInterface,
-                       public DependencyResolverInterface,
-                       public RandomInterface,
-                       protected GeometricSearchInterface,
-                       public Restartable,
-                       public MeshChangedInterface,
-                       protected VectorPostprocessorInterface
+class AuxKernel : public MooseObject,
+                  public BlockRestrictable,
+                  public BoundaryRestrictable,
+                  public SetupInterface,
+                  public CoupleableMooseVariableDependencyIntermediateInterface,
+                  public FunctionInterface,
+                  public UserObjectInterface,
+                  public TransientInterface,
+                  public MaterialPropertyInterface,
+                  public PostprocessorInterface,
+                  public DependencyResolverInterface,
+                  public RandomInterface,
+                  protected GeometricSearchInterface,
+                  public Restartable,
+                  public ZeroInterface,
+                  public MeshChangedInterface,
+                  protected VectorPostprocessorInterface
 {
 public:
-  AuxKernelTempl(const InputParameters & parameters);
+  AuxKernel(const InputParameters & parameters);
+
+  virtual ~AuxKernel();
 
   /**
    * Computes the value and stores it in the solution vector
@@ -79,16 +77,16 @@ public:
   virtual void compute();
 
   /**
-   * Nodal or elemental kernel?
-   * @return true if this is a nodal kernel, otherwise false
-   */
-  bool isNodal() const { return _nodal; }
-
-  /**
    * Get a reference to a variable this kernel is action on
    * @return reference to a variable this kernel is action on
    */
-  MooseVariableFE<ComputeValueType> & variable() { return _var; }
+  MooseVariable & variable() { return _var; }
+
+  /**
+   * Nodal or elemental kernel?
+   * @return true if this is a nodal kernel, otherwise false
+   */
+  bool isNodal();
 
   const std::set<std::string> & getDependObjects() const { return _depend_uo; }
 
@@ -102,16 +100,16 @@ public:
    * Override functions from MaterialPropertyInterface for error checking
    */
   template <typename T>
-  const MaterialProperty<T> & getMaterialPropertyTempl(const std::string & name);
+  const MaterialProperty<T> & getMaterialProperty(const std::string & name);
   template <typename T>
-  const MaterialProperty<T> & getMaterialPropertyOldTempl(const std::string & name);
+  const MaterialProperty<T> & getMaterialPropertyOld(const std::string & name);
   template <typename T>
-  const MaterialProperty<T> & getMaterialPropertyOlderTempl(const std::string & name);
+  const MaterialProperty<T> & getMaterialPropertyOlder(const std::string & name);
 
   template <typename T>
-  const T & getUserObjectTempl(const std::string & name);
+  const T & getUserObject(const std::string & name);
   template <typename T>
-  const T & getUserObjectByNameTempl(const UserObjectName & name);
+  const T & getUserObjectByName(const UserObjectName & name);
 
   const UserObject & getUserObjectBase(const std::string & name);
 
@@ -124,34 +122,16 @@ public:
   getVectorPostprocessorValueByName(const VectorPostprocessorName &,
                                     const std::string & vector_name) override;
 
-  virtual const VectorPostprocessorValue & getVectorPostprocessorValue(
-      const std::string & name, const std::string & vector_name, bool needs_broadcast) override;
-  virtual const VectorPostprocessorValue &
-  getVectorPostprocessorValueByName(const VectorPostprocessorName &,
-                                    const std::string & vector_name,
-                                    bool needs_broadcast) override;
-
-  virtual const ScatterVectorPostprocessorValue &
-  getScatterVectorPostprocessorValue(const std::string & name,
-                                     const std::string & vector_name) override;
-
-  virtual const ScatterVectorPostprocessorValue &
-  getScatterVectorPostprocessorValueByName(const std::string & name,
-                                           const std::string & vector_name) override;
-
 protected:
-  /**
-   * Compute and return the value of the aux variable.
-   */
-  virtual ComputeValueType computeValue() = 0;
-
   virtual const VariableValue & coupledDot(const std::string & var_name,
                                            unsigned int comp = 0) override;
 
   virtual const VariableValue & coupledDotDu(const std::string & var_name,
                                              unsigned int comp = 0) override;
 
-  /// This callback is used for AuxKernelTempls that need to perform a per-element calculation
+  virtual Real computeValue() = 0;
+
+  /// This callback is used for AuxKernels that need to perform a per-element calculation
   virtual void precalculateValue() {}
 
   /// Subproblem this kernel is part of
@@ -160,31 +140,14 @@ protected:
   SystemBase & _sys;
   SystemBase & _nl_sys;
   AuxiliarySystem & _aux_sys;
-
   /// Thread ID
   THREAD_ID _tid;
-
-  /// This is a regular kernel so we cast to a regular MooseVariable
-  MooseVariableFE<ComputeValueType> & _var;
-
-  /// Flag indicating if the AuxKernel is nodal
-  bool _nodal;
-
-  /// Holds the solution at current quadrature points
-  const typename OutputTools<ComputeValueType>::VariableValue & _u;
-
-  /// Holds the previous solution at the current quadrature point.
-  const typename OutputTools<ComputeValueType>::VariableValue & _u_old;
-
-  /// Holds the t-2 solution at the current quadrature point.
-  const typename OutputTools<ComputeValueType>::VariableValue & _u_older;
-
-  /// Holds the the test functions
-  const typename OutputTools<ComputeValueType>::VariableTestValue & _test;
-
   /// Assembly class
   Assembly & _assembly;
-
+  /// Variable this kernel is acting on
+  MooseVariable & _var;
+  /// true if the kernel is nodal, false if it is elemental
+  bool _nodal;
   /// true if the kernel is boundary kernel, false if it is interior kernels
   bool _bnd;
   /// Mesh this kernel is active on
@@ -195,15 +158,24 @@ protected:
   /// Active quadrature points
   const MooseArray<Point> & _q_point;
   /// Quadrature rule being used
-  const QBase * const & _qrule;
+  QBase *& _qrule;
   /// Transformed Jacobian weights
   const MooseArray<Real> & _JxW;
   const MooseArray<Real> & _coord;
 
+  /// Holds the solution at current quadrature points
+  const VariableValue & _u;
+  /// Holds the previous solution at the current quadrature point.
+  const VariableValue & _u_old;
+  /// Holds the t-2 solution at the current quadrature point.
+  const VariableValue & _u_older;
+  /// holds the the test functions
+  const VariableTestValue & _test;
+
   /// Current element (valid only for elemental kernels)
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
   /// current side of the current element
-  const unsigned int & _current_side;
+  unsigned int & _current_side;
 
   /// Volume of the current element
   const Real & _current_elem_volume;
@@ -211,7 +183,7 @@ protected:
   const Real & _current_side_volume;
 
   /// Current node (valid only for nodal kernels)
-  const Node * const & _current_node;
+  const Node *& _current_node;
 
   /// reference to the solution vector of auxiliary system
   NumericVector<Number> & _solution;
@@ -219,7 +191,7 @@ protected:
   /// Quadrature point index
   unsigned int _qp;
 
-  /// Depend AuxKernelTempls
+  /// Depend AuxKernels
   std::set<std::string> _depend_vars;
   std::set<std::string> _supplied_vars;
 
@@ -235,75 +207,70 @@ protected:
   DenseVector<Number> _local_sol;
   /// for holding local mass matrix
   DenseMatrix<Number> _local_ke;
-
-  using MooseVariableInterface<ComputeValueType>::mooseVariable;
 };
 
-template <typename ComputeValueType>
 template <typename T>
 const MaterialProperty<T> &
-AuxKernelTempl<ComputeValueType>::getMaterialPropertyTempl(const std::string & name)
+AuxKernel::getMaterialProperty(const std::string & name)
 {
   if (isNodal())
     mooseError("Nodal AuxKernel '",
-               AuxKernelTempl::name(),
+               AuxKernel::name(),
                "' attempted to reference material property '",
                name,
                "'\nConsider using an elemental auxiliary variable for '",
                _var.name(),
                "'.");
 
-  return MaterialPropertyInterface::getMaterialPropertyTempl<T>(name);
+  return MaterialPropertyInterface::getMaterialProperty<T>(name);
 }
 
-template <typename ComputeValueType>
 template <typename T>
 const MaterialProperty<T> &
-AuxKernelTempl<ComputeValueType>::getMaterialPropertyOldTempl(const std::string & name)
+AuxKernel::getMaterialPropertyOld(const std::string & name)
 {
   if (isNodal())
     mooseError("Nodal AuxKernel '",
-               AuxKernelTempl::name(),
+               AuxKernel::name(),
                "' attempted to reference material property '",
                name,
                "'\nConsider using an elemental auxiliary variable for '",
                _var.name(),
                "'.");
 
-  return MaterialPropertyInterface::getMaterialPropertyOldTempl<T>(name);
+  return MaterialPropertyInterface::getMaterialPropertyOld<T>(name);
 }
 
-template <typename ComputeValueType>
 template <typename T>
 const MaterialProperty<T> &
-AuxKernelTempl<ComputeValueType>::getMaterialPropertyOlderTempl(const std::string & name)
+AuxKernel::getMaterialPropertyOlder(const std::string & name)
 {
   if (isNodal())
     mooseError("Nodal AuxKernel '",
-               AuxKernelTempl::name(),
+               AuxKernel::name(),
                "' attempted to reference material property '",
                name,
                "'\nConsider using an elemental auxiliary variable for '",
                _var.name(),
                "'.");
 
-  return MaterialPropertyInterface::getMaterialPropertyOlderTempl<T>(name);
+  return MaterialPropertyInterface::getMaterialPropertyOlder<T>(name);
 }
 
-template <typename ComputeValueType>
 template <typename T>
 const T &
-AuxKernelTempl<ComputeValueType>::getUserObjectTempl(const std::string & name)
+AuxKernel::getUserObject(const std::string & name)
 {
   _depend_uo.insert(_pars.get<UserObjectName>(name));
-  return UserObjectInterface::getUserObjectTempl<T>(name);
+  return UserObjectInterface::getUserObject<T>(name);
 }
 
-template <typename ComputeValueType>
 template <typename T>
 const T &
-AuxKernelTempl<ComputeValueType>::getUserObjectByNameTempl(const UserObjectName & name)
+AuxKernel::getUserObjectByName(const UserObjectName & name)
 {
   _depend_uo.insert(name);
-  return UserObjectInterface::getUserObjectByNameTempl<T>(name);
+  return UserObjectInterface::getUserObjectByName<T>(name);
 }
+
+#endif // AUXKERNEL_H

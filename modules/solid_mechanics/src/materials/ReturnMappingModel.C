@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ReturnMappingModel.h"
 
 #include "SymmIsotropicElasticityTensor.h"
@@ -17,40 +14,53 @@ InputParameters
 validParams<ReturnMappingModel>()
 {
   InputParameters params = validParams<ConstitutiveModel>();
-  params += validParams<SingleVariableReturnMappingSolution>();
+
+  // Sub-Newton Iteration control parameters
+  params.addParam<unsigned int>("max_its", 30, "Maximum number of sub-newton iterations");
+  params.addParam<bool>(
+      "output_iteration_info", false, "Set true to output sub-newton iteration information");
+  params.addParam<bool>("output_iteration_info_on_error",
+                        false,
+                        "Set true to output sub-newton iteration information when a step fails");
+  params.addParam<Real>(
+      "relative_tolerance", 1e-5, "Relative convergence tolerance for sub-newtion iteration");
+  params.addParam<Real>(
+      "absolute_tolerance", 1e-20, "Absolute convergence tolerance for sub-newtion iteration");
   params.addParam<Real>("max_inelastic_increment",
                         1e-4,
                         "The maximum inelastic strain increment allowed in a time step");
-  params.addParam<bool>("compute_material_timestep_limit",
-                        false,
-                        "Whether to compute the matl_timestep_limit material property");
+
   return params;
 }
 
 ReturnMappingModel::ReturnMappingModel(const InputParameters & parameters,
                                        const std::string inelastic_strain_name)
   : ConstitutiveModel(parameters),
-    SingleVariableReturnMappingSolution(parameters),
+    _max_its(parameters.get<unsigned int>("max_its")),
+    _output_iteration_info(getParam<bool>("output_iteration_info")),
+    _output_iteration_info_on_error(getParam<bool>("output_iteration_info_on_error")),
+    _relative_tolerance(parameters.get<Real>("relative_tolerance")),
+    _absolute_tolerance(parameters.get<Real>("absolute_tolerance")),
     _effective_strain_increment(0),
     _effective_inelastic_strain(
         declareProperty<Real>("effective_" + inelastic_strain_name + "_strain")),
     _effective_inelastic_strain_old(
-        getMaterialPropertyOld<Real>("effective_" + inelastic_strain_name + "_strain")),
-    _max_inelastic_increment(parameters.get<Real>("max_inelastic_increment")),
-    _compute_matl_timestep_limit(getParam<bool>("compute_material_timestep_limit")),
-    _matl_timestep_limit(
-        _compute_matl_timestep_limit ? &declareProperty<Real>("matl_timestep_limit") : NULL)
+        declarePropertyOld<Real>("effective_" + inelastic_strain_name + "_strain")),
+    _max_inelastic_increment(parameters.get<Real>("max_inelastic_increment"))
 {
 }
 
 void
-ReturnMappingModel::initQpStatefulProperties()
+ReturnMappingModel::initStatefulProperties(unsigned n_points)
 {
-  _effective_inelastic_strain[_qp] = 0.0;
+  for (unsigned qp(0); qp < n_points; ++qp)
+  {
+    _effective_inelastic_strain[qp] = 0;
+  }
 }
-
 void
 ReturnMappingModel::computeStress(const Elem & current_elem,
+                                  unsigned qp,
                                   const SymmElasticityTensor & elasticityTensor,
                                   const SymmTensor & stress_old,
                                   SymmTensor & strain_increment,
@@ -60,17 +70,14 @@ ReturnMappingModel::computeStress(const Elem & current_elem,
   // the creep strain
   // stress = stressOld + stressIncrement
   if (_t_step == 0 && !_app.isRestarting())
-  {
-    if (_compute_matl_timestep_limit)
-      (*_matl_timestep_limit)[_qp] = std::numeric_limits<Real>::max();
     return;
-  }
 
   stress_new = elasticityTensor * strain_increment;
   stress_new += stress_old;
 
   SymmTensor inelastic_strain_increment;
   computeStress(current_elem,
+                qp,
                 elasticityTensor,
                 stress_old,
                 strain_increment,
@@ -80,6 +87,7 @@ ReturnMappingModel::computeStress(const Elem & current_elem,
 
 void
 ReturnMappingModel::computeStress(const Elem & /*current_elem*/,
+                                  unsigned qp,
                                   const SymmElasticityTensor & elasticityTensor,
                                   const SymmTensor & stress_old,
                                   SymmTensor & strain_increment,
@@ -100,25 +108,79 @@ ReturnMappingModel::computeStress(const Elem & /*current_elem*/,
   _effective_strain_increment = dev_strain_increment.doubleContraction(dev_strain_increment);
   _effective_strain_increment = std::sqrt(2.0 / 3.0 * _effective_strain_increment);
 
-  const SymmIsotropicElasticityTensor * iso_e_t =
-      dynamic_cast<const SymmIsotropicElasticityTensor *>(&elasticityTensor);
-  if (!iso_e_t)
-    mooseError("Models derived from ReturnMappingModel require a SymmIsotropicElasticityTensor");
-  _three_shear_modulus = 3.0 * iso_e_t->shearModulus();
+  computeStressInitialize(qp, effective_trial_stress, elasticityTensor);
 
-  computeStressInitialize(effective_trial_stress, elasticityTensor);
+  // Use Newton sub-iteration to determine inelastic strain increment
 
-  Real scalar;
-  returnMappingSolve(effective_trial_stress, scalar, _console);
+  Real scalar = 0;
+  unsigned int it = 0;
+  Real residual = 10;
+  Real norm_residual = 10;
+  Real first_norm_residual = 10;
 
-  // compute inelastic and elastic strain increments
-  if (scalar != 0.0)
-    inelastic_strain_increment = dev_trial_stress * (1.5 * scalar / effective_trial_stress);
-  else
-    inelastic_strain_increment = 0.0;
+  std::string iter_output;
+
+  while (it < _max_its && norm_residual > _absolute_tolerance &&
+         (norm_residual / first_norm_residual) > _relative_tolerance)
+  {
+    iterationInitialize(qp, scalar);
+
+    residual = computeResidual(qp, effective_trial_stress, scalar);
+    norm_residual = std::abs(residual);
+    if (it == 0)
+    {
+      first_norm_residual = norm_residual;
+      if (first_norm_residual == 0)
+      {
+        first_norm_residual = 1;
+      }
+    }
+
+    scalar -= residual / computeDerivative(qp, effective_trial_stress, scalar);
+
+    if (_output_iteration_info == true || _output_iteration_info_on_error == true)
+    {
+      iter_output =
+          "In the element " + Moose::stringify(_current_elem->id()) + +" and the qp point " +
+          Moose::stringify(qp) + ": \n" + +" iteration = " + Moose::stringify(it) + "\n" +
+          +" effective trial stress = " + Moose::stringify(effective_trial_stress) + "\n" +
+          +" scalar effective inelastic strain = " + Moose::stringify(scalar) + "\n" +
+          +" relative residual = " + Moose::stringify(norm_residual / first_norm_residual) + "\n" +
+          +" relative tolerance = " + Moose::stringify(_relative_tolerance) + "\n" +
+          +" absolute residual = " + Moose::stringify(norm_residual) + "\n" +
+          +" absolute tolerance = " + Moose::stringify(_absolute_tolerance) + "\n";
+    }
+    iterationFinalize(qp, scalar);
+    ++it;
+  }
+
+  if (_output_iteration_info)
+    _console << iter_output;
+
+  if (it == _max_its && norm_residual > _absolute_tolerance &&
+      (norm_residual / first_norm_residual) > _relative_tolerance)
+  {
+    if (_output_iteration_info_on_error)
+    {
+      Moose::err << iter_output;
+    }
+    mooseError("Exceeded maximum iterations in ReturnMappingModel solve for material: ",
+               _name,
+               ".  Rerun with  'output_iteration_info_on_error = true' for more information.");
+  }
+
+  // compute inelastic and elastic strain increments (avoid potential divide by zero - how should
+  // this be done)?
+  if (effective_trial_stress < 0.01)
+  {
+    effective_trial_stress = 0.01;
+  }
+
+  inelastic_strain_increment = dev_trial_stress;
+  inelastic_strain_increment *= (1.5 * scalar / effective_trial_stress);
 
   strain_increment -= inelastic_strain_increment;
-  _effective_inelastic_strain[_qp] = _effective_inelastic_strain_old[_qp] + scalar;
+  _effective_inelastic_strain[qp] = _effective_inelastic_strain_old[qp] + scalar;
 
   // compute stress increment
   stress_new = elasticityTensor * strain_increment;
@@ -126,38 +188,18 @@ ReturnMappingModel::computeStress(const Elem & /*current_elem*/,
   // update stress
   stress_new += stress_old;
 
-  computeStressFinalize(inelastic_strain_increment);
-  if (_compute_matl_timestep_limit)
-    (*_matl_timestep_limit)[_qp] = computeTimeStepLimit();
+  computeStressFinalize(qp, inelastic_strain_increment);
 }
 
 Real
-ReturnMappingModel::computeReferenceResidual(const Real effective_trial_stress, const Real scalar)
-{
-  return effective_trial_stress / _three_shear_modulus - scalar;
-}
-
-Real
-ReturnMappingModel::computeTimeStepLimit()
+ReturnMappingModel::computeTimeStepLimit(unsigned qp)
 {
   Real scalar_inelastic_strain_incr;
 
   scalar_inelastic_strain_incr =
-      _effective_inelastic_strain[_qp] - _effective_inelastic_strain_old[_qp];
+      _effective_inelastic_strain[qp] - _effective_inelastic_strain_old[qp];
   if (MooseUtils::absoluteFuzzyEqual(scalar_inelastic_strain_incr, 0.0))
     return std::numeric_limits<Real>::max();
 
   return _dt * _max_inelastic_increment / scalar_inelastic_strain_incr;
-}
-
-void
-ReturnMappingModel::outputIterationSummary(std::stringstream * iter_output,
-                                           const unsigned int total_it)
-{
-  if (iter_output)
-  {
-    *iter_output << "At element " << _current_elem->id() << " _qp=" << _qp << " Coordinates "
-                 << _q_point[_qp] << " block=" << _current_elem->subdomain_id() << '\n';
-  }
-  SingleVariableReturnMappingSolution::outputIterationSummary(iter_output, total_it);
 }

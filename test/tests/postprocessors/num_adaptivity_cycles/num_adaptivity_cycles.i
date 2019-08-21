@@ -28,7 +28,7 @@
     variable = u
   [../]
   [./force]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = force
   [../]
@@ -51,15 +51,16 @@
 
 [Executioner]
   type = Transient
-  num_steps = 4
+  num_steps = 2
   dt = 1
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
 []
 
 [Adaptivity]
-  cycles_per_step = 1
+  cycles_per_step = 3
   marker = box
   max_h_level = 2
   initial_steps = 4

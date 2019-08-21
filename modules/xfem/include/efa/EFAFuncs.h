@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef EFAFUNCS_H
+#define EFAFUNCS_H
 
 #include <map>
 #include <set>
@@ -19,14 +18,13 @@ namespace Efa
 
 template <typename T>
 bool
-deleteFromMap(std::map<unsigned int, T *> & theMap, T * elemToDelete, bool delete_elem = true)
+deleteFromMap(std::map<unsigned int, T *> & theMap, T * elemToDelete)
 {
   bool didIt = false;
   typename std::map<unsigned int, T *>::iterator i = theMap.find(elemToDelete->id());
   if (i != theMap.end())
   {
-    if (delete_elem)
-      delete i->second;
+    delete i->second;
     theMap.erase(i);
     didIt = true;
   }
@@ -84,3 +82,4 @@ double linearTetShape3D(unsigned int node_id, std::vector<double> & xi_3d);
 
 } // namespace Efa
 
+#endif

@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef DIFFUSIONFLUXBC_H
+#define DIFFUSIONFLUXBC_H
 
 #include "FluxBC.h"
 
@@ -17,16 +23,7 @@ template <>
 InputParameters validParams<DiffusionFluxBC>();
 
 /**
- * A FluxBC which is consistent with the boundary terms arising from
- * the Diffusion Kernel. The flux vector in this case is simply
- * grad(u) and the residual contribution is:
- *
  * \f$ F(u) = - \int_{\Gamma} \nabla u * \hat n * \phi d\Gamma \f$
- *
- * In contrast to e.g. VectorNeumannBC, the user does not provide a
- * specified value of the flux when using this class, instead the
- * residual contribution corresponding to the current value of grad(u)
- * is computed and accumulated into the residual vector.
  */
 class DiffusionFluxBC : public FluxBC
 {
@@ -38,3 +35,4 @@ protected:
   virtual RealGradient computeQpFluxJacobian() override;
 };
 
+#endif /* DIFFUSIONFLUXBC_H */

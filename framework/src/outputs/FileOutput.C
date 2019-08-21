@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // C POSIX includes
 #include <sys/stat.h>
@@ -16,7 +21,7 @@
 #include "FEProblem.h"
 
 #include <unistd.h>
-#include <ctime>
+#include <time.h>
 
 template <>
 InputParameters
@@ -30,7 +35,7 @@ validParams<FileOutput>()
       "append_date", false, "When true the date and time are appended to the output filename.");
   params.addParam<std::string>("append_date_format",
                                "The format of the date/time to append, if not given UTC format "
-                               "is used (see http://www.cplusplus.com/reference/ctime/strftime).");
+                               "used (see http://www.cplusplus.com/reference/ctime/strftime).");
   // Add the padding option and list it as 'Advanced'
   params.addParam<unsigned int>(
       "padding", 4, "The number of for extension suffix (e.g., out.e-s002)");
@@ -57,11 +62,7 @@ FileOutput::FileOutput(const InputParameters & parameters)
 
   // Set the file base
   if (isParamValid("file_base"))
-  {
     _file_base = getParam<std::string>("file_base");
-    if (!_file_base.empty() && _file_base[0] == '/')
-      mooseError("absolute paths not allowed in output 'file_base' param");
-  }
   else if (getParam<bool>("_built_by_moose"))
     _file_base = getOutputFileBase(_app);
   else
@@ -77,7 +78,7 @@ FileOutput::FileOutput(const InputParameters & parameters)
       format = "%Y-%m-%dT%T%z";
 
     // Get the current time
-    std::time_t now;
+    time_t now;
     ::time(&now); // need :: to avoid confusion with time() method of Output class
 
     // Format the time
@@ -108,7 +109,7 @@ FileOutput::FileOutput(const InputParameters & parameters)
 }
 
 std::string
-FileOutput::getOutputFileBase(const MooseApp & app, std::string suffix)
+FileOutput::getOutputFileBase(MooseApp & app, std::string suffix)
 {
   // If the App has an outputfile, then use it (MultiApp scenario)
   if (!app.getOutputFileBase().empty())
@@ -129,10 +130,7 @@ FileOutput::getOutputFileBase(const MooseApp & app, std::string suffix)
   mooseAssert(pos != std::string::npos, "Unable to determine suffix of input file name");
 
   // Append the "_out" to the name and return it
-  size_t start = 0;
-  if (input_filename.find_last_of('/') != std::string::npos)
-    start = input_filename.find_last_of('/') + 1;
-  return input_filename.substr(start, pos - start) + suffix;
+  return input_filename.substr(0, pos) + suffix;
 }
 
 bool

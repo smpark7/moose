@@ -1,17 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef TIMESTEPPER_H
+#define TIMESTEPPER_H
 
 #include "MooseObject.h"
 #include "Restartable.h"
-#include "ScalarCoupleable.h"
 
 class TimeStepper;
 class FEProblemBase;
@@ -23,7 +28,7 @@ InputParameters validParams<TimeStepper>();
 /**
  * Base class for time stepping
  */
-class TimeStepper : public MooseObject, public Restartable, public ScalarCoupleable
+class TimeStepper : public MooseObject, public Restartable
 {
 public:
   TimeStepper(const InputParameters & parameters);
@@ -76,7 +81,7 @@ public:
    * If the time step converged
    * @return true if converged, otherwise false
    */
-  virtual bool converged() const;
+  virtual bool converged();
 
   /**
    * Get the current_dt
@@ -133,13 +138,10 @@ protected:
   Real & _timestep_tolerance;
 
   ///should detailed diagnostic output be printed
-  const bool & _verbose;
+  bool & _verbose;
 
   /// Whether or not the previous solve converged.
   bool _converged;
-
-  /// Cutback factor if a time step fails to converge
-  const Real _cutback_factor_at_failure;
 
   /// If true then the next dt will be computed by computeInitialDT()
   bool _reset_dt;
@@ -151,3 +153,5 @@ private:
   /// Size of the current time step as computed by the Stepper.  Note that the actual dt that was taken might be smaller if the Executioner constrained it.
   Real & _current_dt;
 };
+
+#endif /* TIMESTEPPER_H */

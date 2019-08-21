@@ -1,19 +1,9 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 import os, sys
 import subprocess
 import json
 import unittest
-from FactorySystem.Parser import DupWalker
-import hit
+from FactorySystem.ParseGetPot import readInputFile
 
 def find_app():
     """
@@ -59,7 +49,7 @@ def run_app(args=[]):
         sys.exit(proc.returncode)
     return stdout_data
 
-class TestJSONBase(unittest.TestCase):
+class TestJSON(unittest.TestCase):
     """
     Make sure the Json dump produces valid Json
     and has the expected structure
@@ -70,19 +60,20 @@ class TestJSONBase(unittest.TestCase):
         self.assertIn("**START JSON DATA**\n", output)
         self.assertIn("**END JSON DATA**\n", output)
 
-        start_json_string = '**START JSON DATA**\n'
+        output = output.split('**START JSON DATA**\n')[1]
+        output = output.split('**END JSON DATA**')[0]
 
-        start_pos = output.find('**START JSON DATA**\n')
-        self.assertGreater(start_pos, -1)
-
-        end_pos = output.find('**END JSON DATA**')
-        self.assertGreater(end_pos, -1)
-
-        output = output[start_pos + len(start_json_string):end_pos]
         data = json.loads(output)
         return data
 
-    def check_basic_json(self, data):
+    def testJson(self):
+        """
+        Some basic checks to see if some data
+        is there and is in the right location.
+        """
+        all_data = self.getJsonData()
+        self.assertIn("active", all_data["global"]["parameters"])
+        data = all_data["blocks"]
         self.assertIn("Executioner", data)
         self.assertIn("BCs", data)
         bcs = data["BCs"]
@@ -114,68 +105,12 @@ class TestJSONBase(unittest.TestCase):
         self.assertIn("associated_types", f)
         self.assertEquals(["FunctionName"], f["associated_types"])
         self.assertEqual(f["subblock_types"]["ParsedFunction"]["class"], "MooseParsedFunction")
-        self.assertEqual(f["subblock_types"]["ParsedFunction"]["label"], "MooseApp")
 
         a = data["Adaptivity"]
         i = a["subblocks"]["Indicators"]["star"]["subblock_types"]["AnalyticalIndicator"]
         self.assertIn("all", i["parameters"]["outputs"]["reserved_values"])
         self.assertIn("none", i["parameters"]["outputs"]["reserved_values"])
 
-    def getBlockSections(self, node):
-        return {c.path(): c for c in node.children(node_type=hit.NodeType.Section)}
-
-    def getBlockParams(self, node):
-        return {c.path(): c for c in node.children(node_type=hit.NodeType.Field)}
-
-    def getInputFileFormat(self, extra=[]):
-        """
-        Does a dump and uses the GetPotParser to parse the output.
-        """
-        args = ["--disable-refcount-printing", "--dump"] + extra
-        output = run_app(args)
-        self.assertIn("### START DUMP DATA ###\n", output)
-        self.assertIn("### END DUMP DATA ###\n", output)
-
-        output = output.split('### START DUMP DATA ###\n')[1]
-        output = output.split('### END DUMP DATA ###')[0]
-
-        self.assertNotEqual(len(output), 0)
-        root = hit.parse("dump.i", output)
-        hit.explode(root)
-        w = DupWalker("dump.i")
-        root.walk(w, hit.NodeType.All)
-        if w.errors:
-            print("\n".join(w.errors))
-        self.assertEqual(len(w.errors), 0)
-        return root
-
-
-class TestFull(TestJSONBase):
-    def testFullJson(self):
-         """
-         Some basic checks to see if some data
-         is there and is in the right location.
-         """
-         all_data = self.getJsonData()
-         self.assertIn("active", all_data["global"]["parameters"])
-         data = all_data["blocks"]
-         self.check_basic_json(data)
-         # Make sure the default dump has test objects
-         self.assertIn("ApplyInputParametersTest", data)
-         self.assertEqual(data["Functions"]["star"]["subblock_types"]["PostprocessorFunction"]["label"], "MooseTestApp")
-
-
-class TestNoTestObjects(TestJSONBase):
-    def testNoTestObjects(self):
-        # Make sure test objects are removed from the output
-        all_data = self.getJsonData(["--disallow-test-objects"])
-        self.assertIn("active", all_data["global"]["parameters"])
-        data = all_data["blocks"]
-        self.check_basic_json(data)
-        self.assertNotIn("ApplyInputParametersTest", data)
-
-
-class TestSearch(TestJSONBase):
     def testJsonSearch(self):
         """
         Make sure parameter search works
@@ -198,10 +133,63 @@ class TestSearch(TestJSONBase):
         self.assertIn("BadKernels", data)
         self.assertIn("Kernels", data)
         diff = data["Kernels"]["star"]["subblock_types"]["Diffusion"]
-        self.assertIn("use_displaced_mesh", diff["parameters"])
+        self.assertIn("eigen_kernel", diff["parameters"])
 
+    def getInputFileFormat(self, extra=[]):
+        """
+        Does a dump and uses the GetPotParser to parse the output.
+        """
+        args = ["--dump"] + extra
+        output = run_app(args)
+        self.assertNotEqual(len(output), 0)
+        with open("dump.i", "w") as f:
+            f.write(output)
+        return readInputFile("dump.i")
 
-class TestLineInfo(TestJSONBase):
+    def testInputFileFormat(self):
+        """
+        Some basic checks to see if some data
+        is there and is in the right location.
+        """
+        root = self.getInputFileFormat()
+        self.assertIn("Executioner", root.children_list)
+        self.assertIn("BCs", root.children_list)
+        bcs = root.children["BCs"]
+        self.assertIn("Periodic", bcs.children_list)
+        self.assertIn("*", bcs.children_list)
+        star = bcs.children["*"]
+        self.assertIn("active", star.params_list)
+        self.assertIn("<DirichletBC>", star.children["<types>"].children_list)
+        self.assertEqual(bcs.children["Periodic"].children_list, ["*"])
+
+        self.assertNotIn("<types>", bcs.children_list)
+
+        exe = root.children["Executioner"]
+        self.assertIn("<types>", exe.children_list)
+        self.assertIn("<Transient>", exe.children["<types>"].children_list)
+
+        # Preconditioning has a Preconditioning/*/* syntax which is unusual
+        self.assertIn("Preconditioning", root.children_list)
+        p = root.children["Preconditioning"]
+        split = p.children["*"].children["*"].children["<types>"].children["<Split>"]
+        self.assertIn("splitting_type", split.params_list)
+        # There is a problem with the GetPotParser parsing this because
+        # the comments got split and there is a unmatched " on a line of the comment.
+        # This breaks the parser and it doesn't read in all the parameters.
+        # self.assertIn("petsc_options", split.params_list)
+
+    def testInputFileFormatSearch(self):
+        """
+        Make sure parameter search works
+        """
+        root = self.getInputFileFormat(["initial_steps"])
+        self.assertNotIn("Executioner", root.children_list)
+        self.assertNotIn("BCs", root.children_list)
+        self.assertIn("Adaptivity", root.children_list)
+        self.assertEqual(len(root.children_list), 1)
+        self.assertIn("initial_steps", root.children["Adaptivity"].params_list)
+        self.assertEqual(len(root.children["Adaptivity"].params_list), 1)
+
     def testLineInfo(self):
         """
         Make sure file/line information works
@@ -214,14 +202,14 @@ class TestLineInfo(TestJSONBase):
         fname = fi.keys()[0]
         # Clang seems to have the full path name for __FILE__
         # gcc seems to just use the path that is given on the command line, which won't include "framework"
-        self.assertTrue(fname.endswith(os.path.join("src", "base", "Moose.C")), 'file "{}" found instead'.format(fname))
+        self.assertTrue(fname.endswith(os.path.join("src", "parser", "MooseSyntax.C")))
         self.assertGreater(fi[fname], 0)
 
         fi = adapt["tasks"]["set_adaptivity_options"]["file_info"]
         self.assertEqual(len(fi.keys()), 1)
         fname = fi.keys()[0]
-        self.assertTrue(fname.endswith(os.path.join("src", "actions", "SetAdaptivityOptionsAction.C")))
+        self.assertTrue(fname.endswith(os.path.join("src", "base", "Moose.C")))
         self.assertGreater(fi[fname], 0)
 
 if __name__ == '__main__':
-    unittest.main(__name__, verbosity=2)
+    unittest.main(module=__name__, verbosity=2)

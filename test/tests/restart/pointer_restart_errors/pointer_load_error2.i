@@ -41,10 +41,10 @@
 [Problem]
   type = FEProblem
   solve = false
-  restart_file_base = pointer_load_error_out_cp/0001
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Steady
   solve_type = PJFNK
   petsc_options_iname = '-pc_type -pc_hypre_type'
@@ -59,3 +59,6 @@
   [../]
 []
 
+[Problem]
+  restart_file_base = pointer_load_error_out_cp/0001
+[]

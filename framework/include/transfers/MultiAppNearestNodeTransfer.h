@@ -1,23 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MULTIAPPNEARESTNODETRANSFER_H
+#define MULTIAPPNEARESTNODETRANSFER_H
 
 // MOOSE includes
-#include "MultiAppFieldTransfer.h"
+#include "MultiAppTransfer.h"
 
 // Forward declarations
 class MultiAppNearestNodeTransfer;
-namespace libMesh
-{
-class DofObject;
-}
 
 template <>
 InputParameters validParams<MultiAppNearestNodeTransfer>();
@@ -25,10 +27,12 @@ InputParameters validParams<MultiAppNearestNodeTransfer>();
 /**
  * Copy the value to the target domain from the nearest node in the source domain.
  */
-class MultiAppNearestNodeTransfer : public MultiAppFieldTransfer
+class MultiAppNearestNodeTransfer : public MultiAppTransfer
 {
 public:
   MultiAppNearestNodeTransfer(const InputParameters & parameters);
+
+  virtual void initialSetup() override;
 
   virtual void execute() override;
 
@@ -51,7 +55,7 @@ protected:
    * @return The maximum distance between the point p and the eight corners of
    * the bounding box bbox.
    */
-  Real bboxMaxDistance(const Point & p, const BoundingBox & bbox);
+  Real bboxMaxDistance(Point p, MeshTools::BoundingBox bbox);
 
   /**
    * Return the distance between the given point and the nearest corner of the
@@ -61,23 +65,12 @@ protected:
    * @return The minimum distance between the point p and the eight corners of
    * the bounding box bbox.
    */
-  Real bboxMinDistance(const Point & p, const BoundingBox & bbox);
+  Real bboxMinDistance(Point p, MeshTools::BoundingBox bbox);
 
-  /**
-   * Get nearest node candidates.
-   * @param local_entities: space locatins and their associated elements
-   * @param local_comps: comp num for the unknowns on DofObject. It is useful
-   * for higher order method
-   */
-  void getLocalEntitiesAndComponents(MooseMesh * mesh,
-                                     std::vector<std::pair<Point, DofObject *>> & local_entities,
-                                     std::vector<unsigned int> & local_comps,
-                                     bool nodal,
-                                     bool constant);
+  void getLocalNodes(MooseMesh * mesh, std::vector<Node *> & local_nodes);
 
-  void getLocalEntities(MooseMesh * mesh,
-                        std::vector<std::pair<Point, DofObject *>> & local_entities,
-                        bool nodal);
+  AuxVariableName _to_var_name;
+  VariableName _from_var_name;
 
   /// If true then node connections will be cached
   bool _fixed_meshes;
@@ -95,3 +88,5 @@ protected:
   std::map<dof_id_type, unsigned int> & _cached_from_inds;
   std::map<dof_id_type, unsigned int> & _cached_qp_inds;
 };
+
+#endif /* MULTIAPPNEARESTNODETRANSFER_H */

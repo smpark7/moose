@@ -1,25 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "ParsedAddSideset.h"
 #include "Conversion.h"
 #include "MooseMesh.h"
 
+// libmesh includes
 #include "libmesh/fparser_ad.hh"
-#include "libmesh/elem.h"
-#include "libmesh/fe_base.h"
-
-registerMooseObjectReplaced("MooseApp",
-                            ParsedAddSideset,
-                            "11/30/2019 00:00",
-                            ParsedGenerateSideset);
 
 template <>
 InputParameters
@@ -102,8 +101,12 @@ ParsedAddSideset::modify()
   std::vector<BoundaryID> boundary_ids = _mesh_ptr->getBoundaryIDs({_sideset_name}, true);
   mooseAssert(boundary_ids.size() == 1, "Length of boundary_ids should be one");
 
-  for (const auto & elem : mesh.active_element_ptr_range())
+  MeshBase::const_element_iterator el = mesh.active_elements_begin();
+  const MeshBase::const_element_iterator end_el = mesh.active_elements_end();
+
+  for (; el != end_el; ++el)
   {
+    const Elem * elem = *el;
     SubdomainID curr_subdomain = elem->subdomain_id();
 
     // check if the element is included
@@ -122,7 +125,7 @@ ParsedAddSideset::modify()
         continue;
 
       // check expression
-      std::unique_ptr<Elem> curr_side = elem->side_ptr(side);
+      std::unique_ptr<Elem> curr_side = elem->side(side);
       _func_params[0] = curr_side->centroid()(0);
       _func_params[1] = curr_side->centroid()(1);
       _func_params[2] = curr_side->centroid()(2);

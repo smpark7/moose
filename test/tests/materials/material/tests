@@ -39,12 +39,6 @@
     expect_err = 'Cyclic dependency detected in object ordering:\nmat2 -> mat1'
   [../]
 
-  [./mat_block_boundary_check]
-    type = 'RunException'
-    input = 'material_block_bound_check.i'
-    expect_err = 'Material property \S+, requested by \S+ is not defined on block \S'
-  [../]
-
   [./three_coupled_mat_test]
     type = 'Exodiff'
     input = 'three_coupled_mat_test.i'
@@ -66,38 +60,11 @@
     expect_err = 'The following blocks from your input mesh do not contain an active material: 0'
   [../]
 
-  [./exception_material_serial]
+  [./throw_material]
     type = 'Exodiff'
-    input = 'exception_material.i'
-    exodiff = 'exception_material_out.e'
-    max_threads = 1
-    max_parallel = 1
+    input = 'throw_material.i'
+    exodiff = 'throw_material_out.e'
     recover = false
-    timing = false # See Ticket #10927
-  [../]
-
-  [./exception_material_parallel_rank1]
-    type = 'Exodiff'
-    input = 'exception_material.i'
-    exodiff = 'exception_material_out.e'
-    cli_args = 'Materials/mat/rank=1'
-    max_threads = 1
-    min_parallel = 4
-    recover = false
-    timing = false # See Ticket #10927
-    prereq = exception_material_serial
-  [../]
-
-  [./exception_material_parallel_rank0]
-    type = 'Exodiff'
-    input = 'exception_material.i'
-    exodiff = 'exception_material_out.e'
-    cli_args = 'Materials/mat/rank=0'
-    max_threads = 1
-    min_parallel = 4
-    recover = false
-    timing = false # See Ticket #10927
-    prereq = exception_material_parallel_rank1
   [../]
 
   [./test_constant_on_elem]

@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // Moose
 #include "FindContactPoint.h"
@@ -13,7 +18,6 @@
 #include "PenetrationInfo.h"
 
 // libMesh
-#include "libmesh/fe_base.h"
 #include "libmesh/boundary_info.h"
 #include "libmesh/elem.h"
 #include "libmesh/plane.h"
@@ -206,14 +210,7 @@ findContactPoint(PenetrationInfo & p_info,
   }
   else
   {
-    const Node * const * elem_nodes = master_elem->get_nodes();
-    const Point in_plane_vector1 = *elem_nodes[1] - *elem_nodes[0];
-    const Point in_plane_vector2 = *elem_nodes[2] - *elem_nodes[0];
-
-    Point out_of_plane_normal = in_plane_vector1.cross(in_plane_vector2);
-    out_of_plane_normal /= out_of_plane_normal.norm();
-
-    p_info._normal = dxyz_dxi[0].cross(out_of_plane_normal);
+    p_info._normal = RealGradient(dxyz_dxi[0](1), -dxyz_dxi[0](0));
     if (std::fabs(p_info._normal.norm()) > 1e-15)
       p_info._normal /= p_info._normal.norm();
   }

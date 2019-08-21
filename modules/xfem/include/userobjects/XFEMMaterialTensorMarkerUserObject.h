@@ -1,15 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef XFEMMATERIALTENSORMARKERUSEROBJECT_H
+#define XFEMMATERIALTENSORMARKERUSEROBJECT_H
 
-#include "XFEMMaterialStateMarkerBase.h"
+#include "XFEMMarkerUserObject.h"
 #include "MaterialTensorCalculator.h"
 
 class XFEMMaterialTensorMarkerUserObject;
@@ -17,7 +16,7 @@ class XFEMMaterialTensorMarkerUserObject;
 template <>
 InputParameters validParams<XFEMMaterialTensorMarkerUserObject>();
 
-class XFEMMaterialTensorMarkerUserObject : public XFEMMaterialStateMarkerBase
+class XFEMMaterialTensorMarkerUserObject : public XFEMMarkerUserObject
 {
 public:
   XFEMMaterialTensorMarkerUserObject(const InputParameters & parameters);
@@ -33,3 +32,4 @@ protected:
   virtual bool doesElementCrack(RealVectorValue & direction);
 };
 
+#endif // XFEMMATERIALTENSORMARKERUSEROBJECT_H

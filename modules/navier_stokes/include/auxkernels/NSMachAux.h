@@ -1,20 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef NSMACHAUX_H
+#define NSMACHAUX_H
 
 // MOOSE includes
 #include "AuxKernel.h"
 
 // Forward Declarations
 class NSMachAux;
-class SinglePhaseFluidProperties;
+class IdealGasFluidProperties;
 
 template <>
 InputParameters validParams<NSMachAux>();
@@ -39,6 +37,7 @@ protected:
   const VariableValue & _internal_energy;
 
   // Fluid properties
-  const SinglePhaseFluidProperties & _fp;
+  const IdealGasFluidProperties & _fp;
 };
 
+#endif

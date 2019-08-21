@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "PlaneStrain.h"
 #include "SolidModel.h"
 #include "libmesh/quadrature.h"
@@ -19,14 +16,14 @@ PlaneStrain::PlaneStrain(SolidModel & solid_model,
                          const InputParameters & parameters)
   : Element(solid_model, name, parameters),
     ScalarCoupleable(&solid_model),
-    _large_strain(solid_model.getParamTempl<bool>("large_strain")),
+    _large_strain(solid_model.getParam<bool>("large_strain")),
     _grad_disp_x(coupledGradient("disp_x")),
     _grad_disp_y(coupledGradient("disp_y")),
     _have_strain_zz(isCoupled("strain_zz")),
     _strain_zz(_have_strain_zz ? coupledValue("strain_zz") : _zero),
     _have_scalar_strain_zz(isCoupledScalar("scalar_strain_zz")),
     _scalar_strain_zz(_have_scalar_strain_zz ? coupledScalarValue("scalar_strain_zz") : _zero),
-    _volumetric_locking_correction(solid_model.getParamTempl<bool>("volumetric_locking_correction"))
+    _volumetric_locking_correction(solid_model.getParam<bool>("volumetric_locking_correction"))
 {
   if (_have_strain_zz && _have_scalar_strain_zz)
     mooseError("Must define only one of strain_zz or scalar_strain_zz");
@@ -87,13 +84,11 @@ PlaneStrain::computeStrain(const unsigned qp,
 
       if (_large_strain)
       {
-        volumetric_strain += 0.5 *
-                             (_grad_disp_x[qp_loop](0) * _grad_disp_x[qp_loop](0) +
-                              _grad_disp_y[qp_loop](0) * _grad_disp_y[qp_loop](0)) /
+        volumetric_strain += 0.5 * (_grad_disp_x[qp_loop](0) * _grad_disp_x[qp_loop](0) +
+                                    _grad_disp_y[qp_loop](0) * _grad_disp_y[qp_loop](0)) /
                              dim * _solid_model.JxW(qp_loop);
-        volumetric_strain += 0.5 *
-                             (_grad_disp_x[qp_loop](1) * _grad_disp_x[qp_loop](1) +
-                              _grad_disp_y[qp_loop](1) * _grad_disp_y[qp_loop](1)) /
+        volumetric_strain += 0.5 * (_grad_disp_x[qp_loop](1) * _grad_disp_x[qp_loop](1) +
+                                    _grad_disp_y[qp_loop](1) * _grad_disp_y[qp_loop](1)) /
                              dim * _solid_model.JxW(qp_loop);
       }
     }

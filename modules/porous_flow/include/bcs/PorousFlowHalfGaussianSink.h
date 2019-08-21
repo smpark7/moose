@@ -1,16 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWHALFGAUSSIANSINK_H
+#define POROUSFLOWHALFGAUSSIANSINK_H
 
 #include "PorousFlowSinkPTDefiner.h"
 
+// Forward Declarations
 class PorousFlowHalfGaussianSink;
 
 template <>
@@ -31,13 +31,13 @@ public:
   PorousFlowHalfGaussianSink(const InputParameters & parameters);
 
 protected:
-  /// Maximum of the Gaussian sink
+  /// maximum of the Gaussian sink
   const Real _maximum;
 
-  /// Standard deviation of the Gaussian sink
+  /// standard deviation of the Gaussian sink
   const Real _sd;
 
-  /// Center of the Gaussian sink
+  /// center of the Gaussian sink
   const Real _center;
 
   virtual Real multiplier() const override;
@@ -45,3 +45,4 @@ protected:
   virtual Real dmultiplier_dvar(unsigned int pvar) const override;
 };
 
+#endif // POROUSFLOWHALFGAUSSIANSINK_H

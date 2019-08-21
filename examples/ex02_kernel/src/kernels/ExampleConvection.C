@@ -1,21 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ExampleConvection.h"
-
-/**
- * All MOOSE based object classes you create must be registered using this macro.  The first
- * argument is the name of the App you entered in when running the stork.sh script with an "App"
- * suffix. If you ran "stork.sh Example", then the argument here becomes "ExampleApp". The second
- * argument is the name of the C++ class you created.
- */
-registerMooseObject("ExampleApp", ExampleConvection);
 
 /**
  * This function defines the valid parameters for

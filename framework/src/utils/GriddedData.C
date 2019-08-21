@@ -1,15 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "GriddedData.h"
+
+// MOOSE includes
 #include "MooseError.h"
-#include "MooseUtils.h"
+
+// C++ includes
 #include <fstream>
 
 /**
@@ -57,12 +65,25 @@ GriddedData::GriddedData(std::string file_name)
   parse(_dim, _axes, _grid, _fcn, _step, file_name);
 }
 
+/**
+ * Returns the dimensionality of the grid.
+ * This may have nothing to do with the dimensionality of
+ * the simulation.  Eg, a 2D grid with axes (Y,Z) (so dim=2)
+ * be used in a 3D simulation
+ */
 unsigned int
 GriddedData::getDim()
 {
   return _dim;
 }
 
+/**
+ * Yields axes information.
+ * If axes[i] == 0 then the i_th axis in the grid data corresponds to the x axis in the simulation
+ * If axes[i] == 1 then the i_th axis in the grid data corresponds to the y axis in the simulation
+ * If axes[i] == 2 then the i_th axis in the grid data corresponds to the z axis in the simulation
+ * If axes[i] == 3 then the i_th axis in the grid data corresponds to the time in the simulation
+ */
 void
 GriddedData::getAxes(std::vector<int> & axes)
 {
@@ -71,6 +92,10 @@ GriddedData::getAxes(std::vector<int> & axes)
     axes[i] = _axes[i];
 }
 
+/**
+ * Yields the grid.
+ * grid[i] = a vector of Reals that define the i_th axis of the grid
+ */
 void
 GriddedData::getGrid(std::vector<std::vector<Real>> & grid)
 {
@@ -83,6 +108,9 @@ GriddedData::getGrid(std::vector<std::vector<Real>> & grid)
   }
 }
 
+/**
+ * Yields the values defined at the grid points
+ */
 void
 GriddedData::getFcn(std::vector<Real> & fcn)
 {
@@ -91,6 +119,11 @@ GriddedData::getFcn(std::vector<Real> & fcn)
     fcn[i] = _fcn[i];
 }
 
+/**
+ * Evaluates the function at a given grid point
+ * for instance evaluateFcn({n,m}) = value at (grid[0][n], grid[1][m]), for a function defined on a
+ * 2D grid
+ */
 Real
 GriddedData::evaluateFcn(const std::vector<unsigned int> & ijk)
 {
@@ -109,6 +142,32 @@ GriddedData::evaluateFcn(const std::vector<unsigned int> & ijk)
   return _fcn[index];
 }
 
+/**
+ * parse the file_name extracting information.
+ * Here is an example file:
+ * # this is a comment line at start of file
+ * AXIS Y
+ * -1.5 0
+ * # there is no reason why the x axis can't be second
+ * AXIS X
+ * 1 2 3
+ * # This example has a 3D grid, but the 3rd direction is time
+ * AXIS T
+ * 0 199
+ * # now some data
+ * DATA
+ * # following for x=1, t=0
+ * 1 2
+ * # following for x=2, t=0
+ * 2 3
+ * # following for x=3, t=0
+ * 2 3
+ * # following for x=1, t=199
+ * 89 900
+ * # following for x=2, t=199, and x=3, t=199
+ * 1 -3 -5 -6.898
+ * # end of file
+ */
 void
 GriddedData::parse(unsigned int & dim,
                    std::vector<int> & axes,
@@ -208,10 +267,17 @@ GriddedData::parse(unsigned int & dim,
                " function values were read from file");
 }
 
+/**
+ * Extracts the next line from file_stream that is:
+ *  - not empty
+ *  - does not start with #
+ * Returns true if such a line was found,
+ * otherwise returns false
+ */
 bool
 GriddedData::getSignificantLine(std::ifstream & file_stream, std::string & line)
 {
-  while (std::getline(file_stream, line))
+  while (getline(file_stream, line))
   {
     if (line.size() == 0) // empty line: read next line from file
       continue;
@@ -224,15 +290,21 @@ GriddedData::getSignificantLine(std::ifstream & file_stream, std::string & line)
   return false;
 }
 
+/**
+ * Splits an input_string using space as the separator
+ * Converts the resulting items to Real, and adds these
+ * to the end of output_vec
+ */
 void
 GriddedData::splitToRealVec(const std::string & input_string, std::vector<Real> & output_vec)
 {
-  std::vector<Real> values;
-  bool status = MooseUtils::tokenizeAndConvert<Real>(input_string, values, " ");
-
-  if (!status)
-    mooseError("GriddedData: Failed to convert string into Real when reading line ", input_string);
-
-  for (auto val : values)
-    output_vec.push_back(val);
+  std::istringstream linestream(input_string);
+  std::string item;
+  while (getline(linestream, item, ' '))
+  {
+    std::istringstream i(item);
+    Real d;
+    i >> d;
+    output_vec.push_back(d);
+  }
 }

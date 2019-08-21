@@ -1,17 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MATERIALPROPERTY_H
+#define MATERIALPROPERTY_H
 
 #include <vector>
 
-#include "MooseADWrapper.h"
 #include "MooseArray.h"
 #include "DataIO.h"
 
@@ -26,7 +31,14 @@ class PropertyValue;
  * types
  */
 template <typename P>
-PropertyValue * _init_helper(int size, PropertyValue * prop, const P * the_type, bool use_ad);
+PropertyValue * _init_helper(int size, PropertyValue * prop, const P * the_type);
+
+/**
+ * Vector Init helper routine so that specialization isn't needed for basic vector MaterialProperty
+ * types
+ */
+template <typename P>
+PropertyValue * _init_helper(int size, PropertyValue * prop, const std::vector<P> * the_type);
 
 /**
  * Abstract definition of a property value.
@@ -68,15 +80,6 @@ public:
   // save/restore in a file
   virtual void store(std::ostream & stream) = 0;
   virtual void load(std::istream & stream) = 0;
-
-  /// Mark whether this property is in AD mode. This method is necessary for switching the state after swapping material properties during stateful material calculations
-  virtual void markAD(bool use_ad) = 0;
-
-  /**
-   * copy the value portion (not the derivatives) of the DualNumber<Real> version of the material
-   * property to the Real version for the specified quadrature point
-   */
-  virtual void copyDualNumberToValue(const unsigned int i) = 0;
 };
 
 template <>
@@ -102,53 +105,51 @@ class MaterialProperty : public PropertyValue
 {
 public:
   /// Explicitly declare a public constructor because we made the copy constructor private
-  MaterialProperty(bool use_ad = false) : PropertyValue(), _use_ad(use_ad)
-  { /* */
-  }
+  MaterialProperty() : PropertyValue() { /* */}
 
-  virtual ~MaterialProperty() {}
+  virtual ~MaterialProperty() { _value.release(); }
 
   /**
    * @returns a read-only reference to the parameter value.
    */
-  const std::vector<MooseADWrapper<T>> & get() const { return _value; }
+  MooseArray<T> & get() { return _value; }
 
   /**
    * @returns a writable reference to the parameter value.
    */
-  std::vector<MooseADWrapper<T>> & set() { return _value; }
+  MooseArray<T> & set() { return _value; }
 
   /**
    * String identifying the type of parameter stored.
    */
-  virtual std::string type() override;
+  virtual std::string type();
 
   /**
    * Clone this value.  Useful in copy-construction.
    */
-  virtual PropertyValue * init(int size) override;
+  virtual PropertyValue * init(int size);
 
   /**
    * Resizes the property to the size n
    */
-  virtual void resize(int n) override;
-
-  virtual unsigned int size() const override { return _value.size(); }
+  virtual void resize(int n);
 
   /**
-   * Get element i out of the array as a writeable reference.
+   * Get element i out of the array.
    */
-  T & operator[](const unsigned int i) { return _value[i].value(); }
+  T & operator[](const unsigned int i) { return _value[i]; }
+
+  unsigned int size() const { return _value.size(); }
 
   /**
-   * Get element i out of the array as a ready-only reference.
+   * Get element i out of the array.
    */
-  const T & operator[](const unsigned int i) const { return _value[i].value(); }
+  const T & operator[](const unsigned int i) const { return _value[i]; }
 
   /**
    *
    */
-  virtual void swap(PropertyValue * rhs) override;
+  virtual void swap(PropertyValue * rhs);
 
   /**
    * Copy the value of a Property from one specific to a specific qp in this Property.
@@ -157,26 +158,35 @@ public:
    * @param rhs The Property you want to copy _from_.
    * @param from_qp The quadrature point in rhs you want to copy _from_.
    */
-  virtual void
-  qpCopy(const unsigned int to_qp, PropertyValue * rhs, const unsigned int from_qp) override;
+  virtual void qpCopy(const unsigned int to_qp, PropertyValue * rhs, const unsigned int from_qp);
 
   /**
    * Store the property into a binary stream
    */
-  virtual void store(std::ostream & stream) override;
+  virtual void store(std::ostream & stream);
 
   /**
    * Load the property from a binary stream
    */
-  virtual void load(std::istream & stream) override;
+  virtual void load(std::istream & stream);
 
   /**
-   * copy the value portion (not the derivatives) of the DualNumber<Real> version of the material
-   * property to the Real version for the specified quadrature point
+   * Friend helper function to handle scalar material property initializations
+   * @param size - the size corresponding to the quadrature rule
+   * @param prop - The Material property that we will resize since this is not a member
+   * @param the_type - This is just a template parameter used to identify the
+   *                   difference between the scalar and vector template functions
    */
-  void copyDualNumberToValue(const unsigned int i) override { _value[i].copyDualNumberToValue(); }
+  template <typename P>
+  friend PropertyValue * _init_helper(int size, PropertyValue * prop, const P * the_type);
 
-  void markAD(bool use_ad) override;
+  /**
+   * Friend helper function to handle vector material property initializations
+   * This function is an overload for the vector version
+   */
+  template <typename P>
+  friend PropertyValue *
+  _init_helper(int size, PropertyValue * prop, const std::vector<P> * the_type);
 
 private:
   /// private copy constructor to avoid shallow copying of material properties
@@ -191,25 +201,12 @@ private:
     mooseError("Material properties must be assigned to references (missing '&')");
   }
 
-protected:
-  /// Whether this property was declared as AD
-  bool _use_ad;
   /// Stored parameter value.
-  std::vector<MooseADWrapper<T>> _value;
+  MooseArray<T> _value;
 };
 
 // ------------------------------------------------------------
 // Material::Property<> class inline methods
-
-template <typename T>
-inline void
-MaterialProperty<T>::markAD(bool use_ad)
-{
-  _use_ad = use_ad;
-  for (auto && moose_wrapper : _value)
-    moose_wrapper.markAD(use_ad);
-}
-
 template <typename T>
 inline std::string
 MaterialProperty<T>::type()
@@ -221,19 +218,14 @@ template <typename T>
 inline PropertyValue *
 MaterialProperty<T>::init(int size)
 {
-  return _init_helper(size, this, static_cast<T *>(0), _use_ad);
+  return _init_helper(size, this, static_cast<T *>(0));
 }
 
 template <typename T>
 inline void
 MaterialProperty<T>::resize(int n)
 {
-  auto diff = n - static_cast<int>(_value.size());
-  if (diff < 0)
-    _value.erase(_value.end() + diff, _value.end());
-  else
-    for (decltype(diff) i = 0; i < diff; ++i)
-      _value.emplace_back(MooseADWrapper<T>(_use_ad));
+  _value.resize(n);
 }
 
 template <typename T>
@@ -258,7 +250,7 @@ template <typename T>
 inline void
 MaterialProperty<T>::store(std::ostream & stream)
 {
-  for (unsigned int i = 0; i < size(); i++)
+  for (unsigned int i = 0; i < _value.size(); i++)
     storeHelper(stream, _value[i], NULL);
 }
 
@@ -266,31 +258,9 @@ template <typename T>
 inline void
 MaterialProperty<T>::load(std::istream & stream)
 {
-  for (unsigned int i = 0; i < size(); i++)
+  for (unsigned int i = 0; i < _value.size(); i++)
     loadHelper(stream, _value[i], NULL);
 }
-
-template <typename T>
-class ADMaterialPropertyObject : public MaterialProperty<T>
-{
-public:
-  ADMaterialPropertyObject(bool use_ad = false) : MaterialProperty<T>(use_ad) {}
-
-  /**
-   * Get element i out of the array as a writeable reference.
-   */
-  typename MooseADWrapper<T>::DNType & operator[](const unsigned int i)
-  {
-    return this->_value[i].dn();
-  }
-  /**
-   * Get element i out of the array as a read-only reference.
-   */
-  const typename MooseADWrapper<T>::DNType & operator[](const unsigned int i) const
-  {
-    return this->_value[i].dn();
-  }
-};
 
 /**
  * Container for storing material properties
@@ -357,10 +327,28 @@ dataLoad(std::istream & stream, MaterialProperties & v, void * context)
 // Scalar Init Helper Function
 template <typename P>
 PropertyValue *
-_init_helper(int size, PropertyValue * /*prop*/, const P *, bool use_ad)
+_init_helper(int size, PropertyValue * /*prop*/, const P *)
 {
-  ADMaterialPropertyObject<P> * copy = new ADMaterialPropertyObject<P>(use_ad);
-  copy->resize(size);
+  MaterialProperty<P> * copy = new MaterialProperty<P>;
+  copy->_value.resize(size, P{});
   return copy;
 }
 
+// Vector Init Helper Function
+template <typename P>
+PropertyValue *
+_init_helper(int size, PropertyValue * /*prop*/, const std::vector<P> *)
+{
+  typedef MaterialProperty<std::vector<P>> PropType;
+  PropType * copy = new PropType;
+  copy->_value.resize(size, std::vector<P>{});
+
+  // We don't know the size of the underlying vector at each
+  // quadrature point, the user will be responsible for resizing it
+  // and filling in the entries...
+
+  // Return the copy we allocated
+  return copy;
+}
+
+#endif

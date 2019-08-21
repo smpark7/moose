@@ -1,21 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTEAXISYMMETRIC1DSMALLSTRAIN_H
+#define COMPUTEAXISYMMETRIC1DSMALLSTRAIN_H
 
 #include "Compute1DSmallStrain.h"
 #include "SubblockIndexProvider.h"
-
-class ComputeAxisymmetric1DSmallStrain;
-
-template <>
-InputParameters validParams<ComputeAxisymmetric1DSmallStrain>();
 
 /**
  * ComputeAxisymmetric1DSmallStrain defines small strains in an Axisymmetric 1D problem.
@@ -26,9 +19,9 @@ class ComputeAxisymmetric1DSmallStrain : public Compute1DSmallStrain
 public:
   ComputeAxisymmetric1DSmallStrain(const InputParameters & parameters);
 
+protected:
   void initialSetup() override;
 
-protected:
   /// Computes the strain_yy for axisymmetric problems
   Real computeStrainYY() override;
 
@@ -52,3 +45,4 @@ protected:
   std::vector<const VariableValue *> _scalar_out_of_plane_strain;
 };
 
+#endif // COMPUTEAXISYMMETRIC1DSMALLSTRAIN_H

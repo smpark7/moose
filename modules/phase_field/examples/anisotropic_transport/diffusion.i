@@ -26,7 +26,7 @@
 [Kernels]
   [./cres]
     type = MatAnisoDiffusion
-    diffusivity = D
+    D_name = D
     variable = c
   [../]
   [./time]
@@ -71,5 +71,5 @@
 
 [Outputs]
   exodus = true
-  perf_graph = true
+  print_perf_log = true
 []

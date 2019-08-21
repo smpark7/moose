@@ -1,42 +1,46 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef LEVELSETOLSSONREINITIALIZATION_H
+#define LEVELSETOLSSONREINITIALIZATION_H
 
 // MOOSE includes
-#include "ADKernelGrad.h"
+#include "Kernel.h"
 
 // Forward declarations
-template <ComputeStage>
 class LevelSetOlssonReinitialization;
 
-declareADValidParams(LevelSetOlssonReinitialization);
+template <>
+InputParameters validParams<LevelSetOlssonReinitialization>();
 
 /**
  * Implements the re-initialization equation proposed by Olsson et. al. (2007).
  */
-template <ComputeStage compute_stage>
-class LevelSetOlssonReinitialization : public ADKernelGrad<compute_stage>
+class LevelSetOlssonReinitialization : public Kernel
 {
 public:
   LevelSetOlssonReinitialization(const InputParameters & parameters);
 
 protected:
-  virtual ADRealVectorValue precomputeQpResidual() override;
+  virtual Real computeQpResidual() override;
+  virtual Real computeQpJacobian() override;
 
   /// Gradient of the level set variable at time, \tau = 0.
-  const ADVariableGradient & _grad_levelset_0;
+  const VariableGradient & _grad_levelset_0;
 
   /// Interface thickness
   const PostprocessorValue & _epsilon;
 
-  usingKernelGradMembers;
-  using ADKernelGrad<compute_stage>::getPostprocessorValue;
+  ///@{
+  /// Helper members to avoid initializing variables in computeQpResidual/Jacobian
+  RealVectorValue _f;
+  Real _s;
+  RealVectorValue _n_hat;
+  ///@}
 };
 
+#endif // LEVELSETOLSSONREINITIALIZATION_H

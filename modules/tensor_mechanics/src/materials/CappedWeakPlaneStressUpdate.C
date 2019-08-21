@@ -1,17 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "CappedWeakPlaneStressUpdate.h"
 
 #include "libmesh/utility.h"
-
-registerMooseObject("TensorMechanicsApp", CappedWeakPlaneStressUpdate);
 
 template <>
 InputParameters
@@ -85,7 +80,7 @@ CappedWeakPlaneStressUpdate::CappedWeakPlaneStressUpdate(const InputParameters &
 }
 
 void
-CappedWeakPlaneStressUpdate::initializeReturnProcess()
+CappedWeakPlaneStressUpdate::initialiseReturnProcess()
 {
   _stress_return_type = StressReturnType::nothing_special;
 }
@@ -137,7 +132,7 @@ CappedWeakPlaneStressUpdate::setStressAfterReturn(const RankTwoTensor & stress_t
                                                   Real q_ok,
                                                   Real gaE,
                                                   const std::vector<Real> & /*intnl*/,
-                                                  const yieldAndFlow & smoothed_q,
+                                                  const f_and_derivs & smoothed_q,
                                                   const RankFourTensor & Eijkl,
                                                   RankTwoTensor & stress) const
 {
@@ -180,11 +175,14 @@ CappedWeakPlaneStressUpdate::consistentTangentOperator(const RankTwoTensor & /*s
                                                        Real /*p*/,
                                                        Real q,
                                                        Real gaE,
-                                                       const yieldAndFlow & smoothed_q,
+                                                       const f_and_derivs & smoothed_q,
                                                        const RankFourTensor & Eijkl,
                                                        bool compute_full_tangent_operator,
                                                        RankFourTensor & cto) const
 {
+  if (!_fe_problem.currentlyComputingJacobian())
+    return;
+
   cto = Eijkl;
   if (!compute_full_tangent_operator)
     return;
@@ -282,7 +280,7 @@ void
 CappedWeakPlaneStressUpdate::computeAllQ(Real p,
                                          Real q,
                                          const std::vector<Real> & intnl,
-                                         std::vector<yieldAndFlow> & all_q) const
+                                         std::vector<f_and_derivs> & all_q) const
 {
   // yield function values
   all_q[0].f = std::sqrt(Utility::pow<2>(q) + _small_smoother2) + p * _tan_phi.value(intnl[0]) -
@@ -374,7 +372,7 @@ CappedWeakPlaneStressUpdate::computeAllQ(Real p,
 }
 
 void
-CappedWeakPlaneStressUpdate::initializeVars(Real p_trial,
+CappedWeakPlaneStressUpdate::initialiseVars(Real p_trial,
                                             Real q_trial,
                                             const std::vector<Real> & intnl_old,
                                             Real & p,

@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MOOSEOBJECTACTION_H
+#define MOOSEOBJECTACTION_H
 
 #include "Action.h"
 
@@ -23,18 +29,10 @@ class MooseObjectAction : public Action
 public:
   MooseObjectAction(InputParameters params);
 
-  using Action::addRelationshipManagers;
-  virtual void addRelationshipManagers(Moose::RelationshipManagerType when_type) override;
-
   /**
    * Retreive the parameters of the object to be created by this action
    */
   InputParameters & getObjectParams() { return _moose_object_pars; }
-
-  /**
-   * Constant version of retreiving the parameters of the object to be created by this action
-   */
-  const InputParameters & getObjectParams() const { return _moose_object_pars; }
 
   /**
    * Return the object type to be created
@@ -49,3 +47,4 @@ protected:
   InputParameters _moose_object_pars;
 };
 
+#endif // MOOSEOBJECTACTION_H

@@ -1,11 +1,9 @@
 [Mesh]
   type = GeneratedMesh
   dim = 2
-  nx = 4
-  ny = 4
-
-  xmax = 1.2
-  ymax = 2.3
+  nx = 10
+  ny = 10
+  ymax = 3.2
 []
 
 [Variables]
@@ -38,19 +36,7 @@
 [Postprocessors]
   [./right]
     type = AreaPostprocessor
-    boundary = 'right'
-    execute_on = 'initial timestep_end'
-  [../]
-
-  [./bottom]
-    type = AreaPostprocessor
-    boundary = 'bottom'
-    execute_on = 'initial timestep_end'
-  [../]
-
-  [./all]
-    type = AreaPostprocessor
-    boundary = 'left right bottom top'
+    boundary = 1
     execute_on = 'initial timestep_end'
   [../]
 []
@@ -58,6 +44,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'
@@ -65,5 +52,5 @@
 []
 
 [Outputs]
-  csv = true
+  exodus = true
 []

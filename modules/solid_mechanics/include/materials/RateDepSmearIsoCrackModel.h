@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef RATEDEPSMEARISOCRACKMODEL_H
+#define RATEDEPSMEARISOCRACKMODEL_H
 
 #include "RateDepSmearCrackModel.h"
 
@@ -28,7 +26,7 @@ public:
   virtual ~RateDepSmearIsoCrackModel();
 
 protected:
-  virtual void initQpStatefulProperties();
+  virtual void initStatefulProperties(unsigned int n_points);
   virtual void initVariables();
   /**
    * This function calculates rate of damage based on energy
@@ -43,7 +41,7 @@ protected:
   Real _upper_lim_damage;
 
   MaterialProperty<Real> & _energy;
-  const MaterialProperty<Real> & _energy_old;
+  MaterialProperty<Real> & _energy_old;
 
   Real _ddamage;
   Real _ddamagerate_drs;
@@ -54,3 +52,4 @@ protected:
 private:
 };
 
+#endif // RATEDEPSMEARCRACKMODEL

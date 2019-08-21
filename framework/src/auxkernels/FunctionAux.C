@@ -1,24 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "FunctionAux.h"
 #include "Function.h"
-
-registerMooseObject("MooseApp", FunctionAux);
 
 template <>
 InputParameters
 validParams<FunctionAux>()
 {
   InputParameters params = validParams<AuxKernel>();
-  params.addClassDescription("Auxiliary Kernel that creates and updates a field variable by "
-                             "sampling a function through space and time.");
   params.addRequiredParam<FunctionName>("function", "The function to use as the value");
   return params;
 }

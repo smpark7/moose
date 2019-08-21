@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "MultiBarrierFunctionMaterial.h"
-
-registerMooseObject("PhaseFieldApp", MultiBarrierFunctionMaterial);
 
 template <>
 InputParameters
@@ -25,7 +20,7 @@ validParams<MultiBarrierFunctionMaterial>()
                         false,
                         "Make the g zero in [0:1] so it only contributes to "
                         "enforcing the eta range and not to the phase "
-                        "transformation barrier.");
+                        "transformation berrier.");
   params.addRequiredCoupledVar("etas", "eta_i order parameters, one for each h");
   return params;
 }
@@ -62,6 +57,7 @@ MultiBarrierFunctionMaterial::computeQpProperties()
 
     if (_well_only && n >= 0.0 && n <= 1.0)
     {
+      _prop_g[_qp] = 0.0;
       (*_prop_dg[i])[_qp] = 0.0;
       (*_prop_d2g[i])[_qp] = 0.0;
       continue;

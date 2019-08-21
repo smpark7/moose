@@ -1,16 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MATERIALDATA_H
+#define MATERIALDATA_H
 
-#include "MaterialProperty.h"
 #include "Moose.h"
+#include "MaterialProperty.h"
 #include "MaterialPropertyStorage.h"
 
 // libMesh
@@ -53,7 +59,7 @@ public:
    * will result in a single identical reference returned every time.
    */
   template <typename T>
-  MaterialProperty<T> & declarePropertyTempl(const std::string & prop_name);
+  MaterialProperty<T> & declareProperty(const std::string & prop_name);
 
   /**
    * Declare the Real valued property prop_name.
@@ -66,15 +72,6 @@ public:
    */
   template <typename T>
   MaterialProperty<T> & declarePropertyOlder(const std::string & prop_name);
-
-  /**
-   * Declare the AD property named "name".
-   * Calling any of the declareProperty
-   * functions multiple times with the same property name is okay and
-   * will result in a single identical reference returned every time.
-   */
-  template <typename T>
-  ADMaterialPropertyObject<T> & declareADPropertyTempl(const std::string & prop_name);
 
   /// copy material properties from one element to another
   void copy(const Elem & elem_to, const Elem & elem_from, unsigned int side);
@@ -116,8 +113,6 @@ public:
    */
   template <typename T>
   MaterialProperty<T> & getProperty(const std::string & prop_name);
-  template <typename T>
-  ADMaterialPropertyObject<T> & getADProperty(const std::string & prop_name);
   template <typename T>
   MaterialProperty<T> & getPropertyOld(const std::string & prop_name);
   template <typename T>
@@ -161,10 +156,12 @@ protected:
   ///@}
 
   /**
-   * Calls resizeProps helper function for regular material properties
+   * Resizes the number of properties to the specified size (including
+   * stateful old and older properties.  Newly added elements are set to
+   * default-constructed material properties.
    */
   template <typename T>
-  void resizeProps(unsigned int size, bool declared_ad = false);
+  void resizeProps(unsigned int size);
 
   /// Status of storage swapping (calling swap sets this to true; swapBack sets it to false)
   bool _swapped;
@@ -173,10 +170,6 @@ private:
   template <typename T>
   MaterialProperty<T> &
   declareHelper(MaterialProperties & props, const std::string & prop_name, unsigned int prop_id);
-
-  template <typename T>
-  ADMaterialPropertyObject<T> &
-  declareADHelper(MaterialProperties & props, const std::string & prop_name, unsigned int prop_id);
 };
 
 template <typename T>
@@ -196,7 +189,7 @@ MaterialData::haveProperty(const std::string & prop_name) const
 
 template <typename T>
 void
-MaterialData::resizeProps(unsigned int size, bool declared_ad)
+MaterialData::resizeProps(unsigned int size)
 {
   auto n = size + 1;
   if (_props.size() < n)
@@ -207,29 +200,18 @@ MaterialData::resizeProps(unsigned int size, bool declared_ad)
     _props_older.resize(n, nullptr);
 
   if (_props[size] == nullptr)
-    _props[size] = new ADMaterialPropertyObject<T>(declared_ad);
-  // This branch is necessary in case the frist call to resizeProps for this property id was
-  // initiated through a getMaterialProperty call, which will have declared_ad = false
-  else if (declared_ad)
-    _props[size]->markAD(true);
+    _props[size] = new MaterialProperty<T>;
   if (_props_old[size] == nullptr)
-    _props_old[size] = new ADMaterialPropertyObject<T>;
+    _props_old[size] = new MaterialProperty<T>;
   if (_props_older[size] == nullptr)
-    _props_older[size] = new ADMaterialPropertyObject<T>;
+    _props_older[size] = new MaterialProperty<T>;
 }
 
 template <typename T>
 MaterialProperty<T> &
-MaterialData::declarePropertyTempl(const std::string & prop_name)
+MaterialData::declareProperty(const std::string & prop_name)
 {
   return declareHelper<T>(_props, prop_name, _storage.addProperty(prop_name));
-}
-
-template <typename T>
-ADMaterialPropertyObject<T> &
-MaterialData::declareADPropertyTempl(const std::string & prop_name)
-{
-  return declareADHelper<T>(_props, prop_name, _storage.addProperty(prop_name));
 }
 
 template <typename T>
@@ -261,36 +243,12 @@ MaterialData::declareHelper(MaterialProperties & props,
 }
 
 template <typename T>
-ADMaterialPropertyObject<T> &
-MaterialData::declareADHelper(MaterialProperties & props,
-                              const std::string & libmesh_dbg_var(prop_name),
-                              unsigned int prop_id)
-{
-  resizeProps<T>(prop_id, true);
-  auto prop = dynamic_cast<ADMaterialPropertyObject<T> *>(props[prop_id]);
-  mooseAssert(prop != nullptr, "Internal error in declaring material property: " + prop_name);
-  return *prop;
-}
-
-template <typename T>
 MaterialProperty<T> &
 MaterialData::getProperty(const std::string & name)
 {
   auto prop_id = getPropertyId(name);
   resizeProps<T>(prop_id);
   auto prop = dynamic_cast<MaterialProperty<T> *>(_props[prop_id]);
-  if (!prop)
-    mooseError("Material has no property named: " + name);
-  return *prop;
-}
-
-template <typename T>
-ADMaterialPropertyObject<T> &
-MaterialData::getADProperty(const std::string & name)
-{
-  auto prop_id = getPropertyId(name);
-  resizeProps<T>(prop_id);
-  auto prop = dynamic_cast<ADMaterialPropertyObject<T> *>(_props[prop_id]);
   if (!prop)
     mooseError("Material has no property named: " + name);
   return *prop;
@@ -309,3 +267,5 @@ MaterialData::getPropertyOlder(const std::string & name)
 {
   return declareHelper<T>(_props_older, name, _storage.addPropertyOlder(name));
 }
+
+#endif /* MATERIALDATA_H */

@@ -1,16 +1,35 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "FluidPropertiesApp.h"
 #include "Moose.h"
 #include "AppFactory.h"
 #include "MooseSyntax.h"
+
+#include "FluidPropertiesMaterial.h"
+#include "FluidPropertiesMaterialPT.h"
+#include "MultiComponentFluidPropertiesMaterialPT.h"
+
+#include "IdealGasFluidProperties.h"
+#include "IdealGasFluidPropertiesPT.h"
+#include "StiffenedGasFluidProperties.h"
+#include "MethaneFluidProperties.h"
+#include "Water97FluidProperties.h"
+#include "CO2FluidProperties.h"
+#include "NaClFluidProperties.h"
+#include "BrineFluidProperties.h"
+#include "SimpleFluidProperties.h"
+#include "TabulatedFluidProperties.h"
+
+#include "SpecificEnthalpyAux.h"
+#include "StagnationPressureAux.h"
+#include "StagnationTemperatureAux.h"
+
+#include "AddFluidPropertiesAction.h"
 
 template <>
 InputParameters
@@ -20,14 +39,23 @@ validParams<FluidPropertiesApp>()
   return params;
 }
 
-registerKnownLabel("FluidPropertiesApp");
-
 FluidPropertiesApp::FluidPropertiesApp(InputParameters parameters) : MooseApp(parameters)
 {
-  FluidPropertiesApp::registerAll(_factory, _action_factory, _syntax);
+  Moose::registerObjects(_factory);
+  FluidPropertiesApp::registerObjects(_factory);
+
+  Moose::associateSyntax(_syntax, _action_factory);
+  FluidPropertiesApp::associateSyntax(_syntax, _action_factory);
 }
 
 FluidPropertiesApp::~FluidPropertiesApp() {}
+
+// External entry point for dynamic application loading
+extern "C" void
+FluidPropertiesApp__registerApps()
+{
+  FluidPropertiesApp::registerApps();
+}
 
 void
 FluidPropertiesApp::registerApps()
@@ -35,54 +63,52 @@ FluidPropertiesApp::registerApps()
   registerApp(FluidPropertiesApp);
 }
 
-static void
-associateSyntaxInner(Syntax & syntax, ActionFactory & /*action_factory*/)
+// External entry point for dynamic object registration
+extern "C" void
+FluidPropertiesApp__registerObjects(Factory & factory)
 {
-  registerSyntaxTask(
-      "AddFluidPropertiesAction", "Modules/FluidProperties/*", "add_fluid_properties");
-  registerMooseObjectTask("add_fluid_properties", FluidProperties, false);
-  syntax.addDependency("add_fluid_properties", "init_displaced_problem");
-
-  syntax.registerActionSyntax("AddFluidPropertiesInterrogatorAction",
-                              "FluidPropertiesInterrogator");
-}
-
-void
-FluidPropertiesApp::registerAll(Factory & f, ActionFactory & af, Syntax & s)
-{
-  Registry::registerObjectsTo(f, {"FluidPropertiesApp"});
-  Registry::registerActionsTo(af, {"FluidPropertiesApp"});
-  associateSyntaxInner(s, af);
+  FluidPropertiesApp::registerObjects(factory);
 }
 
 void
 FluidPropertiesApp::registerObjects(Factory & factory)
 {
-  mooseDeprecated("use registerAll instead of registerObjects");
-  Registry::registerObjectsTo(factory, {"FluidPropertiesApp"});
+  registerMaterial(FluidPropertiesMaterial);
+  registerMaterial(FluidPropertiesMaterialPT);
+  registerMaterial(MultiComponentFluidPropertiesMaterialPT);
+
+  registerUserObject(IdealGasFluidProperties);
+  registerUserObject(IdealGasFluidPropertiesPT);
+  registerUserObject(StiffenedGasFluidProperties);
+  registerUserObject(MethaneFluidProperties);
+  registerUserObject(Water97FluidProperties);
+  registerUserObject(CO2FluidProperties);
+  registerUserObject(NaClFluidProperties);
+  registerUserObject(BrineFluidProperties);
+  registerUserObject(SimpleFluidProperties);
+  registerUserObject(TabulatedFluidProperties);
+
+  registerAuxKernel(SpecificEnthalpyAux);
+  registerAuxKernel(StagnationPressureAux);
+  registerAuxKernel(StagnationTemperatureAux);
+}
+
+// External entry point for dynamic syntax association
+extern "C" void
+FluidPropertiesApp__associateSyntax(Syntax & syntax, ActionFactory & action_factory)
+{
+  FluidPropertiesApp::associateSyntax(syntax, action_factory);
 }
 
 void
 FluidPropertiesApp::associateSyntax(Syntax & syntax, ActionFactory & action_factory)
 {
-  mooseDeprecated("use registerAll instead of associateSyntax");
-  Registry::registerActionsTo(action_factory, {"FluidPropertiesApp"});
-  associateSyntaxInner(syntax, action_factory);
-}
+  registerSyntaxTask(
+      "AddFluidPropertiesAction", "Modules/FluidProperties/*", "add_fluid_properties");
 
-void
-FluidPropertiesApp::registerExecFlags(Factory & /*factory*/)
-{
-  mooseDeprecated("use registerAll instead of registerExecFlags");
-}
+  registerMooseObjectTask("add_fluid_properties", FluidProperties, false);
 
-extern "C" void
-FluidPropertiesApp__registerAll(Factory & f, ActionFactory & af, Syntax & s)
-{
-  FluidPropertiesApp::registerAll(f, af, s);
-}
-extern "C" void
-FluidPropertiesApp__registerApps()
-{
-  FluidPropertiesApp::registerApps();
+  syntax.addDependency("add_fluid_properties", "init_displaced_problem");
+
+  registerAction(AddFluidPropertiesAction, "add_fluid_properties");
 }

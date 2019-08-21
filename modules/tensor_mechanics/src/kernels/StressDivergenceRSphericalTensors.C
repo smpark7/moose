@@ -1,18 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "StressDivergenceRSphericalTensors.h"
 #include "ElasticityTensorTools.h"
 #include "FEProblem.h"
 #include "MooseMesh.h"
-
-registerMooseObject("TensorMechanicsApp", StressDivergenceRSphericalTensors);
 
 template <>
 InputParameters
@@ -20,8 +16,12 @@ validParams<StressDivergenceRSphericalTensors>()
 {
   InputParameters params = validParams<StressDivergenceTensors>();
   params.addClassDescription(
-      "Calculate stress divergence for a spherically symmetric 1D problem in polar coordinates.");
-  params.set<unsigned int>("component") = 0;
+      "Calculate stress divergence for an spherically symmetric 1D problem in polar coordinates.");
+  params.addRequiredParam<unsigned int>(
+      "component",
+      "An integer corresponding to the direction the variable this kernel acts in. (0 "
+      "for x, 1 for y, 2 for z; note in this kernel disp_x refers to the radial "
+      "displacement and disp_y refers to the axial displacement.)");
   params.set<bool>("use_displaced_mesh") = true;
   return params;
 }

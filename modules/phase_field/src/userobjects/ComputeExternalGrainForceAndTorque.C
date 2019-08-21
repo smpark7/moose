@@ -1,18 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeExternalGrainForceAndTorque.h"
 #include "GrainTrackerInterface.h"
 
+// libmesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("PhaseFieldApp", ComputeExternalGrainForceAndTorque);
 
 template <>
 InputParameters
@@ -35,8 +31,8 @@ ComputeExternalGrainForceAndTorque::ComputeExternalGrainForceAndTorque(
     _c_var(coupled("c")),
     _dF_name(getParam<MaterialPropertyName>("force_density")),
     _dF(getMaterialPropertyByName<std::vector<RealGradient>>(_dF_name)),
-    _dFdc(getMaterialPropertyByName<std::vector<RealGradient>>(
-        derivativePropertyNameFirst(_dF_name, _c_name))),
+    _dFdc(
+        getMaterialPropertyByName<std::vector<RealGradient>>(propertyNameFirst(_dF_name, _c_name))),
     _op_num(coupledComponents("etas")),
     _grain_tracker(getUserObject<GrainTrackerInterface>("grain_data")),
     _vals_var(_op_num),
@@ -48,7 +44,7 @@ ComputeExternalGrainForceAndTorque::ComputeExternalGrainForceAndTorque(
     _vals_var[i] = coupled("etas", i);
     _vals_name[i] = getVar("etas", i)->name();
     _dFdeta[i] = &getMaterialPropertyByName<std::vector<RealGradient>>(
-        derivativePropertyNameFirst(_dF_name, _vals_name[i]));
+        propertyNameFirst(_dF_name, _vals_name[i]));
   }
 }
 

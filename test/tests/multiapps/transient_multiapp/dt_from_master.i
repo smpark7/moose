@@ -1,3 +1,12 @@
+###########################################################
+# This is a test of the Multiapp System. This test solves
+# four independent applications spaced throughout a
+# master domain interleaved with a master solve.
+#
+# @Requirement F7.10
+###########################################################
+
+
 [Mesh]
   type = GeneratedMesh
   dim = 2
@@ -41,6 +50,7 @@
   num_steps = 10
   dt = 0.2
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'
@@ -52,13 +62,10 @@
 []
 
 [MultiApps]
-  [sub_app]
+  [./sub_app]
+    positions = '0 0 0  0.5 0.5 0  0.6 0.6 0  0.7 0.7 0'
     type = TransientMultiApp
-    app_type = MooseTestApp
     input_files = 'dt_from_master_sub.i'
-    positions = '0   0   0
-                 0.5 0.5 0
-                 0.6 0.6 0
-                 0.7 0.7 0'
-  []
+    app_type = MooseTestApp
+  [../]
 []

@@ -11,12 +11,42 @@
   uniform_refine = 1
 []
 
-[Modules/TensorMechanics/Master]
-  [./block1]
-    strain = SMALL
-    add_variables = true
-    generate_output = 'stress_xx vonmises_stress' #automatically creates the auxvariables and auxkernels
-                                                  #needed to output these stress quanities
+[Variables]
+  [./disp_x]
+  [../]
+  [./disp_y]
+  [../]
+[]
+
+[Kernels]
+  [./TensorMechanics]
+  [../]
+[]
+
+[AuxVariables]
+  [./stress_xx]
+    family = MONOMIAL
+    order = CONSTANT
+  [../]
+  [./Von_Mises_stress]
+    family = MONOMIAL
+    order = CONSTANT
+  [../]
+[]
+
+[AuxKernels]
+  [./stress_xx]
+    type = RankTwoAux
+    variable = stress_xx
+    rank_two_tensor = stress
+    index_i = 0
+    index_j = 0
+  [../]
+  [./Von_Mises_stress]
+    type = RankTwoScalarAux
+    variable = Von_Mises_stress
+    rank_two_tensor = stress
+    scalar_type = VonMisesStress
   [../]
 []
 
@@ -25,6 +55,9 @@
     type = ComputeIsotropicElasticityTensor
     youngs_modulus = 2.1e5
     poissons_ratio = 0.3
+  [../]
+  [./strain]
+    type = ComputeSmallStrain
   [../]
   [./stress]
     type = ComputeLinearElasticStress
@@ -71,5 +104,5 @@
 
 [Outputs]
   exodus = true
-  perf_graph = true
+  print_perf_log = true
 []

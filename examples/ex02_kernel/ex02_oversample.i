@@ -50,11 +50,13 @@
   [./refine_2]
     type = Exodus
     file_base = oversample_2
+    oversample = true
     refinements = 2
   [../]
   [./refine_4]
     type = Exodus
     file_base = oversample_4
+    oversample = true
     refinements = 4
   [../]
 []

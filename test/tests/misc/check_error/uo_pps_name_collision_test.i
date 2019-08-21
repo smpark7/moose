@@ -66,6 +66,7 @@
 [Postprocessors]
   [./ud]
     type = NumDOFs
+    variable = u
   []
 []
 

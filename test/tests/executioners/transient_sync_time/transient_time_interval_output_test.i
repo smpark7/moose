@@ -32,7 +32,7 @@
   [../]
 
   [./forcing]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = interior_func
   [../]

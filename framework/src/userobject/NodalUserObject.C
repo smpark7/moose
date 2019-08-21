@@ -1,14 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NodalUserObject.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "SubProblem.h"
 #include "MooseTypes.h"
 #include "Assembly.h"
@@ -31,20 +36,21 @@ validParams<NodalUserObject>()
 
 NodalUserObject::NodalUserObject(const InputParameters & parameters)
   : UserObject(parameters),
-    BlockRestrictable(this),
-    BoundaryRestrictable(this, blockIDs(), true), // true for applying to nodesets
+    BlockRestrictable(parameters),
+    BoundaryRestrictable(parameters, blockIDs(), true), // true for applying to nodesets
     UserObjectInterface(this),
     Coupleable(this, true),
     MooseVariableDependencyInterface(),
     TransientInterface(this),
     PostprocessorInterface(this),
     RandomInterface(parameters, _fe_problem, _tid, true),
+    ZeroInterface(parameters),
     _mesh(_subproblem.mesh()),
     _qp(0),
     _current_node(_assembly.node()),
     _unique_node_execute(getParam<bool>("unique_node_execute"))
 {
-  const std::vector<MooseVariableFEBase *> & coupled_vars = getCoupledMooseVars();
+  const std::vector<MooseVariable *> & coupled_vars = getCoupledMooseVars();
   for (const auto & var : coupled_vars)
     addMooseVariableDependency(var);
 }

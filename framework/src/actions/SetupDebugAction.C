@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "SetupDebugAction.h"
 #include "FEProblem.h"
@@ -15,8 +20,6 @@
 #include "MooseApp.h"
 #include "MooseObjectAction.h"
 #include "ActionFactory.h"
-
-registerMooseAction("MooseApp", SetupDebugAction, "add_output");
 
 template <>
 InputParameters
@@ -36,17 +39,18 @@ validParams<SetupDebugAction>()
       "show_material_props",
       false,
       "Print out the material properties supplied for each block, face, neighbor, and/or sideset");
-
-  params.addClassDescription(
-      "Adds various debugging type Output objects to the simulation system.");
-
   return params;
 }
 
-SetupDebugAction::SetupDebugAction(InputParameters parameters) : Action(parameters)
+SetupDebugAction::SetupDebugAction(InputParameters parameters)
+  : Action(parameters), _action_params(_action_factory.getValidParams("AddOutputAction"))
 {
   _awh.showActions(getParam<bool>("show_actions"));
   _awh.showParser(getParam<bool>("show_parser"));
+
+  // Set the ActionWarehouse pointer in the parameters that will be passed to the actions created
+  // with this action
+  _action_params.set<ActionWarehouse *>("awh") = &_awh;
 }
 
 void
@@ -54,26 +58,40 @@ SetupDebugAction::act()
 {
   // Material properties
   if (_pars.get<bool>("show_material_props"))
-  {
-    const std::string type = "MaterialPropertyDebugOutput";
-    auto params = _factory.getValidParams(type);
-    _problem->addOutput(type, "_moose_material_property_debug_output", params);
-  }
+    createOutputAction("MaterialPropertyDebugOutput", "_moose_material_property_debug_output");
 
   // Variable residusl norms
   if (_pars.get<bool>("show_var_residual_norms"))
-  {
-    const std::string type = "VariableResidualNormsDebugOutput";
-    auto params = _factory.getValidParams(type);
-    _problem->addOutput(type, "_moose_variable_residual_norms_debug_output", params);
-  }
+    createOutputAction("VariableResidualNormsDebugOutput",
+                       "_moose_variable_residual_norms_debug_output");
 
   // Top residuals
   if (_pars.get<unsigned int>("show_top_residuals") > 0)
   {
-    const std::string type = "TopResidualDebugOutput";
-    auto params = _factory.getValidParams(type);
-    params.set<unsigned int>("num_residuals") = _pars.get<unsigned int>("show_top_residuals");
-    _problem->addOutput(type, "_moose_top_residual_debug_output", params);
+    MooseObjectAction * action =
+        createOutputAction("TopResidualDebugOutput", "_moose_top_residual_debug_output");
+    action->getObjectParams().set<unsigned int>("num_residuals") =
+        _pars.get<unsigned int>("show_top_residuals");
   }
+}
+
+MooseObjectAction *
+SetupDebugAction::createOutputAction(const std::string & type, const std::string & name)
+{
+  // Set the 'type =' parameters for the desired object
+  _action_params.set<std::string>("type") = type;
+
+  // Create the action
+  std::shared_ptr<MooseObjectAction> action = std::static_pointer_cast<MooseObjectAction>(
+      _action_factory.create("AddOutputAction", name, _action_params));
+
+  // Set the object parameters
+  InputParameters & object_params = action->getObjectParams();
+  object_params.set<bool>("_built_by_moose") = true;
+
+  // Add the action to the warehouse
+  _awh.addActionBlock(action);
+
+  // Return the pointer to the action
+  return action.get();
 }

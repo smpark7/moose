@@ -1,18 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "HeatConductionMaterial.h"
 #include "Function.h"
 
+// libmesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("HeatConductionApp", HeatConductionMaterial);
 
 template <>
 InputParameters
@@ -30,7 +27,6 @@ validParams<HeatConductionMaterial>()
   params.addParam<Real>("specific_heat", "The specific heat value");
   params.addParam<FunctionName>(
       "specific_heat_temperature_function", "", "Specific heat as a function of temperature.");
-  params.addClassDescription("General-purpose material model for heat conduction");
 
   return params;
 }

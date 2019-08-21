@@ -12,11 +12,10 @@
 ###############################################################################
 MOOSE_DIR          ?= $(shell dirname `pwd`)
 FRAMEWORK_DIR      ?= $(MOOSE_DIR)/framework
-ADDITIONAL_CPPFLAGS += -Wall -Wextra
 ###############################################################################
 
 # Extra stuff for GTEST
-ADDITIONAL_INCLUDES	:= -isystem $(FRAMEWORK_DIR)/contrib/gtest
+ADDITIONAL_INCLUDES	:= -I$(FRAMEWORK_DIR)/contrib/gtest
 ADDITIONAL_LIBS 	:= $(FRAMEWORK_DIR)/contrib/gtest/libgtest.la
 
 # framework
@@ -31,7 +30,6 @@ XFEM               := yes
 POROUS_FLOW        := yes
 FLUID_PROPERTIES   := yes
 CHEMICAL_REACTIONS := yes
-RDG                := yes
 include           $(MOOSE_DIR)/modules/modules.mk
 ###############################################################################
 

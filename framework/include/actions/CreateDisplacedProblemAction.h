@@ -1,18 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef CREATEDISPLACEDPROBLEMACTION_H
+#define CREATEDISPLACEDPROBLEMACTION_H
 
 #include "Action.h"
 
 class CreateDisplacedProblemAction;
-class SystemBase;
 
 template <>
 InputParameters validParams<CreateDisplacedProblemAction>();
@@ -26,29 +31,6 @@ public:
   CreateDisplacedProblemAction(InputParameters parameters);
 
   virtual void act() override;
-
-protected:
-  /**
-   * Sets up a ProxyRelationshipManager that copies algebraic ghosting from->to
-   */
-  void addProxyAlgebraicRelationshipManagers(SystemBase & to, SystemBase & from);
-
-  /**
-   * Sets up a ProxyRelationshipManager that copies geometric ghosting from->to
-   */
-  void addProxyGeometricRelationshipManagers(SystemBase & to, SystemBase & from);
-
-private:
-  /**
-   * Generic adder of ProxyRelationshipManagers
-   * @param to The system to add RelationshipManagers for
-   * @param from The system to copy RelationshipManagers over from
-   * @param rm_type The Moose::RelationshipManagerType, e.g. GEOMETRIC or ALGEBRAIC (COUPLING
-   *                doesn't need to be copied back and forth)
-   * @param type A string form of the type, e.g. "geometric", "algebraic", or "coupling"
-   */
-  void addProxyRelationshipManagers(SystemBase & to,
-                                    SystemBase & from,
-                                    Moose::RelationshipManagerType rm_type,
-                                    std::string type);
 };
+
+#endif /* CREATEDISPLACEDPROBLEMACTION_H */

@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef EFANODE_H
+#define EFANODE_H
 
 #include <string>
 
@@ -19,7 +18,6 @@ public:
     N_CATEGORY_PERMANENT,
     N_CATEGORY_TEMP,
     N_CATEGORY_EMBEDDED,
-    N_CATEGORY_EMBEDDED_PERMANENT,
     N_CATEGORY_LOCAL_INDEX
   };
 
@@ -34,8 +32,8 @@ public:
   std::string idCatString();
   unsigned int id() const;
   N_CATEGORY category() const;
-  void setCategory(EFANode::N_CATEGORY category);
   EFANode * parent() const;
   void removeParent();
 };
 
+#endif

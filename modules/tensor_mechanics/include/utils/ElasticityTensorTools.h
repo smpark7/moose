@@ -1,24 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef ELASTICITYTENSORTOOLS_H
+#define ELASTICITYTENSORTOOLS_H
 
-#pragma once
-
-template <typename>
-class RankFourTensorTempl;
-typedef RankFourTensorTempl<Real> RankFourTensor;
-namespace libMesh
-{
-template <typename>
-class VectorValue;
-typedef VectorValue<Real> RealGradient;
-}
-using libMesh::RealGradient;
+class RankFourTensor;
 
 namespace ElasticityTensorTools
 {
@@ -66,57 +55,19 @@ momentJacobianWC(const RankFourTensor & r4t, unsigned int i, unsigned int k, Rea
  * Get the shear modulus for an isotropic elasticity tensor
  * param elasticity_tensor the tensor (must be isotropic, but not checked for efficiency)
  */
-template <typename T>
-T
-getIsotropicShearModulus(const RankFourTensorTempl<T> & elasticity_tensor)
-{
-  return elasticity_tensor(0, 1, 0, 1);
-}
+Real getIsotropicShearModulus(const RankFourTensor & elasticity_tensor);
 
 /**
  * Get the bulk modulus for an isotropic elasticity tensor
  * param elasticity_tensor the tensor (must be isotropic, but not checked for efficiency)
  */
-template <typename T>
-T
-getIsotropicBulkModulus(const RankFourTensorTempl<T> & elasticity_tensor)
-{
-  const T shear_modulus = getIsotropicShearModulus(elasticity_tensor);
-  // dilatational modulus is defined as lambda plus two mu
-  const T dilatational_modulus = elasticity_tensor(0, 0, 0, 0);
-  const T lambda = dilatational_modulus - 2.0 * shear_modulus;
-  const T bulk_modulus = lambda + 2.0 * shear_modulus / 3.0;
-  return bulk_modulus;
-}
+Real getIsotropicBulkModulus(const RankFourTensor & elasticity_tensor);
 
 /**
  * Get the Young's modulus for an isotropic elasticity tensor
  * param elasticity_tensor the tensor (must be isotropic, but not checked for efficiency)
  */
-template <typename T>
-T
-getIsotropicYoungsModulus(const RankFourTensorTempl<T> & elasticity_tensor)
-{
-  const T shear_modulus = getIsotropicShearModulus(elasticity_tensor);
-  // dilatational modulus is defined as lambda plus two mu
-  const T dilatational_modulus = elasticity_tensor(0, 0, 0, 0);
-  const T lambda = dilatational_modulus - 2.0 * shear_modulus;
-  const T youngs_modulus =
-      shear_modulus * (3.0 * lambda + 2.0 * shear_modulus) / (lambda + shear_modulus);
-  return youngs_modulus;
+Real getIsotropicYoungsModulus(const RankFourTensor & elasticity_tensor);
 }
 
-/**
- * Get the Poisson's modulus for an isotropic elasticity tensor
- * param elasticity_tensor the tensor (must be isotropic, but not checked for efficiency)
- */
-template <typename T>
-T
-getIsotropicPoissonsRatio(const RankFourTensorTempl<T> & elasticity_tensor)
-{
-  const T poissons_ratio = elasticity_tensor(1, 1, 0, 0) /
-                           (elasticity_tensor(1, 1, 1, 1) + elasticity_tensor(1, 1, 0, 0));
-  return poissons_ratio;
-}
-
-}
+#endif // ELASTICITYTENSORTOOLS_H

@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "AsymmetricCrossTermBarrierFunctionMaterial.h"
-
-registerMooseObject("PhaseFieldApp", AsymmetricCrossTermBarrierFunctionMaterial);
 
 template <>
 InputParameters
@@ -31,7 +26,9 @@ AsymmetricCrossTermBarrierFunctionMaterial::AsymmetricCrossTermBarrierFunctionMa
   const std::vector<MaterialPropertyName> & hi_names =
       getParam<std::vector<MaterialPropertyName>>("hi_names");
   if (hi_names.size() != _num_eta)
-    paramError("hi_names", "The number of hi_names must be equal to the number of coupled etas");
+    mooseError("The number of coupled etas must be equal to the number of hi_names in "
+               "AsymmetricCrossTermBarrierFunctionMaterial ",
+               name());
 
   for (unsigned int i = 0; i < _num_eta; ++i)
   {

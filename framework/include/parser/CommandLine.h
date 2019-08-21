@@ -1,18 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef COMMANDLINE_H
+#define COMMANDLINE_H
 
 // Moose Includes
 #include "MooseError.h"
 
-#include "libmesh/parallel.h"
+// libMesh includes
+#include "libmesh/getpot.h"
 
 // C++ includes
 #include <vector>
@@ -25,7 +32,8 @@
 class InputParameters;
 
 /**
- * This class wraps provides and tracks access to command line parameters.
+ * This class wraps a GetPot object associated with the command line
+ * used to run the code.
  */
 class CommandLine
 {
@@ -49,34 +57,21 @@ public:
   };
 
   CommandLine(int argc, char * argv[]);
-  CommandLine(const CommandLine & other);
   virtual ~CommandLine();
 
-  void addArguments(int argc, char * argv[]);
-  void addArgument(std::string);
-
-  /**
-   * Removes multiapp parameters not associated with the supplied name.
-   *
-   * When a sub-application is created the CommandLine object from the master application is
-   * copied and supplied to the sub-app. This method cleans up the copy so it is ready to
-   * be used for a sub-application by removing parameters that are not associated with the provided
-   * sub-application name.
-   *
-   * See MultiApp::createApp
-   */
-  void initForMultiApp(const std::string &);
-
-  /**
-   * Return the raw argv arguments as a vector.
-   */
-  const std::vector<std::string> & getArguments() { return _argv; }
+  void parseInputParams(const InputParameters & params);
 
   void addCommandLineOptionsFromParams(InputParameters & params);
 
   void populateInputParams(InputParameters & params);
 
   void addOption(const std::string & name, Option cli_opt);
+
+  /**
+   * This function extracts parameters from the command line in name=value format.  Note
+   * that the name should be fully qualified (i.e. BCs/left/value=10)
+   */
+  void buildVarsSet();
 
   /**
    * This routine searches the command line for the given option "handle"
@@ -88,67 +83,60 @@ public:
   template <typename T>
   bool search(const std::string & option_name, T & argument);
 
+  bool isVariableOnCommandLine(const std::string & name) const;
+
   /**
    * Print the usage info for this command line
    */
   void printUsage() const;
 
-  // this needs to be tracked here because CommandLine has a global shared instance across all
-  // multiapps/subapps - and we need to track used/unused CLI hit params globally so we know
-  // which ones don't get used - this can't happen at the within-app level.
-  void markHitParamUsed(int argi) { _used_hiti.insert(argi); };
-  void markHitParam(int argi) { _hiti.insert(argi); }
+  /**
+   * Get the GetPot object
+   * @return Pointer to the GetPot object
+   */
+  GetPot * getPot() { return _get_pot.get(); }
 
-  // Returns the unused CLI hit parameters.  This accounts for different CLI params being used
-  // by different processes in a process-parallel run, so the communicator is needed to rendezvous
-  // which parameters have been used between them all.
-  std::set<int> unused(const Parallel::Communicator & comm)
-  {
-    comm.set_union(_hiti);
-    comm.set_union(_used_hiti);
+  /**
+   * Check if we have a variable on the command line. Note that a call to this
+   * method can modify the prefix unless the optional Boolean is set to false.
+   *
+   * @param name The name of the variable
+   * @return True if the variable was defined on the command line
+   */
+  bool haveVariable(const std::string & name, bool allow_prefix_change = true);
 
-    std::set<int> unused;
-    for (int i : _hiti)
-    {
-      if (_used_hiti.count(i) == 0)
-        unused.insert(i);
-    }
-    return unused;
-  }
+  /**
+   * Sets the prefix for the CommandLine object. This is used for passing
+   * parameters to Multiapps
+   */
+  void setPrefix(const std::string & name, const std::string & num = "");
+
+  /**
+   * Resets the prefix to the value set with the last call to setPrefix.
+   * Generally you do not need to call this method unless you wish
+   * to reset the prefix after calling haveVariable before retrieving a
+   * raw pointer to the GetPot object.
+   */
+  void resetPrefix();
+
+  // Dump the contents of the GetPot object
+  void print(const char * prefix, std::ostream & out_stream, unsigned int skip_count);
 
 protected:
-  /**
-   * Used to set the argument value, allows specialization
-   */
-  template <typename T>
-  void setArgument(std::stringstream & stream, T & argument);
-
+  /// Pointer to GetPot object that represents the command line arguments
+  std::unique_ptr<GetPot> _get_pot;
   /// Command line options
   std::map<std::string, Option> _cli_options;
+  /// This is a set of all "extra" options on the command line
+  std::set<std::string> _command_line_vars;
 
-private:
-  /// indices of CLI args that have been marked as used
-  std::set<int> _used_hiti;
-
-  /// indices of CLI args that are HIT syntax parameters
-  std::set<int> _hiti;
-
-  /// Storage for the raw argv
-  std::vector<std::string> _argv;
-
-  std::vector<std::string> _args;
+  /// The base prefix for this CommandLine object
+  std::string _base_prefix;
+  /// The number added to the prefix to point it at a specific Multiapp
+  std::string _prefix_num;
+  /// Boolean indicating whether we have prefixes set on this CommandLine Object
+  bool _has_prefix;
 };
-
-template <typename T>
-void
-CommandLine::setArgument(std::stringstream & stream, T & argument)
-{
-  stream >> argument;
-}
-
-// Specialization for std::string
-template <>
-void CommandLine::setArgument<std::string>(std::stringstream & stream, std::string & argument);
 
 template <typename T>
 bool
@@ -159,26 +147,15 @@ CommandLine::search(const std::string & option_name, T & argument)
   {
     for (unsigned int i = 0; i < pos->second.cli_switch.size(); ++i)
     {
-
-      for (size_t j = 0; j < _args.size(); j++)
+      if (_get_pot->search(pos->second.cli_switch[i]))
       {
-        auto arg = _args[j];
-
-        if (arg == pos->second.cli_switch[i])
-        {
-          // "Flag" CLI options are added as Boolean types, when we see them
-          // we set the Boolean argument to true
-          if (pos->second.argument_type == NONE)
-            argument = true;
-          else if (j + 1 < _args.size())
-          {
-            std::stringstream ss;
-            ss << _args[j + 1];
-
-            setArgument(ss, argument);
-          }
-          return true;
-        }
+        // "Flag" CLI options are added as Boolean types, when we see them
+        // we set the Boolean argument to true
+        if (pos->second.argument_type == NONE)
+          argument = true;
+        else
+          argument = _get_pot->next(argument);
+        return true;
       }
     }
 
@@ -187,7 +164,11 @@ CommandLine::search(const std::string & option_name, T & argument)
       Moose::err << "Required parameter: " << option_name << " missing\n";
       printUsage();
     }
-    return false;
   }
-  mooseError("Unrecognized option name");
+  else
+    mooseError("Unrecognized option name");
+
+  return false;
 }
+
+#endif // COMMANDLINE_H

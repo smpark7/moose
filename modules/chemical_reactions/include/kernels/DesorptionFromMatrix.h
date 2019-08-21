@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef DESORPTIONFROMMATRIX
+#define DESORPTIONFROMMATRIX
 
 #include "Kernel.h"
 #include "LangmuirMaterial.h"
@@ -44,3 +42,5 @@ protected:
   /// derivative of mass flow rate from matrix wrt pressure
   const MaterialProperty<Real> & _dmass_rate_from_matrix_dp;
 };
+
+#endif // DESORPTIONFROMMATRIX

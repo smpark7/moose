@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef LSTABLEDIRK2_H
+#define LSTABLEDIRK2_H
 
 #include "TimeIntegrator.h"
 
@@ -44,20 +50,14 @@ class LStableDirk2 : public TimeIntegrator
 {
 public:
   LStableDirk2(const InputParameters & parameters);
+  virtual ~LStableDirk2();
 
-  virtual int order() override { return 2; }
-  virtual void computeTimeDerivatives() override;
-  void computeADTimeDerivatives(DualReal & ad_u_dot, const dof_id_type & dof) const override;
-  virtual void solve() override;
-  virtual void postResidual(NumericVector<Number> & residual) override;
+  virtual int order() { return 2; }
+  virtual void computeTimeDerivatives();
+  virtual void solve();
+  virtual void postStep(NumericVector<Number> & residual);
 
 protected:
-  /**
-   * Helper function that actually does the math for computing the time derivative
-   */
-  template <typename T, typename T2>
-  void computeTimeDerivativeHelper(T & u_dot, const T2 & u_old) const;
-
   //! Indicates the current stage (1 or 2).
   unsigned int _stage;
 
@@ -71,11 +71,4 @@ protected:
   const Real _alpha;
 };
 
-template <typename T, typename T2>
-void
-LStableDirk2::computeTimeDerivativeHelper(T & u_dot, const T2 & u_old) const
-{
-  u_dot -= u_old;
-  u_dot *= 1. / _dt;
-}
-
+#endif /* LSTABLEDIRK2_H */

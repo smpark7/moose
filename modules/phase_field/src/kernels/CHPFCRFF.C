@@ -1,16 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "CHPFCRFF.h"
 #include "MathUtils.h"
-
-registerMooseObject("PhaseFieldApp", CHPFCRFF);
 
 template <>
 InputParameters
@@ -68,7 +64,7 @@ CHPFCRFF::computeQpResidual()
   for (unsigned int i = 0; i < _num_L; ++i)
     sum_grad_L += (*_grad_vals[i])[_qp] * 0.5;
 
-  Real frac = 0.0;
+  Real frac;
   Real ln_expansion = 0.0;
 
   switch (_log_approach)
@@ -134,8 +130,7 @@ CHPFCRFF::computeQpJacobian()
   for (unsigned int i = 0; i < _num_L; ++i)
     sum_grad_L += (*_grad_vals[i])[_qp] * 0.5;
 
-  Real frac = 0.0;
-  Real dfrac = 0.0;
+  Real frac, dfrac;
   Real ln_expansion = 0.0;
 
   switch (_log_approach)

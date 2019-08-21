@@ -1,14 +1,5 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
-from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QAbstractItemView, QAction, QMenu, QSizePolicy, QMessageBox
+#!/usr/bin/env python
+from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QAbstractItemView, QAction, QMenu, QSizePolicy
 from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtCore import Qt, pyqtSignal
 from peacock.utils import WidgetUtils
@@ -65,8 +56,6 @@ class BlockTree(QTreeWidget, MooseWidget):
         self.clone_shortcut = WidgetUtils.addShortcut(self, "Ctrl+N", self._newBlockShortcut, shortcut_with_children=True)
         self.populateFromTree()
         self.setup()
-        self.add_action = QAction("Add", None)
-        self.remove_action = QAction("Remove", None)
 
     def populateFromTree(self):
         """
@@ -224,7 +213,7 @@ class BlockTree(QTreeWidget, MooseWidget):
             return self.root_item
         return parent
 
-    def addBlock(self, block, select=False):
+    def addBlock(self, block):
         """
         Add a new block to the tree
         Input:
@@ -234,9 +223,7 @@ class BlockTree(QTreeWidget, MooseWidget):
         if not item:
             pitem = self._path_item_map.get(block.parent.path)
             if pitem:
-                new_item = self._newItem(pitem, block)
-                if select:
-                    self.setCurrentItem(new_item)
+                self._newItem(pitem, block)
 
     def _newItem(self, parent_item, block):
         """
@@ -293,45 +280,10 @@ class BlockTree(QTreeWidget, MooseWidget):
         self.blockSignals(True)
         self.expandItem(item)
         new_block.included = True
-        self.addBlock(new_block, True)
+        self.addBlock(new_block)
         self.blockSignals(False)
 
         self.changed.emit(new_block)
-        self._includeParents(new_block)
-        self.blockDoubleClicked.emit(new_block) # start editing right away
-
-    def _includeParents(self, block):
-        """
-        Recursively set all parent blocks to be included
-        Input:
-            block[BlockInfo]: Include the parent of this block
-        """
-        item = self._path_item_map.get(block.path)
-        if item:
-            parent = item.parent()
-            if parent:
-                parent_block = self._item_block_map.get(parent)
-                if parent.checkState(0) == Qt.Unchecked:
-                    parent.setCheckState(0, Qt.Checked)
-                    parent_block.included = True
-                    self.changed.emit(parent_block)
-                self._includeParents(parent_block)
-
-    def includeBlock(self, block, include=True):
-        item = self._path_item_map.get(block.path)
-        if item:
-            changed = block.included != include
-            block.included = include
-            if include:
-                if item.checkState(0) == Qt.Unchecked:
-                    item.setCheckState(0, Qt.Checked)
-                    changed = True
-                self._includeParents(block)
-            elif item.checkState(0) == Qt.Checked:
-                item.setCheckState(0, Qt.Unchecked)
-                changed = True
-            if changed:
-                self.changed.emit(block)
 
     def _treeContextMenu(self, point):
         """
@@ -346,25 +298,17 @@ class BlockTree(QTreeWidget, MooseWidget):
         if not block:
             return
 
-        if not block.star and not block.user_added:
-            return
-
-        menu = QMenu()
-        menu.addAction(self.add_action)
+        action = None
         if block.star:
-            self.add_action.setText("Add")
-        else:
-            self.add_action.setText("Clone")
-            menu.addAction(self.remove_action)
+            action = QAction("Add", None)
+        elif block.user_added:
+            action = QAction("Clone", None)
 
-        result = menu.exec_(self.mapToGlobal(point))
-        if result == self.add_action:
-            self.copyBlock(block)
-        elif result == self.remove_action:
-            text = "Are you sure you want to delete %s" % block.path
-            button = QMessageBox.question(self, "Confirm remove", text, QMessageBox.Yes, QMessageBox.No)
-            if button == QMessageBox.Yes:
-                self.removeBlock(block)
+        if action:
+            menu = QMenu()
+            menu.addAction(action)
+            if menu.exec_(self.mapToGlobal(point)):
+                self.copyBlock(block)
 
     def _dumpItem(self, output, item, level=0, sep='  '):
         """

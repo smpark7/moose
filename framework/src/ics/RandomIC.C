@@ -1,60 +1,54 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "RandomIC.h"
+#include "MooseRandom.h"
 
 #include "libmesh/point.h"
-#include "Distribution.h"
-
-registerMooseObject("MooseApp", RandomIC);
 
 template <>
 InputParameters
 validParams<RandomIC>()
 {
-  InputParameters params = validParams<RandomICBase>();
-  params += validParams<DistributionInterface>();
-  params.addParam<Real>(
-      "min", 0.0, "Lower bound of uniformly distributed randomly generated values");
-  params.addParam<Real>(
-      "max", 1.0, "Upper bound of uniformly distributed randomly generated values");
-  params.addParam<DistributionName>(
-      "distribution", "Name of distribution defining distribution of randomly generated values");
-
-  params.addClassDescription("Initialize a variable with randomly generated numbers following "
-                             "either a uniform distribution or a user-defined distribution");
+  InputParameters params = validParams<InitialCondition>();
+  params.addParam<Real>("min", 0.0, "Lower bound of the randomly generated values");
+  params.addParam<Real>("max", 1.0, "Upper bound of the randomly generated values");
+  params.addParam<unsigned int>("seed", 0, "Seed value for the random number generator");
   return params;
 }
 
 RandomIC::RandomIC(const InputParameters & parameters)
-  : RandomICBase(parameters),
-    DistributionInterface(this),
+  : InitialCondition(parameters),
     _min(getParam<Real>("min")),
     _max(getParam<Real>("max")),
-    _distribution(nullptr)
+    _range(_max - _min)
 {
-  if (_min >= _max)
-    paramError("min", "Min >= Max for RandomIC!");
-
-  if (parameters.isParamSetByUser("distribution"))
-  {
-    _distribution = &getDistributionByName(getParam<DistributionName>("distribution"));
-    if (parameters.isParamSetByUser("min") || parameters.isParamSetByUser("max"))
-      paramError("distribution", "Cannot use together with 'min' or 'max' parameter");
-  }
+  mooseAssert(_range > 0.0, "Min > Max for RandomIC!");
+  MooseRandom::seed(getParam<unsigned int>("seed"));
 }
 
 Real
 RandomIC::value(const Point & /*p*/)
 {
-  if (_distribution)
-    return _distribution->quantile(generateRandom());
-  else
-    return generateRandom() * (_max - _min) + _min;
+  // Random number between 0 and 1
+  Real rand_num = MooseRandom::rand();
+
+  // Between 0 and range
+  rand_num *= _range;
+
+  // Between min and max
+  rand_num += _min;
+
+  return rand_num;
 }

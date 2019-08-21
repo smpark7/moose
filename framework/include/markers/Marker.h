@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MARKER_H
+#define MARKER_H
 
 #include "MooseObject.h"
 #include "BlockRestrictable.h"
@@ -26,10 +32,7 @@ class SubProblem;
 class FEProblemBase;
 class SystemBase;
 class Assembly;
-template <typename>
-class MooseVariableFE;
-typedef MooseVariableFE<Real> MooseVariable;
-typedef MooseVariableFE<VectorValue<Real>> VectorMooseVariable;
+class MooseVariable;
 class Marker;
 class Adaptivity;
 
@@ -100,7 +103,7 @@ protected:
    * @param name The name of the _other_ Marker that you want to have access to.
    * @return A _reference_ that will hold the value of the marker in it's 0 (zeroth) position.
    */
-  const MooseArray<Real> & getMarkerValue(std::string name);
+  const VariableValue & getMarkerValue(std::string name);
 
   SubProblem & _subproblem;
   FEProblemBase & _fe_problem;
@@ -112,7 +115,7 @@ protected:
   Assembly & _assembly;
 
   MooseVariable & _field_var;
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
 
   MooseMesh & _mesh;
 
@@ -121,3 +124,4 @@ protected:
   std::set<std::string> _supplied;
 };
 
+#endif /* MARKER_H */

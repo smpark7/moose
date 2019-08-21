@@ -1,20 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTECOSSERATSMALLSTRAIN_H
+#define COMPUTECOSSERATSMALLSTRAIN_H
 
 #include "ComputeStrainBase.h"
-
-class ComputeCosseratSmallStrain;
-
-template <>
-InputParameters validParams<ComputeCosseratSmallStrain>();
 
 /**
  * ComputeCosseratSmallStrain defines Cossserat strain tensor, assuming small strains.
@@ -40,3 +33,4 @@ protected:
   std::vector<const VariableGradient *> _grad_wc;
 };
 
+#endif // COMPUTECOSSERATSMALLSTRAIN_H

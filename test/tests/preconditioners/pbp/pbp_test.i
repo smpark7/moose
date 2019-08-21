@@ -18,6 +18,8 @@
 []
 
 [Preconditioning]
+  active = 'PBP'
+
   [./PBP]
     type = PBP
     solve_order = 'u v'
@@ -27,11 +29,6 @@
 
     petsc_options = ''  # Test petsc options in PBP block
   [../]
-[]
-
-[Problem]
-  type = FEProblem
-  error_on_jacobian_nonzero_reallocation = true
 []
 
 [Kernels]
@@ -89,10 +86,11 @@
 [Executioner]
   type = Steady
 
-  l_max_its = 10
-  nl_max_its = 10
+  l_max_its = 1
+  nl_max_its = 1
 
-  solve_type = JFNK
+  # This is setup automatically in MOOSE (SetupPBPAction.C)
+  # petsc_options = '-snes_mf'
 []
 
 [Outputs]

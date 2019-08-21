@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef UNIFORMDISTRIBUTION_H
+#define UNIFORMDISTRIBUTION_H
 
 #include "Distribution.h"
 
@@ -22,20 +28,16 @@ class UniformDistribution : public Distribution
 {
 public:
   UniformDistribution(const InputParameters & parameters);
-
-  Real pdf(const Real & x, const Real & lower_bound, const Real & upper_bound) const;
-  Real cdf(const Real & x, const Real & lower_bound, const Real & upper_bound) const;
-  Real quantile(const Real & y, const Real & lower_bound, const Real & upper_bound) const;
-
-  virtual Real pdf(const Real & x) const override;
-  virtual Real cdf(const Real & x) const override;
-  virtual Real quantile(const Real & y) const override;
+  virtual ~UniformDistribution();
 
 protected:
+  virtual Real pdf(const Real & x) override;
+  virtual Real cdf(const Real & x) override;
+  virtual Real inverseCdf(const Real & y) override;
   /// The lower bound for the uniform distribution
   const Real & _lower_bound;
-
   /// The upper bound for the uniform distribution
   const Real & _upper_bound;
 };
 
+#endif /* UNIFORMDISTRIBUTION_H */

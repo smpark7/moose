@@ -1,14 +1,5 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
 from FileTester import FileTester
-from TestHarness import util
+import util
 import os
 
 class CheckFiles(FileTester):
@@ -31,12 +22,11 @@ class CheckFiles(FileTester):
     def getOutputFiles(self):
         return self.specs['check_files'] + self.specs['check_not_exists']
 
-    def processResults(self, moose_dir, options, output):
-        FileTester.processResults(self, moose_dir, options, output)
+    def processResults(self, moose_dir, retcode, options, output):
+        output = FileTester.processResults(self, moose_dir, retcode, options, output)
 
         specs = self.specs
-
-        if self.isFail() or specs['skip_checks']:
+        if self.getStatus() == self.bucket_fail or specs['skip_checks']:
             return output
         else:
             reason = ''
@@ -63,6 +53,8 @@ class CheckFiles(FileTester):
 
         # populate status bucket
         if reason != '':
-            self.setStatus(self.fail, reason)
+            self.setStatus(reason, self.bucket_fail)
+        else:
+            self.setStatus(self.success_message, self.bucket_success)
 
         return output

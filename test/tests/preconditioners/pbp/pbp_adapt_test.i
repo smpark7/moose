@@ -43,7 +43,7 @@
   [../]
 
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -106,17 +106,18 @@
 
   solve_type = JFNK
 
+
   [./Adaptivity]
     steps = 3
+    print_changed_info = true
     coarsen_fraction = 0.1
     refine_fraction = 0.2
     max_h_level = 5
-  [../]
+  []
 []
 
 [Outputs]
   execute_on = 'timestep_end'
   file_base = out_pbp_adapt
-  print_mesh_changed_info = true
   exodus = true
 []

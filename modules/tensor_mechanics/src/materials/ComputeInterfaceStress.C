@@ -1,16 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeInterfaceStress.h"
 #include "RankTwoTensor.h"
-
-registerMooseObject("TensorMechanicsApp", ComputeInterfaceStress);
 
 template <>
 InputParameters
@@ -20,82 +15,67 @@ validParams<ComputeInterfaceStress>()
   params.addClassDescription(
       "Stress in the plane of an interface defined by the gradient of an order parameter");
   params.addCoupledVar("v",
-                       "Order parameters that define the interface. The interface is the region "
+                       "Order parameter that defines the interface. The interface is the region "
                        "where the gradient of this order parameter is non-zero.");
-  params.addRequiredParam<std::vector<Real>>("stress",
-                                             "Interfacial planar stress magnitude (one "
-                                             "value to apply to all order parameters or one value "
-                                             "per order parameter listed in 'v')");
-  params.addRangeCheckedParam<std::vector<Real>>(
-      "op_range",
-      {1.0},
-      "op_range > 0.0",
-      "Range over which order parameters change across an "
-      "interface. By default order parameters are assumed to "
-      "vary from 0 to 1");
-  params.addParam<MaterialPropertyName>("planar_stress_name",
-                                        "extra_stress",
-                                        "Material property name for the interfacial planar stress");
+  params.addRequiredParam<Real>("stress", "Planar stress");
+  params.addParam<Real>("op_range",
+                        1.0,
+                        "Range over which order parameters change across an "
+                        "interface. By default order parameters are assumed to "
+                        "vary from 0 to 1");
+  params.addParam<MaterialPropertyName>(
+      "planar_stress_name", "extra_stress", "Material property name for the planar stress");
   return params;
 }
 
 ComputeInterfaceStress::ComputeInterfaceStress(const InputParameters & parameters)
   : Material(parameters),
-    _nvar(coupledComponents("v")),
-    _grad_v(_nvar),
-    _op_range(getParam<std::vector<Real>>("op_range")),
-    _stress(getParam<std::vector<Real>>("stress")),
+    _grad_v(coupledGradient("v")),
+    _stress(getParam<Real>("stress") / getParam<Real>("op_range")),
     _planar_stress(
         declareProperty<RankTwoTensor>(getParam<MaterialPropertyName>("planar_stress_name")))
 {
-  if (_stress.size() == 1)
-    _stress.assign(_nvar, _stress[0]);
-  if (_stress.size() != _nvar)
-    paramError("stress", "Supply either one single stress or one per order parameter");
-
-  if (_op_range.size() == 1)
-    _op_range.assign(_nvar, _op_range[0]);
-  if (_op_range.size() != _nvar)
-    paramError("op_range", "Supply either one single op_range or one per order parameter");
-
-  for (MooseIndex(_grad_v) i = 0; i < _nvar; ++i)
-  {
-    _grad_v[i] = &coupledGradient("v", i);
-    _stress[i] /= _op_range[i];
-  }
 }
 
 void
 ComputeInterfaceStress::computeQpProperties()
 {
-  auto & S = _planar_stress[_qp];
-  S.zero();
+  const Real _grad_norm_sq = _grad_v[_qp].norm_sq();
+  _planar_stress[_qp].zero();
 
-  // loop over interface variables
-  for (MooseIndex(_grad_v) i = 0; i < _nvar; ++i)
-  {
-    // compute norm square of the order parameter gradient
-    const Real grad_norm_sq = (*_grad_v[i])[_qp].norm_sq();
+  // no interface, return zero stress
+  if (_grad_norm_sq < libMesh::TOLERANCE)
+    return;
 
-    // gradient square is zero -> no interface -> no interfacial stress contribution
-    if (grad_norm_sq < libMesh::TOLERANCE)
-      continue;
+  const Real _grad_norm = std::sqrt(_grad_norm_sq);
+  RealGradient _col[3];
+  _col[0] = _grad_v[_qp] / _grad_norm;
 
-    const Real nx = (*_grad_v[i])[_qp](0);
-    const Real ny = (*_grad_v[i])[_qp](1);
-    const Real nz = (*_grad_v[i])[_qp](2);
-    const Real s = _stress[i] / std::sqrt(grad_norm_sq);
+  // get two linearly independent vectors
+  unsigned int max_component = 0;
+  for (unsigned int i = 1; i < 3; ++i)
+    if (std::abs(_col[0](i)) > std::abs(_col[0](max_component)))
+      max_component = i;
 
-    S(0, 0) += (ny * ny + nz * nz) * s;
-    S(0, 1) += -nx * ny * s;
-    S(1, 1) += (nx * nx + nz * nz) * s;
-    S(0, 2) += -nx * nz * s;
-    S(1, 2) += -ny * nz * s;
-    S(2, 2) += (nx * nx + ny * ny) * s;
-  }
+  _col[1]((max_component + 1) % 3) = 1.0;
+  _col[2]((max_component + 2) % 3) = 1.0;
 
-  // fill in symmetrically
-  S(1, 0) = S(0, 1);
-  S(2, 0) = S(0, 2);
-  S(2, 1) = S(1, 2);
+  // make the two vectors perpendicular to _grad_v (modified Gram-Schmidt)
+  _col[1] -= (_col[1] * _col[0]) / _col[0].norm_sq() * _col[0];
+  _col[2] -= (_col[2] * _col[0]) / _col[0].norm_sq() * _col[0];
+  _col[2] -= (_col[2] * _col[1]) / _col[1].norm_sq() * _col[1];
+
+  // normalize new basis vectors
+  _col[1] /= _col[1].norm();
+  _col[2] /= _col[2].norm();
+
+  // build Eigenvalue matrix M (only set in-plane stress)
+  _planar_stress[_qp](1, 1) = _stress;
+  _planar_stress[_qp](2, 2) = _stress;
+
+  // build S matrix for coordinate transformation
+  RankTwoTensor S = RankTwoTensor::initializeFromColumns(_col[0], _col[1], _col[2]);
+
+  // basis change into cartesian coordinates (and scale with gradient norm)
+  _planar_stress[_qp] = (S * _planar_stress[_qp] * S.transpose()) * _grad_norm;
 }

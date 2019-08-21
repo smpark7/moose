@@ -57,7 +57,7 @@
   [../]
 
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -84,6 +84,7 @@
   type = Transient
   scheme = 'implicit-euler'
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   nl_abs_tol = 1e-14
@@ -92,7 +93,7 @@
   num_steps = 12
   dt = 1
 
-  steady_state_detection = true
+  trans_ss_check = true
 []
 
 [Outputs]

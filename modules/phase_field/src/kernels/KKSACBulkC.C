@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "KKSACBulkC.h"
-
-registerMooseObject("PhaseFieldApp", KKSACBulkC);
 
 template <>
 InputParameters
@@ -42,7 +37,7 @@ KKSACBulkC::KKSACBulkC(const InputParameters & parameters)
   // Iterate over all coupled variables
   for (unsigned int i = 0; i < _nvar; ++i)
   {
-    MooseVariableFEBase * cvar = _coupled_moose_vars[i];
+    MooseVariable * cvar = _coupled_moose_vars[i];
 
     // get second partial derivatives wrt ca and other coupled variable
     _prop_d2Fadcadarg[i] = &getMaterialPropertyDerivative<Real>("fa_name", _ca_name, cvar->name());

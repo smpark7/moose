@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef GENERALIZEDPLANESTRAINOFFDIAG_H
+#define GENERALIZEDPLANESTRAINOFFDIAG_H
 
 #include "Kernel.h"
 #include "DerivativeMaterialInterface.h"
@@ -15,12 +14,8 @@
 
 // Forward Declarations
 class GeneralizedPlaneStrainOffDiag;
-template <typename>
-class RankTwoTensorTempl;
-typedef RankTwoTensorTempl<Real> RankTwoTensor;
-template <typename>
-class RankFourTensorTempl;
-typedef RankFourTensorTempl<Real> RankFourTensor;
+class RankTwoTensor;
+class RankFourTensor;
 
 template <>
 InputParameters validParams<GeneralizedPlaneStrainOffDiag>();
@@ -44,7 +39,7 @@ protected:
   virtual void computeDispOffDiagJacobianScalar(unsigned int component, unsigned int jvar);
   virtual void computeTempOffDiagJacobianScalar(unsigned int jvar);
 
-  const std::string _base_name;
+  std::string _base_name;
 
   const MaterialProperty<RankFourTensor> & _Jacobian_mult;
   const std::vector<MaterialPropertyName> _eigenstrain_names;
@@ -56,8 +51,8 @@ protected:
 
   MooseVariable * _temp_var;
 
-  const unsigned int _num_disp_var;
   std::vector<MooseVariable *> _disp_var;
 
   unsigned int _scalar_out_of_plane_strain_direction;
 };
+#endif // GENERALIZEDPLANESSTRAINOFFDIAG_H

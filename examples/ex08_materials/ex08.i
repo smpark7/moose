@@ -12,13 +12,13 @@
   [./diffused]
     order = FIRST
     family = LAGRANGE
-    initial_condition = 0.5 # shortcut/convenience for setting constant initial condition
+    initial_condition = 0.5
   [../]
 
   [./convected]
     order = FIRST
     family = LAGRANGE
-    initial_condition = 0.0 # shortcut/convenience for setting constant initial condition
+    initial_condition = 0.0
   [../]
 []
 

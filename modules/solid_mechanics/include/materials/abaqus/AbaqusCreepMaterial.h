@@ -1,15 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "SolidModel.h"
 
+#ifndef ABAQUSCREEPMATERIAL_H
+#define ABAQUSCREEPMATERIAL_H
 
 typedef void (*creep_t)(Real DECRA[],
                         Real DESWA[],
@@ -83,22 +81,23 @@ protected:
   void computeStress();
 
   MaterialProperty<std::vector<Real>> & _state_var;
-  const MaterialProperty<std::vector<Real>> & _state_var_old;
+  MaterialProperty<std::vector<Real>> & _state_var_old;
   MaterialProperty<SymmTensor> & _trial_stress;
-  const MaterialProperty<SymmTensor> & _trial_stress_old;
+  MaterialProperty<SymmTensor> & _trial_stress_old;
   MaterialProperty<SymmTensor> & _dev_trial_stress;
-  const MaterialProperty<SymmTensor> & _dev_trial_stress_old;
+  MaterialProperty<SymmTensor> & _dev_trial_stress_old;
   MaterialProperty<Real> & _ets;
-  const MaterialProperty<Real> & _ets_old;
+  MaterialProperty<Real> & _ets_old;
   MaterialProperty<SymmTensor> & _stress;
-  const MaterialProperty<SymmTensor> & _stress_old;
+  MaterialProperty<SymmTensor> & _stress_old;
   MaterialProperty<Real> & _creep_inc;
-  const MaterialProperty<Real> & _creep_inc_old;
+  MaterialProperty<Real> & _creep_inc_old;
   MaterialProperty<Real> & _total_creep;
-  const MaterialProperty<Real> & _total_creep_old;
+  MaterialProperty<Real> & _total_creep_old;
   MaterialProperty<Real> & _swell_inc;
-  const MaterialProperty<Real> & _swell_inc_old;
+  MaterialProperty<Real> & _swell_inc_old;
   MaterialProperty<Real> & _total_swell;
-  const MaterialProperty<Real> & _total_swell_old;
+  MaterialProperty<Real> & _total_swell_old;
 };
 
+#endif // ABAQUSCREEPMATERIAL_H

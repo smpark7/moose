@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef SETUPINTERFACECOUT_H
+#define SETUPINTERFACECOUT_H
 
 // MOOSE includes
 #include "GeneralPostprocessor.h"
@@ -83,9 +89,9 @@ private:
 template <class T>
 SetupInterfaceCount<T>::SetupInterfaceCount(const InputParameters & parameters)
   : T(parameters),
-    _count_type(T::template getParamTempl<MooseEnum>("count_type")),
+    _count_type(T::template getParam<MooseEnum>("count_type")),
     _execute(0),
-    _counts(T::template declareRestartableDataTempl<std::map<std::string, unsigned int>>("counts"))
+    _counts(T::template declareRestartableData<std::map<std::string, unsigned int>>("counts"))
 {
   // Initialize the count storage map
   const std::vector<std::string> & names = _count_type.getNames();
@@ -108,6 +114,7 @@ SetupInterfaceCount<T>::initialize()
   _counts["initialize"]++;
   _execute = 0;
 }
+
 
 template <class T>
 void
@@ -174,3 +181,5 @@ protected:
   virtual void threadJoin(const UserObject & uo) { threadJoinHelper(uo); }
   virtual void subdomainSetup() { subdomainSetupHelper(); }
 };
+
+#endif // SETUPINTERFACECOUT_H

@@ -1,40 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef RANKFOURTENSOR_H
+#define RANKFOURTENSOR_H
 
-#pragma once
+// MOOSE includes
+#include "DataIO.h"
 
-#include "Moose.h"
-#include "DualReal.h"
-
+// libMesh includes
+#include "libmesh/tensor_value.h"
 #include "libmesh/libmesh.h"
-#include "libmesh/tuple_of.h"
-
-#include <petscsys.h>
-
-using libMesh::Real;
-using libMesh::tuple_of;
-namespace libMesh
-{
-template <typename>
-class TensorValue;
-template <typename>
-class TypeTensor;
-template <typename>
-class VectorValue;
-}
+#include "libmesh/vector_value.h"
 
 // Forward declarations
 class MooseEnum;
-template <typename>
-class RankTwoTensorTempl;
-template <typename>
-class RankFourTensorTempl;
+class RankTwoTensor;
+class RankFourTensor;
 
 template <typename T>
 void mooseSetToZero(T & v);
@@ -44,26 +28,21 @@ void mooseSetToZero(T & v);
  * Needed by DerivativeMaterialInterface
  */
 template <>
-void mooseSetToZero<RankFourTensorTempl<Real>>(RankFourTensorTempl<Real> & v);
-template <>
-void mooseSetToZero<RankFourTensorTempl<DualReal>>(RankFourTensorTempl<DualReal> & v);
+void mooseSetToZero<RankFourTensor>(RankFourTensor & v);
 
 /**
- * RankFourTensorTempl is designed to handle any N-dimensional fourth order tensor, C.
+ * RankFourTensor is designed to handle any N-dimensional fourth order tensor, C.
  *
  * It is designed to allow for maximum clarity of the mathematics and ease of use.
  * Original class authors: A. M. Jokisaari, O. Heinonen, M.R. Tonks
  *
- * Since N is hard-coded to 3, RankFourTensorTempl holds 81 separate C_ijkl entries.
+ * Since N is hard-coded to 3, RankFourTensor holds 81 separate C_ijkl entries.
  * Within the code i = 0, 1, 2, but this object provides methods to extract the entries
  * with i = 1, 2, 3, and some of the documentation is also written in this way.
  */
-template <typename T>
-class RankFourTensorTempl
+class RankFourTensor
 {
 public:
-  typedef tuple_of<4, unsigned int> index_type;
-
   /// Initialization method
   enum InitMethod
   {
@@ -85,55 +64,27 @@ public:
     symmetric21,
     general_isotropic,
     symmetric_isotropic,
-    symmetric_isotropic_E_nu,
     antisymmetric_isotropic,
     axisymmetric_rz,
     general,
     principal
   };
 
-  template <template <typename> class Tensor, typename Scalar>
-  struct TwoTensorMultTraits
-  {
-    static const bool value = false;
-  };
-  template <typename Scalar>
-  struct TwoTensorMultTraits<RankTwoTensorTempl, Scalar>
-  {
-    static const bool value = ScalarTraits<Scalar>::value;
-  };
-  template <typename Scalar>
-  struct TwoTensorMultTraits<TensorValue, Scalar>
-  {
-    static const bool value = ScalarTraits<Scalar>::value;
-  };
-  template <typename Scalar>
-  struct TwoTensorMultTraits<TypeTensor, Scalar>
-  {
-    static const bool value = ScalarTraits<Scalar>::value;
-  };
-
   /// Default constructor; fills to zero
-  RankFourTensorTempl();
+  RankFourTensor();
 
   /// Select specific initialization pattern
-  RankFourTensorTempl(const InitMethod);
+  RankFourTensor(const InitMethod);
 
   /// Fill from vector
-  RankFourTensorTempl(const std::vector<T> &, FillMethod);
-
-  /**
-   * Copy constructor
-   */
-  template <typename T2>
-  RankFourTensorTempl(const RankFourTensorTempl<T2> & copy);
+  RankFourTensor(const std::vector<Real> &, FillMethod);
 
   // Named constructors
-  static RankFourTensorTempl<T> Identity() { return RankFourTensorTempl<T>(initIdentity); }
-  static RankFourTensorTempl<T> IdentityFour() { return RankFourTensorTempl<T>(initIdentityFour); };
+  static RankFourTensor Identity() { return RankFourTensor(initIdentity); }
+  static RankFourTensor IdentityFour() { return RankFourTensor(initIdentityFour); };
 
   /// Gets the value for the index specified.  Takes index = 0,1,2
-  inline T & operator()(unsigned int i, unsigned int j, unsigned int k, unsigned int l)
+  inline Real & operator()(unsigned int i, unsigned int j, unsigned int k, unsigned int l)
   {
     return _vals[((i * LIBMESH_DIM + j) * LIBMESH_DIM + k) * LIBMESH_DIM + l];
   }
@@ -142,7 +93,7 @@ public:
    * Gets the value for the index specified.  Takes index = 0,1,2
    * used for const
    */
-  inline T operator()(unsigned int i, unsigned int j, unsigned int k, unsigned int l) const
+  inline Real operator()(unsigned int i, unsigned int j, unsigned int k, unsigned int l) const
   {
     return _vals[((i * LIBMESH_DIM + j) * LIBMESH_DIM + k) * LIBMESH_DIM + l];
   }
@@ -154,90 +105,77 @@ public:
   void print(std::ostream & stm = Moose::out) const;
 
   /// copies values from a into this tensor
-  RankFourTensorTempl<T> & operator=(const RankFourTensorTempl<T> & a);
-
-  /**
-   * Assignment-from-scalar operator.  Used only to zero out the tensor.
-   *
-   * \returns A reference to *this.
-   */
-  template <typename Scalar>
-  typename boostcopy::enable_if_c<ScalarTraits<Scalar>::value, RankFourTensorTempl &>::type
-  operator=(const Scalar & libmesh_dbg_var(p))
-  {
-    libmesh_assert_equal_to(p, Scalar(0));
-    this->zero();
-    return *this;
-  }
+  RankFourTensor & operator=(const RankFourTensor & a);
 
   /// C_ijkl*a_kl
-  template <template <typename> class Tensor, typename T2>
-  auto operator*(const Tensor<T2> & a) const ->
-      typename std::enable_if<TwoTensorMultTraits<Tensor, T2>::value,
-                              RankTwoTensorTempl<decltype(T() * T2())>>::type;
+  RankTwoTensor operator*(const RankTwoTensor & a) const;
+
+  /// C_ijkl*a_kl
+  RealTensorValue operator*(const RealTensorValue & a) const;
 
   /// C_ijkl*a
-  template <typename T2>
-  auto operator*(const T2 & a) const ->
-      typename std::enable_if<ScalarTraits<T2>::value,
-                              RankFourTensorTempl<decltype(T() * T2())>>::type;
+  RankFourTensor operator*(const Real a) const;
 
   /// C_ijkl *= a
-  RankFourTensorTempl<T> & operator*=(const T & a);
+  RankFourTensor & operator*=(const Real a);
 
   /// C_ijkl/a
-  template <typename T2>
-  auto operator/(const T2 & a) const ->
-      typename std::enable_if<ScalarTraits<T2>::value,
-                              RankFourTensorTempl<decltype(T() / T2())>>::type;
+  RankFourTensor operator/(const Real a) const;
 
   /// C_ijkl /= a  for all i, j, k, l
-  RankFourTensorTempl<T> & operator/=(const T & a);
+  RankFourTensor & operator/=(const Real a);
 
   /// C_ijkl += a_ijkl  for all i, j, k, l
-  RankFourTensorTempl<T> & operator+=(const RankFourTensorTempl<T> & a);
+  RankFourTensor & operator+=(const RankFourTensor & a);
 
   /// C_ijkl + a_ijkl
-  template <typename T2>
-  auto operator+(const RankFourTensorTempl<T2> & a) const
-      -> RankFourTensorTempl<decltype(T() + T2())>;
+  RankFourTensor operator+(const RankFourTensor & a) const;
 
   /// C_ijkl -= a_ijkl
-  RankFourTensorTempl<T> & operator-=(const RankFourTensorTempl<T> & a);
+  RankFourTensor & operator-=(const RankFourTensor & a);
 
   /// C_ijkl - a_ijkl
-  template <typename T2>
-  auto operator-(const RankFourTensorTempl<T2> & a) const
-      -> RankFourTensorTempl<decltype(T() - T2())>;
+  RankFourTensor operator-(const RankFourTensor & a) const;
 
   /// -C_ijkl
-  RankFourTensorTempl<T> operator-() const;
+  RankFourTensor operator-() const;
 
   /// C_ijpq*a_pqkl
-  template <typename T2>
-  auto operator*(const RankFourTensorTempl<T2> & a) const
-      -> RankFourTensorTempl<decltype(T() * T2())>;
+  RankFourTensor operator*(const RankFourTensor & a) const;
 
   /// sqrt(C_ijkl*C_ijkl)
-  T L2norm() const;
+  Real L2norm() const;
 
   /**
    * This returns A_ijkl such that C_ijkl*A_klmn = 0.5*(de_im de_jn + de_in de_jm)
    * This routine assumes that C_ijkl = C_jikl = C_ijlk
    */
-  RankFourTensorTempl<T> invSymm() const;
+  RankFourTensor invSymm() const;
 
   /**
    * Rotate the tensor using
    * C_ijkl = R_im R_in R_ko R_lp C_mnop
    */
-  void rotate(const TypeTensor<T> & R);
+  template <class T>
+  void rotate(const T & R);
+
+  /**
+   * Rotate the tensor using
+   * C_ijkl = R_im R_in R_ko R_lp C_mnop
+   */
+  void rotate(const RealTensorValue & R);
+
+  /**
+   * Rotate the tensor using
+   * C_ijkl = R_im R_in R_ko R_lp C_mnop
+   */
+  void rotate(const RankTwoTensor & R);
 
   /**
    * Transpose the tensor by swapping the first pair with the second pair of indices
    * @return C_klji
    */
-  RankFourTensorTempl<T> transposeMajor() const;
+  RankFourTensor transposeMajor() const;
 
   /**
    * Fills the tensor entries ignoring the last dimension (ie, C_ijkl=0 if any of i, j, k, or l =
@@ -251,7 +189,7 @@ public:
    *                       C_2211 = input[7], C_2212 = input[8], C_2222 = input[9]
    *                       and C_ijkl = C_jikl = C_ijlk
    */
-  void surfaceFillFromInputVector(const std::vector<T> & input);
+  void surfaceFillFromInputVector(const std::vector<Real> & input);
 
   /// Static method for use in validParams for getting the "fill_method"
   static MooseEnum fillMethodEnum();
@@ -271,23 +209,16 @@ public:
    *             general (use fillGeneralFromInputVector)
    *             principal (use fillPrincipalFromInputVector)
    */
-  void fillFromInputVector(const std::vector<T> & input, FillMethod fill_method);
-
-  ///@{ Vector-less fill API functions. See docs of the corresponding ...FromInputVector methods
-  void fillGeneralIsotropic(T i0, T i1, T i2);
-  void fillAntisymmetricIsotropic(T i0);
-  void fillSymmetricIsotropic(T i0, T i1);
-  void fillSymmetricIsotropicEandNu(T E, T nu);
-  ///@}
+  void fillFromInputVector(const std::vector<Real> & input, FillMethod fill_method);
 
   /// Inner product of the major transposed tensor with a rank two tensor
-  RankTwoTensorTempl<T> innerProductTranspose(const RankTwoTensorTempl<T> &) const;
+  RankTwoTensor innerProductTranspose(const RankTwoTensor &) const;
 
   /// Calculates the sum of Ciijj for i and j varying from 0 to 2
-  T sum3x3() const;
+  Real sum3x3() const;
 
   /// Calculates the vector a[i] = sum over j Ciijj for i and j varying from 0 to 2
-  VectorValue<T> sum3x1() const;
+  RealGradient sum3x1() const;
 
   /// checks if the tensor is symmetric
   bool isSymmetric() const;
@@ -304,23 +235,23 @@ protected:
 
   /// The values of the rank-four tensor stored by
   /// index=(((i * LIBMESH_DIM + j) * LIBMESH_DIM + k) * LIBMESH_DIM + l)
-  T _vals[N4];
+  Real _vals[N4];
 
   /**
-   * fillSymmetricFromInputVector takes either 21 (all=true) or 9 (all=false) inputs to fill in
-   * the Rank-4 tensor with the appropriate crystal symmetries maintained. I.e., C_ijkl = C_klij,
-   * C_ijkl = C_ijlk, C_ijkl = C_jikl
-   * @param input If all==true then this is
-   *                C1111 C1122 C1133 C2222 C2233 C3333 C2323 C1313 C1212
-   *                In the isotropic case this is (la is first Lame constant, mu is second (shear)
-   * Lame constant)
-   *                la+2mu la la la+2mu la la+2mu mu mu mu
-   *              If all==false then this is
-   *                C1111 C1122 C1133 C1123 C1113 C1112 C2222 C2233 C2223 C2213 C2212 C3333 C3323
-   * C3313 C3312 C2323 C2313 C2312 C1313 C1312 C1212
-   * @param all Determines the compoinents passed in vis the input parameter
-   */
-  void fillSymmetricFromInputVector(const std::vector<T> & input, bool all);
+  * fillSymmetricFromInputVector takes either 21 (all=true) or 9 (all=false) inputs to fill in
+  * the Rank-4 tensor with the appropriate crystal symmetries maintained. I.e., C_ijkl = C_klij,
+  * C_ijkl = C_ijlk, C_ijkl = C_jikl
+  * @param input If all==true then this is
+  *                C1111 C1122 C1133 C2222 C2233 C3333 C2323 C1313 C1212
+  *                In the isotropic case this is (la is first Lame constant, mu is second (shear)
+  * Lame constant)
+  *                la+2mu la la la+2mu la la+2mu mu mu mu
+  *              If all==false then this is
+  *                C1111 C1122 C1133 C1123 C1113 C1112 C2222 C2233 C2223 C2213 C2212 C3333 C3323
+  * C3313 C3312 C2323 C2313 C2312 C1313 C1312 C1212
+  * @param all Determines the compoinents passed in vis the input parameter
+  */
+  void fillSymmetricFromInputVector(const std::vector<Real> & input, bool all);
 
   /**
    * fillAntisymmetricFromInputVector takes 6 inputs to fill the
@@ -328,7 +259,7 @@ protected:
    * I.e., B_ijkl = -B_jikl = -B_ijlk = B_klij
    * @param input this is B1212, B1213, B1223, B1313, B1323, B2323.
    */
-  void fillAntisymmetricFromInputVector(const std::vector<T> & input);
+  void fillAntisymmetricFromInputVector(const std::vector<Real> & input);
 
   /**
    * fillGeneralIsotropicFromInputVector takes 3 inputs to fill the
@@ -338,35 +269,31 @@ protected:
    * and a is the antisymmetric shear modulus, and ep is the permutation tensor
    * @param input this is la, mu, a in the above formula
    */
-  void fillGeneralIsotropicFromInputVector(const std::vector<T> & input);
+  void fillGeneralIsotropicFromInputVector(const std::vector<Real> & input);
 
   /**
-   * fillAntisymmetricIsotropicFromInputVector takes 1 input to fill the
+   * fillAntisymmetricIsotropicFromInputVector takes 1 inputs to fill the
    * the antisymmetric Rank-4 tensor with the appropriate symmetries maintained.
    * I.e., C_ijkl = a * ep_ijm * ep_klm, where epsilon is the permutation tensor (and sum on m)
    * @param input this is a in the above formula
    */
-  void fillAntisymmetricIsotropicFromInputVector(const std::vector<T> & input);
+  void fillAntisymmetricIsotropicFromInputVector(const std::vector<Real> & input);
 
   /**
    * fillSymmetricIsotropicFromInputVector takes 2 inputs to fill the
    * the symmetric Rank-4 tensor with the appropriate symmetries maintained.
-   * C_ijkl = lambda*de_ij*de_kl + mu*(de_ik*de_jl + de_il*de_jk)
-   * where lambda is the first Lame modulus, mu is the second (shear) Lame modulus,
-   * @param input this is lambda and mu in the above formula
+   * C_ijkl = la*de_ij*de_kl + mu*(de_ik*de_jl + de_il*de_jk)
+   * where la is the first Lame modulus, mu is the second (shear) Lame modulus,
+   * @param input this is la and mu in the above formula
    */
-  void fillSymmetricIsotropicFromInputVector(const std::vector<T> & input);
+  void fillSymmetricIsotropicFromInputVector(const std::vector<Real> & input);
 
   /**
-   * fillSymmetricIsotropicEandNuFromInputVector is a variation of the
-   * fillSymmetricIsotropicFromInputVector which takes as inputs the
-   * more commonly used Young's modulus (E) and Poisson's ratio (nu)
-   * constants to fill the isotropic elasticity tensor. Using well-known formulas,
-   * E and nu are used to calculate lambda and mu and then the vector is passed
-   * to fillSymmetricIsotropicFromInputVector.
-   * @param input Young's modulus (E) and Poisson's ratio (nu)
+   * fillGeneralFromInputVector takes 81 inputs to fill the Rank-4 tensor
+   * No symmetries are explicitly maintained
+   * @param input  C(i,j,k,l) = input[i*N*N*N + j*N*N + k*N + l]
    */
-  void fillSymmetricIsotropicEandNuFromInputVector(const std::vector<T> & input);
+  void fillAxisymmetricRZFromInputVector(const std::vector<Real> & input);
 
   /**
    * fillAxisymmetricRZFromInputVector takes 5 inputs to fill the axisymmetric
@@ -375,14 +302,7 @@ protected:
    * I.e. C1111 = C2222, C1133 = C2233, C2323 = C3131 and C1212 = 0.5*(C1111-C1122)
    * @param input this is C1111, C1122, C1133, C3333, C2323.
    */
-  void fillAxisymmetricRZFromInputVector(const std::vector<T> & input);
-
-  /**
-   * fillGeneralFromInputVector takes 81 inputs to fill the Rank-4 tensor
-   * No symmetries are explicitly maintained
-   * @param input  C(i,j,k,l) = input[i*N*N*N + j*N*N + k*N + l]
-   */
-  void fillGeneralFromInputVector(const std::vector<T> & input);
+  void fillGeneralFromInputVector(const std::vector<Real> & input);
 
   /**
    * fillPrincipalFromInputVector takes 9 inputs to fill a Rank-4 tensor
@@ -398,68 +318,55 @@ protected:
    * with all other components being zero
    */
 
-  void fillPrincipalFromInputVector(const std::vector<T> & input);
-  template <class T2>
-  friend void dataStore(std::ostream &, RankFourTensorTempl<T2> &, void *);
+  void fillPrincipalFromInputVector(const std::vector<Real> & input);
+  template <class T>
+  friend void dataStore(std::ostream &, T &, void *);
 
-  template <class T2>
-  friend void dataLoad(std::istream &, RankFourTensorTempl<T2> &, void *);
+  template <class T>
+  friend void dataLoad(std::istream &, T &, void *);
 
-  template <typename T2>
-  friend class RankTwoTensorTempl;
-  template <typename T2>
-  friend class RankFourTensorTempl;
-  template <typename T2>
-  friend class RankThreeTensorTempl;
+  friend class RankTwoTensor;
+  friend class RankThreeTensor;
 };
 
-typedef RankFourTensorTempl<Real> RankFourTensor;
-typedef RankFourTensorTempl<DualReal> DualRankFourTensor;
+template <>
+void dataStore(std::ostream &, RankFourTensor &, void *);
 
-template <typename T1, typename T2>
-inline auto operator*(const T1 & a, const RankFourTensorTempl<T2> & b) ->
-    typename std::enable_if<ScalarTraits<T1>::value,
-                            RankFourTensorTempl<decltype(T1() * T2())>>::type
+template <>
+void dataLoad(std::istream &, RankFourTensor &, void *);
+
+inline RankFourTensor operator*(Real a, const RankFourTensor & b) { return b * a; }
+
+template <class T>
+void
+RankFourTensor::rotate(const T & R)
 {
-  return b * a;
+  RankFourTensor old = *this;
+
+  int index = 0;
+  for (unsigned int i = 0; i < N; ++i)
+    for (unsigned int j = 0; j < N; ++j)
+      for (unsigned int k = 0; k < N; ++k)
+        for (unsigned int l = 0; l < N; ++l)
+        {
+          Real sum = 0.0;
+          int index2 = 0;
+          for (unsigned int m = 0; m < N; ++m)
+          {
+            Real a = R(i, m);
+            for (unsigned int n = 0; n < N; ++n)
+            {
+              Real ab = a * R(j, n);
+              for (unsigned int o = 0; o < N; ++o)
+              {
+                Real abc = ab * R(k, o);
+                for (unsigned int p = 0; p < N; ++p)
+                  sum += abc * R(l, p) * old._vals[index2++];
+              }
+            }
+          }
+          _vals[index++] = sum;
+        }
 }
 
-template <typename T>
-template <typename T2>
-RankFourTensorTempl<T>::RankFourTensorTempl(const RankFourTensorTempl<T2> & copy)
-{
-  for (unsigned int i = 0; i < N4; ++i)
-    _vals[i] = copy._vals[i];
-}
-
-template <typename T>
-template <typename T2>
-auto RankFourTensorTempl<T>::operator*(const T2 & b) const ->
-    typename std::enable_if<ScalarTraits<T2>::value,
-                            RankFourTensorTempl<decltype(T() * T2())>>::type
-{
-  typedef decltype(T() * T2()) ValueType;
-  RankFourTensorTempl<ValueType> result;
-
-  for (unsigned int i = 0; i < N4; ++i)
-    result._vals[i] = _vals[i] * b;
-
-  return result;
-}
-
-template <typename T>
-template <typename T2>
-auto
-RankFourTensorTempl<T>::operator/(const T2 & b) const ->
-    typename std::enable_if<ScalarTraits<T2>::value,
-                            RankFourTensorTempl<decltype(T() / T2())>>::type
-{
-  RankFourTensorTempl<decltype(T() / T2())> result;
-  for (unsigned int i = 0; i < N4; ++i)
-    result._vals[i] = _vals[i] / b;
-  return result;
-}
-
-typedef RankFourTensorTempl<Real> RankFourTensor;
-typedef RankFourTensorTempl<DualReal> DualRankFourTensor;
-
+#endif // RANKFOURTENSOR_H

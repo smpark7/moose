@@ -1,246 +1,301 @@
 #pylint: disable=missing-docstring
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-import re
-import codecs
+####################################################################################################
+#                                    DO NOT MODIFY THIS HEADER                                     #
+#                   MOOSE - Multiphysics Object Oriented Simulation Environment                    #
+#                                                                                                  #
+#                              (c) 2010 Battelle Energy Alliance, LLC                              #
+#                                       ALL RIGHTS RESERVED                                        #
+#                                                                                                  #
+#                            Prepared by Battelle Energy Alliance, LLC                             #
+#                               Under Contract No. DE-AC07-05ID14517                               #
+#                               With the U. S. Department of Energy                                #
+#                                                                                                  #
+#                               See COPYRIGHT for full restrictions                                #
+####################################################################################################
+#pylint: enable=missing-docstring
+import os
+import copy
 import logging
-import anytree
+
+import jinja2
+import bs4
+from markdown.postprocessors import Postprocessor
+
+import mooseutils
 
 import MooseDocs
-from MooseDocs import common
-from MooseDocs.common import exceptions
-from MooseDocs.base import components
-from MooseDocs.extensions import core, command, include, alert, floats, materialicon
-from MooseDocs.tree import tokens
+from MooseMarkdownExtension import MooseMarkdownExtension
+from app_syntax import AppSyntaxExtension
 
 LOG = logging.getLogger(__name__)
 
-TemplateItem = tokens.newToken('TemplateItem', key=u'')
-TemplateField = tokens.newToken('TemplateField', key=u'', required=True)
-TemplateSubField = tokens.newToken('TemplateSubField')
-
-def make_extension(**kwargs):
-    return TemplateExtension(**kwargs)
-
-class TemplateExtension(include.IncludeExtension):
+class TemplateExtension(MooseMarkdownExtension):
     """
-    Creates a means for building template markdown files.
-
-    This class inherits from the IncludeExtension to exploit the page dependency functions.
+    Extension for applying template to converted markdown.
     """
-
     @staticmethod
     def defaultConfig():
-        config = include.IncludeExtension.defaultConfig()
-        config['args'] = (dict(), "Template arguments to be applied to templates.")
-
-        # Disable by default to allow for updates to applications
-        config['active'] = (False, config['active'][1])
+        """TemplateExtension configuration."""
+        config = MooseMarkdownExtension.defaultConfig()
+        config['template'] = ['', "The jinja2 template to apply."]
+        config['template_args'] = [dict(), "Arguments passed to the MooseTemplate Postprocessor."]
+        config['environment_args'] = [dict(), "Arguments passed to the jinja2.Environment."]
         return config
 
-    def extend(self, reader, renderer):
-        self.requires(core, command, alert, floats, materialicon)
-
-        self.addCommand(reader, TemplateLoadCommand())
-        self.addCommand(reader, TemplateFieldCommand())
-        self.addCommand(reader, TemplateItemCommand())
-        self.addCommand(reader, TemplateFieldContentCommand())
-
-        renderer.add('TemplateField', RenderTemplateField())
-
-    def postTokenize(self, ast, page, meta, reader):
-
-        items = set()
-        fields = set()
-
-        for node in anytree.PreOrderIter(ast):
-            if node.name == 'TemplateItem':
-                items.add(node['key'])
-            elif node.name == 'TemplateField':
-                fields.add(node['key'])
-
-        unknown_items = items.difference(fields)
-        if unknown_items:
-            msg = "Unknown template item(s): {}".format(', '.join(unknown_items))
-            raise exceptions.MooseDocsException(msg)
-
-    def applyTemplateArguments(self, content, **kwargs):
+    def extendMarkdown(self, md, md_globals):
         """
-        Helper for applying template args (e.g., {{app}})
+        Applies template to html converted from markdown.
         """
-        if not isinstance(content, (str, unicode)):
-            return content
+        md.registerExtension(self)
+        config = self.getConfigs()
 
-        template_args = self.get('args', dict())
-        template_args.update(**kwargs)
+        md.postprocessors.add('moose_template',
+                              TemplatePostprocessor(markdown_instance=md, **config), '_end')
 
-        def sub(match):
-            key = match.group('key')
-            arg = template_args.get(key, None)
-            if key is None:
-                msg = "The template argument '{}' was not defined in the !template load command."
-                raise exceptions.MooseDocsException(msg, key)
-            return arg
+def makeExtension(*args, **kwargs): #pylint: disable=invalid-name
+    """Create TemplateExtension"""
+    return TemplateExtension(*args, **kwargs)
 
-        content = re.sub(ur'{{(?P<key>.*?)}}', sub, content)
-        return content
-
-
-class TemplateLoadCommand(command.CommandComponent):
+class TemplatePostprocessorBase(Postprocessor):
     """
-    Loads a markdown file as a template.
+    Base for creating extensions that apply markdown converted html content to an jinja2 template.
 
-    !template load file=foo.md project=MOOSE
+    Generally, to create template extension there are only two methods that should be overridden:
+        globals: Allows for new functions to be added to the jinja2.Environment.
+        arguments: Allows for new template arguments to be added prior to application.
 
-    Unknown key, value pairs are parsed and used as template variables. For example, the
-    above allows {{project}} to be used within the file loading the template.
+    For an example, see the TemplatePostprocessor in this file.
 
+    NOTE: Be sure to call the base class of these methods to get the functionality of this base
+          class. However, both expect the inputs to be modified in-place (i.e., pass by reference),
+          thus no return statements are needed.
     """
-    PARSE_SETTINGS = False
-    COMMAND = 'template'
-    SUBCOMMAND = 'load'
+    def __init__(self, markdown_instance, **config):
+        super(TemplatePostprocessorBase, self).__init__(markdown_instance)
+        self._template = config.pop('template')
+        self._template_args = config.pop('template_args', dict())
+        self._environment_args = config.pop('environment_args', dict())
+
+        # Storage for node property.
+        self._node = None
+
+        # The 'markdown.extensions.meta' extension is required, but the 'meta' extension doesn't get
+        # registered so the list of preprocessors is checked.
+        try:
+            self.markdown.preprocessors.index('meta')
+        except ValueError:
+            raise mooseutils.MooseException("The 'meta' extension is required.")
+
+    @property
+    def node(self):
+        """
+        Return the current MooseDocsNode object.
+        """
+        self._node = self.markdown.current
+        return self._node
+
+    def globals(self, env):
+        """
+        Defines global template functions. (virtual)
+
+        Args:
+            env[jinja2.Environment]: Template object for adding global functions.
+        """
+        env.globals['insert_files'] = self._insertFiles
+
+    def arguments(self, template_args, text): #pylint: disable=no-self-use
+        """
+        Method for modifying the template arguments to be applied to the jinja2 templates engine.
+
+        Args:
+            template_args[dict]: Template arguments to be applied to jinja2 template.
+            text[str]: Convert markdown to be applied via the 'content' template argument.
+        """
+        template_args['content'] = text
+
+        if 'navigation' in template_args:
+            template_args['navigation'] = \
+                MooseDocs.yaml_load(MooseDocs.abspath(template_args['navigation']))
+
+    def run(self, text):
+        """
+        Apply the converted text to an jinja2 template and return the result.
+
+        Args:
+            text[str]: Converted markdown to be applied to the template.
+        """
+        # Update the meta data to proper python types
+        meta = dict()
+        for key, value in self.markdown.Meta.iteritems():
+            meta[key] = eval(''.join(value))
+
+        # Define template arguments
+        template_args = copy.copy(self._template_args)
+        template_args.update(meta)
+        self.arguments(template_args, text)
+
+        # Execute template and return result
+        paths = [os.path.join(MooseDocs.MOOSE_DIR, 'docs', 'templates'),
+                 os.path.join(os.getcwd(), 'templates')]
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(paths), **self._environment_args)
+        self.globals(env)
+        template = env.get_template(self._template)
+        complete = template.render(current=self.markdown.current, **template_args)
+
+        # Finalize the contents for output
+        soup = bs4.BeautifulSoup(complete, 'html.parser')
+        self._imageLinks(self.markdown.current, soup)
+        self._markdownLinks(self.markdown.current, soup)
+        return unicode(soup)
 
     @staticmethod
-    def defaultSettings():
-        settings = command.CommandComponent.defaultSettings()
-        settings['file'] = (None, "The filename of the template to load.")
-        return settings
+    def _insertFiles(filenames):
+        """
+        Helper function for jinja2 to read css file and return as string.
+        """
+        if isinstance(filenames, str):
+            filenames = [filenames]
 
-    def createToken(self, parent, info, page):
-        settings, t_args = common.match_settings(self.defaultSettings(), info['settings'])
-
-        location = self.translator.findPage(settings['file'])
-        self.extension.addDependency(location)
-        with codecs.open(location.source, 'r', encoding='utf-8') as fid:
-            content = fid.read()
-
-        content = self.extension.applyTemplateArguments(content, **t_args)
-        self.reader.tokenize(parent, content, page, line=info.line)
-        return parent
-
-class TemplateFieldCommand(command.CommandComponent):
-    COMMAND = 'template'
-    SUBCOMMAND = 'field'
+        out = []
+        for filename in filenames:
+            with open(MooseDocs.abspath(filename), 'r') as fid:
+                out += [fid.read().strip('\n')]
+        return '\n'.join(out)
 
     @staticmethod
-    def defaultSettings():
-        settings = command.CommandComponent.defaultSettings()
-        settings['key'] = (None, "The name of the template item which the content is to replace.")
-        settings['required'] = (True, "The section is required.")
-        return settings
-
-    def createToken(self, parent, info, page):
-        return TemplateField(parent, key=self.settings['key'], required=self.settings['required'])
-
-class TemplateItemCommand(command.CommandComponent):
-    COMMAND = 'template'
-    SUBCOMMAND = 'item'
+    def _imageLinks(node, soup):
+        """
+        Makes images links relative
+        """
+        for img in soup('img'):
+            if 'src' in img.attrs:
+                img['src'] = node.relpath(img['src'])
 
     @staticmethod
-    def defaultSettings():
-        config = command.CommandComponent.defaultSettings()
-        config['key'] = (None, "The name of the template item which the content is to replace.")
-        return config
+    def _markdownLinks(node, soup):
+        """
+        Performs auto linking of markdown files.
+        """
+        def finder(node, desired, pages):
+            """
+            Locate nodes for the 'desired' filename
+            """
+            if node.source() and node.source().endswith(desired):
+                pages.append(node)
+            for child in node:
+                finder(child, desired, pages)
+            return pages
 
-    def createToken(self, parent, info, page):
-        item = TemplateItem(parent, key=self.settings['key'])
-        group = MooseDocs.INLINE if MooseDocs.INLINE in info else MooseDocs.BLOCK
-        content = self.extension.applyTemplateArguments(info[group])
-        if content:
-            self.reader.tokenize(item, content, page, line=info.line, group=group)
-        return parent
+        # Loop over <a> tags and update links containing .md to point to .html
+        for link in soup('a'):
+            href = link.get('href')
+            if href and (not href.startswith('http')) and ('.md' in href):
 
-class TemplateFieldContentCommand(command.CommandComponent):
-    COMMAND = 'template'
-    SUBCOMMAND = ('field-begin', 'field-end')
+                # Split filename from section link (#)
+                parts = href.split('#')
 
-    def createToken(self, parent, info, page):
+                # Populate the list of found files
+                found = []
+                finder(node.root(), parts[0], found)
 
-        if parent.name != 'TemplateField':
-            msg = "The '!template {}' command must be within a '!template field' command."
-            raise exceptions.MooseDocsException(msg, info['subcommand'])
+                # Error if file not found or if multiple files found
+                if not found:
+                    LOG.error('Failed to locate page for markdown file %s in %s',
+                              href, node.source())
+                    link['class'] = 'moose-bad-link'
+                    continue
 
-        return TemplateSubField(parent, command=info['subcommand'])
+                elif len(found) > 1:
+                    msg = 'Found multiple pages matching the supplied markdown file {} in {}:' \
+                          .format(href, node.source())
+                    for f in found:
+                        msg += '\n    {}'.format(f.source())
+                    LOG.error(msg)
 
-class RenderTemplateField(components.RenderComponent):
+                # Update the link with the located page
+                url = node.relpath(found[0].url())
+                if len(parts) == 2:
+                    url += '#' + parts[1]
+                LOG.debug('Converting link: %s --> %s', href, url)
+                link['href'] = url
 
-    def createHTML(self, parent, token, page):
-        pass
 
-    def createMaterialize(self, parent, token, page):
-        self._renderField(parent, token, page, True)
+class TemplatePostprocessor(TemplatePostprocessorBase):
+    """
+    A template extension that works with the 'MooseDocs.extensions.app_syntax' extension.
+    """
+    def __init__(self, *args, **kwargs):
+        super(TemplatePostprocessor, self).__init__(*args, **kwargs)
 
-    def createLatex(self, parent, token, page):
-        self._renderField(parent, token, page, False)
+        # The 'MooseDocs.extensions.app_syntax' are required
+        self.markdown.requireExtension(AppSyntaxExtension)
 
-    def _renderField(self, parent, token, page, modal=None):
-        """Helper to render tokens, the logic is the same across formats."""
+        # Store the MooseApplicationSyntax object for use later.
+        ext = self.markdown.getExtension(AppSyntaxExtension)
+        self._syntax = ext.syntax
 
-        # Locate the replacement
-        key = token['key']
-        func = lambda n: (n.name == 'TemplateItem') and (n['key'] == key)
-        replacement = anytree.search.find(token.root, filter_=func)
+    def globals(self, env):
+        """
+        Add MOOSE syntax related functions for the template.
+        """
+        super(TemplatePostprocessor, self).globals(env)
+        env.globals['editMarkdown'] = self._editMarkdown
+        env.globals['mooseCode'] = self._code
 
-        if replacement:
-            # Add beginning TemplateSubField
-            for child in token:
-                if (child.name == 'TemplateSubField') and (child['command'] == 'field-begin'):
-                    self.renderer.render(parent, child, page)
+    def arguments(self, template_args, text):
+        """
+        Add MOOSE syntax related arguments to the template arguments.
+        """
+        super(TemplatePostprocessor, self).arguments(template_args, text)
+        template_args['tableofcontents'] = self._tableofcontents(text)
+        template_args['doxygen'] = self._doxygen()
 
-            # Render TemplateItem
-            self.renderer.render(parent, replacement, page)
+    @staticmethod
+    def _tableofcontents(text, level='h2'):
+        """
+        Returns the h2 (default) tags for the supplied html text.
+        """
+        soup = bs4.BeautifulSoup(text, 'html.parser')
+        for tag in soup.find_all(level):
+            if 'id' in tag.attrs and tag.contents:
+                yield (tag.contents[0], tag.attrs['id'])
 
-            # Add ending TemplateSubField
-            for child in token:
-                if (child.name == 'TemplateSubField') and (child['command'] == 'field-end'):
-                    self.renderer.render(parent, child, page)
+    def _editMarkdown(self, repo_url):
+        """
+        Return the url to the markdown file for this object.
+        """
+        return os.path.join(repo_url, 'edit', 'devel', MooseDocs.relpath(self.node.source()))
 
-            # Remove the TemplateFieldItem, otherwise the content will be rendered again
-            replacement.remove()
+    def _doxygen(self):
+        """
+        Return the doxygen link, if it exists.
+        """
+        for syntax in self._syntax.itervalues():
+            for obj in syntax.objects().itervalues():
+                if obj.name == self.node.name():
+                    return syntax.doxygen(obj.name)
 
-        elif not token['required']:
-            tok = tokens.Token(None)
-            token.copyToToken(tok)
-            self.renderer.render(parent, tok, page)
+    def _code(self, repo_url):
+        """
+        Return the GitHub/GitLab addresses for the associated C/h files.
 
-        else:
-            self._createFieldError(parent, token, page, modal)
+        Args:
+          repo_url[str]: Web address to use as the base for creating the edit link
+        """
+        info = []
+        for syntax in self._syntax.itervalues():
+            for obj in syntax.objects().itervalues():
+                if obj.name == self.node.name():
+                    info.append(obj)
+            for obj in syntax.actions().itervalues():
+                if obj.name == self.node.name():
+                    info.append(obj)
 
-    def _createFieldError(self, parent, token, page, modal_flag):
-        """Helper for creating error alert."""
+        output = []
+        for obj in info:
+            for filename in obj.code:
+                rel_filename = MooseDocs.relpath(filename)
+                output.append((os.path.basename(rel_filename),
+                               os.path.join(repo_url, 'blob', 'master', rel_filename)))
 
-        filename = page.local
-        key = token['key']
-        err = alert.AlertToken(None, brand=u'error')
-        alert_title = alert.AlertTitle(err,
-                                       brand=u'error',
-                                       string=u'Missing Template Item: "{}"'.format(key))
-        alert_content = alert.AlertContent(err, brand=u'error')
-        token.copyToToken(alert_content)
-
-        if modal_flag:
-            modal_content = tokens.Token(None)
-            core.Paragraph(modal_content,
-                           string=u"The document must include the \"{0}\" template item, this can "\
-                           u"be included by add adding the following to the markdown " \
-                           u"file ({1}):".format(key, filename))
-
-            core.Code(modal_content,
-                      content=u"!template! item key={0}\nInclude text (in MooseDocs format) " \
-                      u"regarding the \"{0}\" template item here.\n" \
-                      u"!template-end!".format(key))
-
-            link = floats.create_modal_link(alert_title,
-                                            title=u'Missing Template Item "{}"'.format(key),
-                                            content=modal_content)
-            materialicon.Icon(link, icon=u'help_outline',
-                              class_='small',
-                              style='float:right;color:white;margin-bottom:5px;')
-
-        self.renderer.render(parent, err, page)
+        return output

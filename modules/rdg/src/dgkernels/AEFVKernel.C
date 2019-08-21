@@ -1,15 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "AEFVKernel.h"
-
-registerMooseObject("RdgApp", AEFVKernel);
 
 template <>
 InputParameters
@@ -49,7 +45,7 @@ AEFVKernel::computeQpResidual(Moose::DGResidualType type)
 
   // calculate the flux
   const auto & flux = _flux.getFlux(
-      _current_side, _current_elem->id(), _neighbor_elem->id(), uvec1, uvec2, _normals[_qp]);
+      _current_side, _current_elem->id(), _neighbor_elem->id(), uvec1, uvec2, _normals[_qp], _tid);
 
   // distribute the contribution to the current and neighbor elements
   switch (type)
@@ -79,7 +75,8 @@ AEFVKernel::computeQpJacobian(Moose::DGJacobianType type)
                                          _neighbor_elem->id(),
                                          uvec1,
                                          uvec2,
-                                         _normals[_qp]);
+                                         _normals[_qp],
+                                         _tid);
 
   const auto & fjac2 = _flux.getJacobian(Moose::Neighbor,
                                          _current_side,
@@ -87,7 +84,8 @@ AEFVKernel::computeQpJacobian(Moose::DGJacobianType type)
                                          _neighbor_elem->id(),
                                          uvec1,
                                          uvec2,
-                                         _normals[_qp]);
+                                         _normals[_qp],
+                                         _tid);
 
   // distribute the contribution to the current and neighbor elements
   switch (type)

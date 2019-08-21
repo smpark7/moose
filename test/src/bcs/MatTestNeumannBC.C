@@ -1,15 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MatTestNeumannBC.h"
-
-registerMooseObject("MooseTestApp", MatTestNeumannBC);
 
 template <>
 InputParameters
@@ -18,18 +21,18 @@ validParams<MatTestNeumannBC>()
   InputParameters p = validParams<NeumannBC>();
   p.addRequiredParam<std::string>("mat_prop",
                                   "The material property that gives the value of the BC");
-  p.addParam<bool>("has_check", false, "Test hasActiveBoundaryObjects method.");
   return p;
 }
 
 MatTestNeumannBC::MatTestNeumannBC(const InputParameters & parameters)
   : NeumannBC(parameters), _prop_name(getParam<std::string>("mat_prop"))
 {
-  if (getParam<bool>("has_check") && !hasBoundaryMaterialProperty<Real>(_prop_name))
+  if (hasBoundaryMaterialProperty<Real>(_prop_name))
+    _value = &getMaterialPropertyByName<Real>(_prop_name);
+
+  else
     mooseError(
         "The material property ", _prop_name, " is not defined on all boundaries of this object");
-
-  _value = &getMaterialPropertyByName<Real>(_prop_name);
 }
 
 Real

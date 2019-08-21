@@ -1,21 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTEAXISYMMETRIC1DINCREMENTALSTRAIN_H
+#define COMPUTEAXISYMMETRIC1DINCREMENTALSTRAIN_H
 
 #include "Compute1DIncrementalStrain.h"
 #include "SubblockIndexProvider.h"
-
-class ComputeAxisymmetric1DIncrementalStrain;
-
-template <>
-InputParameters validParams<ComputeAxisymmetric1DIncrementalStrain>();
 
 /**
  * ComputeAxisymmetric1DIncrementalStrain defines a strain increment only
@@ -27,9 +20,9 @@ class ComputeAxisymmetric1DIncrementalStrain : public Compute1DIncrementalStrain
 public:
   ComputeAxisymmetric1DIncrementalStrain(const InputParameters & parameters);
 
+protected:
   void initialSetup() override;
 
-protected:
   /// Computes the current dUy/dy for axisymmetric problems
   Real computeGradDispYY() override;
 
@@ -65,3 +58,4 @@ protected:
   std::vector<const VariableValue *> _scalar_out_of_plane_strain_old;
 };
 
+#endif // COMPUTEAXISYMMETRIC1DINCREMENTALSTRAIN_H

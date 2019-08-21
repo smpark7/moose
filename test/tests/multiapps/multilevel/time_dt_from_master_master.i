@@ -6,14 +6,6 @@
   xmax = 100
 []
 
-[Functions]
-  [./dts]
-    type = PiecewiseLinear
-    x = '0     1'
-    y = '0.25  1'
-  [../]
-[]
-
 [Variables]
   [./u]
   [../]
@@ -49,6 +41,7 @@
   type = Transient
   num_steps = 4
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'
@@ -57,7 +50,8 @@
   dt = 0.25
   [./TimeStepper]
     type = FunctionDT
-    function = dts
+    time_t  = '0     1'
+    time_dt = '0.25  1'
   [../]
 []
 

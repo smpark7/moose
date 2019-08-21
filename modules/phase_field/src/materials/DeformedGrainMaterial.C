@@ -1,16 +1,5 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
 #include "DeformedGrainMaterial.h"
 #include "GrainTrackerInterface.h"
-
-registerMooseObject("PhaseFieldApp", DeformedGrainMaterial);
 
 template <>
 InputParameters
@@ -50,6 +39,7 @@ DeformedGrainMaterial::DeformedGrainMaterial(const InputParameters & parameters)
     _gamma(declareProperty<Real>("gamma_asymm")),
     _L(declareProperty<Real>("L")),
     _mu(declareProperty<Real>("mu")),
+    _tgrad_corr_mult(declareProperty<Real>("tgrad_corr_mult")),
     _beta(declareProperty<Real>("beta")),
     _Disloc_Den_i(declareProperty<Real>("Disloc_Den_i")),
     _rho_eff(declareProperty<Real>("rho_eff")),
@@ -60,7 +50,7 @@ DeformedGrainMaterial::DeformedGrainMaterial(const InputParameters & parameters)
     _JtoeV(6.24150974e18) // Joule to eV conversion
 {
   if (_op_num == 0)
-    paramError("op_num", "Model requires op_num > 0");
+    mooseError("Model requires op_num > 0");
 
   for (unsigned int i = 0; i < _op_num; ++i)
     _vals[i] = &coupledValue("v", i);
@@ -83,7 +73,7 @@ DeformedGrainMaterial::computeQpProperties()
 
   // loop over active OPs
   bool one_active = false;
-  for (MooseIndex(op_to_grains) op_index = 0; op_index < op_to_grains.size(); ++op_index)
+  for (auto op_index = beginIndex(op_to_grains); op_index < op_to_grains.size(); ++op_index)
   {
     if (op_to_grains[op_index] == FeatureFloodCount::invalid_id)
       continue;
@@ -121,4 +111,5 @@ DeformedGrainMaterial::computeQpProperties()
   _kappa[_qp] = 3.0 / 4.0 * sigma * _int_width;
   _gamma[_qp] = 1.5;
   _mu[_qp] = 6.0 * sigma / _int_width;
+  _tgrad_corr_mult[_qp] = _mu[_qp] * 9.0 / 8.0;
 }

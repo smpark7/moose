@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "ComputeElasticityTensorBase.h"
 #include "Function.h"
@@ -27,13 +25,12 @@ validParams<ComputeElasticityTensorBase>()
 
 ComputeElasticityTensorBase::ComputeElasticityTensorBase(const InputParameters & parameters)
   : DerivativeMaterialInterface<Material>(parameters),
-    GuaranteeProvider(this),
     _base_name(isParamValid("base_name") ? getParam<std::string>("base_name") + "_" : ""),
     _elasticity_tensor_name(_base_name + "elasticity_tensor"),
     _elasticity_tensor(declareProperty<RankFourTensor>(_elasticity_tensor_name)),
     _prefactor_function(isParamValid("elasticity_tensor_prefactor")
                             ? &getFunction("elasticity_tensor_prefactor")
-                            : nullptr)
+                            : NULL)
 {
 }
 

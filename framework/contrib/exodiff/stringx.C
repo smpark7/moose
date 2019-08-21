@@ -1,6 +1,6 @@
-// Copyright(C) 2008-2017 National Technology & Engineering Solutions
-// of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
-// NTESS, the U.S. Government retains certain rights in this software.
+// Copyright(C) 2008 Sandia Corporation.  Under the terms of Contract
+// DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
+// certain rights in this software
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -14,7 +14,7 @@
 //       disclaimer in the documentation and/or other materials provided
 //       with the distribution.
 //
-//     * Neither the name of NTESS nor the names of its
+//     * Neither the name of Sandia Corporation nor the names of its
 //       contributors may be used to endorse or promote products derived
 //       from this software without specific prior written permission.
 //
@@ -31,84 +31,69 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "smart_assert.h" // for SMART_ASSERT
+
+#include <cstring>
+#include <ctype.h>
+
 #include "stringx.h"
-#include <cctype>  // for tolower, isspace
-#include <cstring> // for strspn, strcspn
-#include <string>  // for string, operator==
-#include <vector>  // for vector
+#include "smart_assert.h"
 
-bool
-abbreviation(const std::string & s, const std::string & master, unsigned min_length)
+using namespace std;
+
+bool abbreviation( const string & s,
+                   const string & master,
+                   unsigned min_length )
 {
-  SMART_ASSERT(min_length > 0);
+  SMART_ASSERT( min_length > 0 );
 
-  if (s.size() > master.size())
-  {
+  if ( s.size() > master.size() )
     return false;
-  }
 
-  if (s.size() < min_length)
-  {
+  if ( s.size() < min_length )
     return false;
-  }
 
   for (unsigned i = 0; i < s.size(); ++i)
-  {
-    if (s[i] != master[i])
-    {
+    if ( s[i] != master[i] )
       return false;
-    }
-  }
+
   return true;
 }
 
-bool
-no_case_equals(const std::string & s1, const std::string & s2)
+bool no_case_equals( const string & s1, const string & s2 )
 {
-  if (s1.size() != s2.size())
-  {
-    return false;
-  }
+  if (s1.size() != s2.size()) return false;
 
   for (unsigned i = 0; i < s1.size(); ++i)
-  {
-    if (tolower(s1[i]) != tolower(s2[i]))
-    {
+    if ( tolower(s1[i]) != tolower(s2[i]) )
       return false;
-    }
-  }
+
   return true;
 }
 
-std::string &
-chop_whitespace(std::string & s)
+
+string & chop_whitespace( string & s )
 {
-  if (!s.empty())
+  if (s.size() > 0)
   {
     int i = s.size() - 1;
     for (; i >= 0; --i)
-    {
-      if (isspace(static_cast<int>(s[i])) == 0)
-      {
+      if ( ! isspace( (int)(s[i]) ) )
         break;
-      }
 
-      s.resize(i + 1);
-    }
+    s.resize(i+1);
   }
+
   return s;
 }
 
-std::string
-extract_token(std::string & s, const char * delimiters)
+string extract_token(string & s, const char* delimeters)
 {
-  if (!s.empty())
+  if (s.size() > 0)
   {
-    SMART_ASSERT(delimiters != nullptr && !std::string(delimiters).empty());
+    SMART_ASSERT( delimeters != 0 && string(delimeters).size() > 0 );
 
-    // Move through initial delimiters.
-    unsigned p = s.find_first_not_of(delimiters);
+    // Move through initial delimeters.
+    unsigned p = s.find_first_not_of(delimeters);
 
     if (p >= s.size())
     {
@@ -118,21 +103,21 @@ extract_token(std::string & s, const char * delimiters)
     }
 
     // move to end of first token
-    unsigned q = s.find_first_of(delimiters, p);
+    unsigned q = s.find_first_of( delimeters, p );
 
     if (q >= s.size())
     {
-      // no more delimiters
-      std::string tok = s.substr(p);
+      // no more delimeters
+      string tok = s.substr( p );
       s = "";
       return tok;
     }
 
-    SMART_ASSERT(q > p);
-    std::string tok = s.substr(p, q - p);
+    SMART_ASSERT( q > p );
+    string tok = s.substr( p, q-p );
 
     // move to start of the second token
-    unsigned r = s.find_first_not_of(delimiters, q);
+    unsigned r = s.find_first_not_of( delimeters, q );
 
     if (r >= s.size())
     {
@@ -140,9 +125,7 @@ extract_token(std::string & s, const char * delimiters)
       s = "";
     }
     else
-    {
-      s.erase(0, r);
-    }
+      s.erase( 0, r );
 
     return tok;
   }
@@ -150,21 +133,20 @@ extract_token(std::string & s, const char * delimiters)
   return "";
 }
 
-int
-count_tokens(const std::string & s, const char * delimiters)
+int count_tokens(const string & s, const char* delimeters)
 {
   if (!s.empty())
   {
-    const char * str_ptr = s.c_str();
+    const char* str_ptr = s.c_str();
 
-    // Move through initial delimiters.
-    const char * p = &str_ptr[strspn(str_ptr, delimiters)];
+    // Move through initial delimeters.
+    const char* p = &str_ptr[ strspn(str_ptr, delimeters) ];
 
     int num_toks = 0;
     while (p[0] != '\0') {
       ++num_toks;
-      p = &p[strcspn(p, delimiters)]; // Move through token.
-      p = &p[strspn(p, delimiters)];  // Move through delimiters.
+      p = &p[ strcspn(p, delimeters) ];      // Move through token.
+      p = &p[ strspn (p, delimeters) ];      // Move through delimeters.
     }
 
     return num_toks;
@@ -173,16 +155,13 @@ count_tokens(const std::string & s, const char * delimiters)
   return 0;
 }
 
-int
-max_string_length(const std::vector<std::string> & names)
+
+int max_string_length(const vector<string> &names)
 {
-  if (names.empty())
-  {
+  if (names.size() == 0)
     return 0;
-  }
   unsigned len = names[0].size();
-  for (unsigned i = 1; i < names.size(); i++)
-  {
+  for (unsigned i=1; i < names.size(); i++) {
     if (names[i].size() > len) {
       len = names[i].size();
     }
@@ -190,50 +169,36 @@ max_string_length(const std::vector<std::string> & names)
   return len;
 }
 
-void
-to_lower(std::string & s)
+void to_lower( string & s )
 {
-  for (auto & elem : s)
-  {
-    elem = tolower(elem);
-  }
+  for (unsigned i = 0; i < s.size(); ++i)
+    s[i] = tolower(s[i]);
 }
 
-char
-first_character(const std::string & s)
+char first_character( const string & s )
 {
-  for (auto & elem : s)
-  {
-    if (isspace(static_cast<int>(elem)) == 0)
-    {
-      return elem;
-    }
-  }
+  for (unsigned i = 0; i < s.size(); ++i)
+    if ( ! isspace( (int)(s[i]) ) )
+      return s[i];
+
   return 0;
 }
 
-int
-find_string(const std::vector<std::string> & lst, const std::string & s, bool nocase)
+int find_string(const vector<string>& lst, const string& s, bool nocase)
 {
   if (nocase)
   {
     for (unsigned i = 0; i < lst.size(); ++i)
-    {
-      if (no_case_equals(lst[i], s))
-      {
+      if ( no_case_equals( lst[i], s ) )
         return i;
-      }
-    }
   }
   else
   {
     for (unsigned i = 0; i < lst.size(); ++i)
-    {
-      if (lst[i] == s)
-      {
+      if ( lst[i] == s )
         return i;
-      }
-    }
   }
+
   return -1;
 }
+

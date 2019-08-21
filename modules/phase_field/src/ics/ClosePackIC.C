@@ -1,19 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 // MOOSE includes
 #include "ClosePackIC.h"
 #include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/mesh_tools.h"
-
-registerMooseObject("PhaseFieldApp", ClosePackIC);
 
 template <>
 InputParameters
@@ -34,7 +31,7 @@ void
 ClosePackIC::computeCircleCenters()
 {
   // Determine the extents of the mesh
-  BoundingBox bbox = MeshTools::create_bounding_box(_fe_problem.mesh().getMesh());
+  MeshTools::BoundingBox bbox = MeshTools::bounding_box(_fe_problem.mesh().getMesh());
   const Point & min = bbox.min();
   const Point & max = bbox.max();
 

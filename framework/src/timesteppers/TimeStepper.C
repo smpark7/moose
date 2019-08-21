@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "TimeStepper.h"
 #include "FEProblem.h"
@@ -19,11 +24,6 @@ validParams<TimeStepper>()
   InputParameters params = validParams<MooseObject>();
   params.addParam<bool>(
       "reset_dt", false, "Use when restarting a calculation to force a change in dt.");
-  params.addRangeCheckedParam<Real>(
-      "cutback_factor_at_failure",
-      0.5,
-      "cutback_factor_at_failure>0 & cutback_factor_at_failure<1",
-      "Factor to apply to timestep if it a time step fails to convergence.");
 
   params.registerBase("TimeStepper");
 
@@ -32,12 +32,11 @@ validParams<TimeStepper>()
 
 TimeStepper::TimeStepper(const InputParameters & parameters)
   : MooseObject(parameters),
-    Restartable(this, "TimeSteppers"),
-    ScalarCoupleable(this),
+    Restartable(parameters, "TimeSteppers"),
     _fe_problem(parameters.have_parameter<FEProblemBase *>("_fe_problem_base")
                     ? *getParam<FEProblemBase *>("_fe_problem_base")
                     : *getParam<FEProblem *>("_fe_problem")),
-    _executioner(*getCheckedPointerParam<Transient *>("_executioner")),
+    _executioner(*parameters.getCheckedPointerParam<Transient *>("_executioner")),
     _time(_fe_problem.time()),
     _time_old(_fe_problem.timeOld()),
     _t_step(_fe_problem.timeStep()),
@@ -49,7 +48,6 @@ TimeStepper::TimeStepper(const InputParameters & parameters)
     _timestep_tolerance(_executioner.timestepTol()),
     _verbose(_executioner.verbose()),
     _converged(true),
-    _cutback_factor_at_failure(getParam<Real>("cutback_factor_at_failure")),
     _reset_dt(getParam<bool>("reset_dt")),
     _has_reset_dt(false),
     _current_dt(declareRestartableData("current_dt", 1.0))
@@ -159,7 +157,8 @@ TimeStepper::constrainStep(Real & dt)
 void
 TimeStepper::step()
 {
-  _converged = _executioner.picardSolve().solve();
+  _fe_problem.solve();
+  _converged = _fe_problem.converged();
 }
 
 void
@@ -175,11 +174,12 @@ TimeStepper::acceptStep()
 void
 TimeStepper::rejectStep()
 {
+  _converged = false;
   _fe_problem.restoreSolutions();
 }
 
 bool
-TimeStepper::converged() const
+TimeStepper::converged()
 {
   return _converged;
 }
@@ -190,10 +190,10 @@ TimeStepper::computeFailedDT()
   if (_dt <= _dt_min)
     mooseError("Solve failed and timestep already at or below dtmin, cannot continue!");
 
-  // cut the time step
-  if (_cutback_factor_at_failure * _dt >= _dt_min)
-    return _cutback_factor_at_failure * _dt;
-  else // (_cutback_factor_at_failure * _current_dt < _dt_min)
+  // cut the time step in a half
+  if (0.5 * _dt >= _dt_min)
+    return 0.5 * _dt;
+  else // (0.5 * _current_dt < _dt_min)
     return _dt_min;
 }
 

@@ -1,15 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowPolyLineSink.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowPolyLineSink);
 
 template <>
 InputParameters
@@ -29,12 +25,8 @@ validParams<PorousFlowPolyLineSink>()
       "quad-point pressure exceeds the final pressure value, the final flux value is "
       "used.  This flux is OUT of the medium: hence positive values of flux means this "
       "will be a SINK, while negative values indicate this flux will be a SOURCE.");
-  params.addClassDescription(
-      "Approximates a polyline sink by using a number of point sinks with "
-      "given weighting whose positions are read from a file.  NOTE: if you are using "
-      "PorousFlowPorosity that depends on volumetric strain, you should set "
-      "strain_at_nearest_qp=true in your GlobalParams, to ensure the nodal Porosity Material uses "
-      "the volumetric strain at the Dirac quadpoints, and can therefore be computed");
+  params.addClassDescription("Approximates a polyline sink by using a number of point sinks with "
+                             "given weighting whose positions are read from a file");
   return params;
 }
 

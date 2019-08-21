@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef CAPPEDWEAKPLANESTRESSUPDATE_H
+#define CAPPEDWEAKPLANESTRESSUPDATE_H
 
 #include "TwoParameterPlasticityStressUpdate.h"
 #include "TensorMechanicsHardeningModel.h"
@@ -57,7 +55,7 @@ protected:
   /// The cone vertex is smoothed by this amount
   const Real _small_smoother2;
 
-  /// Initialize the NR proceedure from a guess coming from perfect plasticity
+  /// Initialise the NR proceedure from a guess coming from perfect plasticity
   const bool _perfect_guess;
 
   /**
@@ -97,7 +95,7 @@ protected:
   virtual void computeAllQ(Real p,
                            Real q,
                            const std::vector<Real> & intnl,
-                           std::vector<yieldAndFlow> & all_q) const override;
+                           std::vector<f_and_derivs> & all_q) const override;
 
   virtual void consistentTangentOperator(const RankTwoTensor & stress_trial,
                                          Real p_trial,
@@ -106,7 +104,7 @@ protected:
                                          Real p,
                                          Real q,
                                          Real gaE,
-                                         const yieldAndFlow & smoothed_q,
+                                         const f_and_derivs & smoothed_q,
                                          const RankFourTensor & Eijkl,
                                          bool compute_full_tangent_operator,
                                          RankFourTensor & cto) const override;
@@ -116,7 +114,7 @@ protected:
                                     Real q_ok,
                                     Real gaE,
                                     const std::vector<Real> & intnl,
-                                    const yieldAndFlow & smoothed_q,
+                                    const f_and_derivs & smoothed_q,
                                     const RankFourTensor & Eijkl,
                                     RankTwoTensor & stress) const override;
 
@@ -127,7 +125,7 @@ protected:
                             const std::vector<Real> & yf,
                             const RankFourTensor & Eijkl) override;
 
-  virtual void initializeVars(Real p_trial,
+  virtual void initialiseVars(Real p_trial,
                               Real q_trial,
                               const std::vector<Real> & intnl_old,
                               Real & p,
@@ -151,7 +149,7 @@ protected:
 
   virtual void computePQ(const RankTwoTensor & stress, Real & p, Real & q) const override;
 
-  virtual void initializeReturnProcess() override;
+  virtual void initialiseReturnProcess() override;
 
   virtual void finalizeReturnProcess(const RankTwoTensor & rotation_increment) override;
 
@@ -166,3 +164,4 @@ protected:
   virtual RankFourTensor d2qdstress2(const RankTwoTensor & stress) const override;
 };
 
+#endif // CAPPEDWEAKPLANESTRESSUPDATE_H

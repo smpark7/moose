@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 from Input import OutputNames
 from PythonConsoleWidget import PythonConsoleWidget
 from ExodusViewer.ExodusViewer import ExodusViewer
@@ -41,7 +32,6 @@ class PeacockMainWindow(BasePeacockMainWindow):
         self.tab_plugin.ExecuteTabPlugin.needInputFile.connect(self.tab_plugin.InputFileEditorWithMesh.InputFileEditorPlugin.writeInputFile)
         self.tab_plugin.InputFileEditorWithMesh.inputFileChanged.connect(self._inputFileChanged)
         self.tab_plugin.ExecuteTabPlugin.ExecuteOptionsPlugin.workingDirChanged.connect(self.tab_plugin.InputFileEditorWithMesh.onWorkingDirChanged)
-        self.tab_plugin.ExecuteTabPlugin.ExecuteOptionsPlugin.useTestObjectsChanged.connect(self.tab_plugin.InputFileEditorWithMesh.onUseTestObjectsChanged)
         self.setPythonVariable('main_window', self)
         self.setPythonVariable('tabs', self.tab_plugin)
         self.setup()
@@ -99,10 +89,8 @@ class PeacockMainWindow(BasePeacockMainWindow):
             input_filename: Name of the new input_filename
         """
         self.input_file_path = input_filename
-        full_filename = os.path.abspath(input_filename)
-        new_dir = os.path.dirname(full_filename)
+        new_dir = os.path.dirname(os.path.abspath(input_filename))
         self.tab_plugin.ExecuteTabPlugin.ExecuteOptionsPlugin.setWorkingDir(new_dir)
-        self.tab_plugin.ExecuteTabPlugin.ExecuteRunnerPlugin.setInputFile(full_filename)
         self._setTitle()
 
     def setTab(self, tabName):

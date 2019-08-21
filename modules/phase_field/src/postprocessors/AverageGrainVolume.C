@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "AverageGrainVolume.h"
 #include "FeatureFloodCount.h"
@@ -13,9 +11,8 @@
 #include "Assembly.h"
 #include "MooseVariable.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("PhaseFieldApp", AverageGrainVolume);
 
 template <>
 InputParameters
@@ -73,7 +70,7 @@ AverageGrainVolume::AverageGrainVolume(const InputParameters & parameters)
 
       // Build a reflexive map (ops map to grains directly)
       _static_var_to_feature.resize(num_coupled_vars);
-      for (MooseIndex(_static_var_to_feature) i = 0; i < num_coupled_vars; ++i)
+      for (auto i = beginIndex(_static_var_to_feature); i < num_coupled_vars; ++i)
         _static_var_to_feature[i] = i;
     }
     else
@@ -87,7 +84,7 @@ AverageGrainVolume::AverageGrainVolume(const InputParameters & parameters)
     for (auto & coupled_var : coupled_vars)
       _vals.emplace_back(&coupled_var->sln());
 
-    addMooseVariableDependency(_feature_counter->getFECoupledVars());
+    addMooseVariableDependency(coupled_vars);
   }
 }
 
@@ -107,8 +104,11 @@ void
 AverageGrainVolume::execute()
 {
   auto num_features = _feature_volumes.size();
-  for (const auto & elem : _mesh.getMesh().active_local_element_ptr_range())
+
+  const auto end = _mesh.getMesh().active_local_elements_end();
+  for (auto el = _mesh.getMesh().active_local_elements_begin(); el != end; ++el)
   {
+    const Elem * elem = *el;
     _fe_problem.prepare(elem, 0);
     _fe_problem.reinitElem(elem, 0);
 
@@ -124,7 +124,8 @@ void
 AverageGrainVolume::accumulateVolumes(const std::vector<unsigned int> & var_to_features,
                                       std::size_t libmesh_dbg_var(num_features))
 {
-  for (MooseIndex(var_to_features) var_index = 0; var_index < var_to_features.size(); ++var_index)
+  for (auto var_index = beginIndex(var_to_features); var_index < var_to_features.size();
+       ++var_index)
   {
     // Only sample "active" variables
     if (var_to_features[var_index] != FeatureFloodCount::invalid_id)
@@ -158,8 +159,5 @@ AverageGrainVolume::getValue()
   for (auto & volume : _feature_volumes)
     total_volume += volume;
 
-  unsigned int active_features =
-      _feature_counter ? _feature_counter->getNumberActiveFeatures() : _feature_volumes.size();
-
-  return total_volume / active_features;
+  return total_volume / _feature_volumes.size();
 }

@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "Q2PPiecewiseLinearSink.h"
 
@@ -14,8 +12,6 @@
 
 // C++ includes
 #include <iostream>
-
-registerMooseObject("RichardsApp", Q2PPiecewiseLinearSink);
 
 template <>
 InputParameters
@@ -81,7 +77,7 @@ Q2PPiecewiseLinearSink::Q2PPiecewiseLinearSink(const InputParameters & parameter
     _m_func(getFunction("multiplying_fcn")),
     _density(getUserObject<RichardsDensity>("fluid_density")),
     _relperm(getUserObject<RichardsRelPerm>("fluid_relperm")),
-    _other_var_nodal(coupledDofValues("other_var")),
+    _other_var_nodal(coupledNodalValue("other_var")),
     _other_var_num(coupled("other_var")),
     _var_is_pp(getParam<bool>("var_is_porepressure")),
     _viscosity(getParam<Real>("fluid_viscosity")),
@@ -108,7 +104,7 @@ Q2PPiecewiseLinearSink::prepareNodalValues()
   {
     for (unsigned int nodenum = 0; nodenum < _num_nodes; ++nodenum)
     {
-      _pp[nodenum] = _var.dofValues()[nodenum];
+      _pp[nodenum] = _var.nodalSln()[nodenum];
       _sat[nodenum] = _other_var_nodal[nodenum];
     }
   }
@@ -117,7 +113,7 @@ Q2PPiecewiseLinearSink::prepareNodalValues()
     for (unsigned int nodenum = 0; nodenum < _num_nodes; ++nodenum)
     {
       _pp[nodenum] = _other_var_nodal[nodenum];
-      _sat[nodenum] = _var.dofValues()[nodenum];
+      _sat[nodenum] = _var.nodalSln()[nodenum];
     }
   }
 
@@ -188,7 +184,7 @@ Q2PPiecewiseLinearSink::computeQpJacobian()
 }
 
 void
-Q2PPiecewiseLinearSink::computeJacobianBlock(MooseVariableFEBase & jvar)
+Q2PPiecewiseLinearSink::computeJacobianBlock(unsigned int jvar)
 {
   prepareNodalValues();
   IntegratedBC::computeJacobianBlock(jvar);

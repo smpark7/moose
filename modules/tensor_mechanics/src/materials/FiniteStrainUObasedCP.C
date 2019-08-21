@@ -1,28 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "FiniteStrainUObasedCP.h"
 #include "petscblaslapack.h"
-#include "MooseException.h"
+
 #include "CrystalPlasticitySlipRate.h"
 #include "CrystalPlasticitySlipResistance.h"
 #include "CrystalPlasticityStateVariable.h"
 #include "CrystalPlasticityStateVarRateComponent.h"
-
-registerMooseObject("TensorMechanicsApp", FiniteStrainUObasedCP);
 
 template <>
 InputParameters
 validParams<FiniteStrainUObasedCP>()
 {
   InputParameters params = validParams<ComputeStressBase>();
-  params.addClassDescription("UserObject based Crystal Plasticity system.");
+  params.addClassDescription(
+      "Crystal Plasticity base class: FCC system with power law flow rule implemented");
   params.addParam<Real>("rtol", 1e-6, "Constitutive stress residue relative tolerance");
   params.addParam<Real>("abs_tol", 1e-6, "Constitutive stress residue absolute tolerance");
   params.addParam<Real>(
@@ -84,17 +80,15 @@ FiniteStrainUObasedCP::FiniteStrainUObasedCP(const InputParameters & parameters)
     _lsrch_max_iter(getParam<unsigned int>("line_search_maxiter")),
     _lsrch_method(getParam<MooseEnum>("line_search_method")),
     _fp(declareProperty<RankTwoTensor>("fp")), // Plastic deformation gradient
-    _fp_old(getMaterialPropertyOld<RankTwoTensor>(
+    _fp_old(declarePropertyOld<RankTwoTensor>(
         "fp")), // Plastic deformation gradient of previous increment
     _pk2(declareProperty<RankTwoTensor>("pk2")), // 2nd Piola Kirchoff Stress
-    _pk2_old(getMaterialPropertyOld<RankTwoTensor>(
+    _pk2_old(declarePropertyOld<RankTwoTensor>(
         "pk2")), // 2nd Piola Kirchoff Stress of previous increment
     _lag_e(declareProperty<RankTwoTensor>("lage")), // Lagrangian strain
     _update_rot(declareProperty<RankTwoTensor>(
         "update_rot")), // Rotation tensor considering material rotation and crystal orientation
-    _update_rot_old(getMaterialPropertyOld<RankTwoTensor>("update_rot")),
-    _elasticity_tensor_name(_base_name + "elasticity_tensor"),
-    _elasticity_tensor(getMaterialPropertyByName<RankFourTensor>(_elasticity_tensor_name)),
+    _update_rot_old(declarePropertyOld<RankTwoTensor>("update_rot")),
     _deformation_gradient(getMaterialProperty<RankTwoTensor>("deformation_gradient")),
     _deformation_gradient_old(getMaterialPropertyOld<RankTwoTensor>("deformation_gradient")),
     _crysrot(getMaterialProperty<RankTwoTensor>("crysrot"))
@@ -115,7 +109,6 @@ FiniteStrainUObasedCP::FiniteStrainUObasedCP(const InputParameters & parameters)
 
   // resize local state variables
   _state_vars_old.resize(_num_uo_state_vars);
-  _state_vars_old_stored.resize(_num_uo_state_vars);
   _state_vars_prev.resize(_num_uo_state_vars);
 
   // resize user objects
@@ -149,7 +142,7 @@ FiniteStrainUObasedCP::FiniteStrainUObasedCP(const InputParameters & parameters)
         parameters.get<std::vector<UserObjectName>>("uo_state_vars")[i]);
     _mat_prop_state_vars[i] = &declareProperty<std::vector<Real>>(
         parameters.get<std::vector<UserObjectName>>("uo_state_vars")[i]);
-    _mat_prop_state_vars_old[i] = &getMaterialPropertyOld<std::vector<Real>>(
+    _mat_prop_state_vars_old[i] = &declarePropertyOld<std::vector<Real>>(
         parameters.get<std::vector<UserObjectName>>("uo_state_vars")[i]);
   }
 
@@ -177,8 +170,8 @@ FiniteStrainUObasedCP::initQpStatefulProperties()
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
   {
     (*_mat_prop_state_vars[i])[_qp].resize(_uo_state_vars[i]->variableSize());
+    (*_mat_prop_state_vars_old[i])[_qp].resize(_uo_state_vars[i]->variableSize());
     _state_vars_old[i].resize(_uo_state_vars[i]->variableSize());
-    _state_vars_old_stored[i].resize(_uo_state_vars[i]->variableSize());
     _state_vars_prev[i].resize(_uo_state_vars[i]->variableSize());
   }
 
@@ -187,15 +180,23 @@ FiniteStrainUObasedCP::initQpStatefulProperties()
         _uo_state_var_evol_rate_comps[i]->variableSize());
 
   _stress[_qp].zero();
+
+  _fp[_qp].zero();
+  _fp[_qp].addIa(1.0);
+
   _pk2[_qp].zero();
+
   _lag_e[_qp].zero();
 
-  _fp[_qp].setToIdentity();
-  _update_rot[_qp].setToIdentity();
+  _update_rot[_qp].zero();
+  _update_rot[_qp].addIa(1.0);
 
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
+  {
     // Initializes slip system related properties
     _uo_state_vars[i]->initSlipSysProps((*_mat_prop_state_vars[i])[_qp], _q_point[_qp]);
+    (*_mat_prop_state_vars_old[i])[_qp] = (*_mat_prop_state_vars[i])[_qp];
+  }
 }
 
 /**
@@ -251,7 +252,7 @@ FiniteStrainUObasedCP::computeQpStress()
       }
     }
     if (substep_iter > _max_substep_iter && _err_tol)
-      throw MooseException("FiniteStrainUObasedCP: Constitutive failure.");
+      mooseError("FiniteStrainUObasedCP: Constitutive failure");
   } while (_err_tol);
 
   _dt = dt_original;
@@ -263,7 +264,7 @@ void
 FiniteStrainUObasedCP::preSolveQp()
 {
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
-    (*_mat_prop_state_vars[i])[_qp] = _state_vars_old_stored[i] = _state_vars_old[i];
+    (*_mat_prop_state_vars[i])[_qp] = (*_mat_prop_state_vars_old[i])[_qp] = _state_vars_old[i];
 
   _pk2[_qp] = _pk2_old[_qp];
   _fp_old_inv = _fp_old[_qp].inverse();
@@ -282,12 +283,17 @@ FiniteStrainUObasedCP::solveQp()
 void
 FiniteStrainUObasedCP::postSolveQp()
 {
+  // Restores the the old stateful properties after a successful solve
+  for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
+    (*_mat_prop_state_vars_old[i])[_qp] = _state_vars_old[i];
+
   _stress[_qp] = _fe * _pk2[_qp] * _fe.transpose() / _fe.det();
 
   // Calculate jacobian for preconditioner
   calcTangentModuli();
 
-  RankTwoTensor iden(RankTwoTensor::initIdentity);
+  RankTwoTensor iden;
+  iden.addIa(1.0);
 
   _lag_e[_qp] = _deformation_gradient[_qp].transpose() * _deformation_gradient[_qp] - iden;
   _lag_e[_qp] = _lag_e[_qp] * 0.5;
@@ -302,7 +308,7 @@ void
 FiniteStrainUObasedCP::preSolveStatevar()
 {
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
-    (*_mat_prop_state_vars[i])[_qp] = _state_vars_old_stored[i];
+    (*_mat_prop_state_vars[i])[_qp] = (*_mat_prop_state_vars_old[i])[_qp];
 
   for (unsigned int i = 0; i < _num_uo_slip_resistances; ++i)
     _uo_slip_resistances[i]->calcSlipResistance(_qp, (*_mat_prop_slip_resistances[i])[_qp]);
@@ -357,10 +363,10 @@ FiniteStrainUObasedCP::isStateVariablesConverged()
     {
       diff = std::abs((*_mat_prop_state_vars[i])[_qp][j] -
                       _state_vars_prev[i][j]); // Calculate increment size
-      if (std::abs(_state_vars_old_stored[i][j]) < _zero_tol && diff > _zero_tol)
+      if (std::abs((*_mat_prop_state_vars_old[i])[_qp][j]) < _zero_tol && diff > _zero_tol)
         return true;
-      if (std::abs(_state_vars_old_stored[i][j]) > _zero_tol &&
-          diff > _stol * std::abs(_state_vars_old_stored[i][j]))
+      if (std::abs((*_mat_prop_state_vars_old[i])[_qp][j]) > _zero_tol &&
+          diff > _stol * std::abs((*_mat_prop_state_vars_old[i])[_qp][j]))
         return true;
     }
   }
@@ -371,7 +377,7 @@ void
 FiniteStrainUObasedCP::postSolveStatevar()
 {
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
-    _state_vars_old_stored[i] = (*_mat_prop_state_vars[i])[_qp];
+    (*_mat_prop_state_vars_old[i])[_qp] = (*_mat_prop_state_vars[i])[_qp];
 
   _fp_old_inv = _fp_inv;
 }
@@ -468,8 +474,7 @@ FiniteStrainUObasedCP::updateSlipSystemResistanceAndStateVariable()
 
   for (unsigned int i = 0; i < _num_uo_state_vars; ++i)
   {
-    if (!_uo_state_vars[i]->updateStateVariable(
-            _qp, _dt, (*_mat_prop_state_vars[i])[_qp], _state_vars_old_stored[i]))
+    if (!_uo_state_vars[i]->updateStateVariable(_qp, _dt, (*_mat_prop_state_vars[i])[_qp]))
       _err_tol = true;
   }
 
@@ -503,9 +508,15 @@ FiniteStrainUObasedCP::getSlipRates()
 void
 FiniteStrainUObasedCP::calcResidual()
 {
-  RankTwoTensor iden(RankTwoTensor::initIdentity), ce, ee, ce_pk2, eqv_slip_incr, pk2_new;
+  RankTwoTensor iden, ce, ee, ce_pk2, eqv_slip_incr, pk2_new;
+
+  iden.zero();
+  iden.addIa(1.0);
+
+  eqv_slip_incr.zero();
 
   getSlipRates();
+
   if (_err_tol)
     return;
 

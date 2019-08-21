@@ -68,9 +68,10 @@ license you like.
 // End of content of file: LICENSE
 // //////////////////////////////////////////////////////////////////////
 
-// Include added by MOOSE maintainers to suppress over-eager compiler warnings.
-// Additionally, several "libmesh_fallthrough()" macros are added.
-#include "libmesh/libmesh_common.h"
+
+
+
+
 
 #include "json/json.h"
 
@@ -450,7 +451,6 @@ bool Reader::readValue() {
       currentValue().setOffsetLimit(current_ - begin_);
       break;
     } // Else, fall through...
-    libmesh_fallthrough();
   default:
     currentValue().setOffsetStart(token.start_ - begin_);
     currentValue().setOffsetLimit(token.end_ - begin_);
@@ -1397,7 +1397,6 @@ bool OurReader::readValue() {
       currentValue().setOffsetLimit(current_ - begin_);
       break;
     } // else, fall through ...
-    libmesh_fallthrough();
   default:
     currentValue().setOffsetStart(token.start_ - begin_);
     currentValue().setOffsetLimit(token.end_ - begin_);
@@ -1450,7 +1449,6 @@ bool OurReader::readToken(Token& token) {
     ok = readStringSingleQuote();
     break;
     } // else continue
-    libmesh_fallthrough();
   case '/':
     token.type_ = tokenComment;
     ok = readComment();

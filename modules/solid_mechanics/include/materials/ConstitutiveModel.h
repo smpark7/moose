@@ -1,23 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef CONSTITUTIVEMODEL_H
+#define CONSTITUTIVEMODEL_H
 
 #include "Material.h"
 
 #include "SymmElasticityTensor.h"
 #include "SymmTensor.h"
 
-class ConstitutiveModel;
-
-template <>
-InputParameters validParams<ConstitutiveModel>();
+/**
+ */
 
 class ConstitutiveModel : public Material
 {
@@ -26,31 +22,36 @@ public:
 
   virtual ~ConstitutiveModel() {}
 
-  /// Sets the value of the variable _qp for inheriting classes
-  void setQp(unsigned int qp);
+  virtual void initStatefulProperties(unsigned int n_points);
 
   virtual void computeStress(const Elem & /*current_elem*/,
+                             unsigned /*qp*/,
                              const SymmElasticityTensor & elasticityTensor,
                              const SymmTensor & stress_old,
                              SymmTensor & strain_increment,
                              SymmTensor & stress_new);
 
   virtual bool modifyStrainIncrement(const Elem & /*elem*/,
+                                     unsigned qp,
                                      SymmTensor & strain_increment,
                                      SymmTensor & d_strain_dT)
   {
-    return applyThermalStrain(strain_increment, d_strain_dT);
+    return applyThermalStrain(qp, strain_increment, d_strain_dT);
   }
-  virtual bool updateElasticityTensor(SymmElasticityTensor & /*elasticityTensor*/) { return false; }
+  virtual bool updateElasticityTensor(unsigned /*qp*/, SymmElasticityTensor & /*elasticityTensor*/)
+  {
+    return false;
+  }
 
-  virtual bool applyThermalStrain(SymmTensor & strain_increment, SymmTensor & d_strain_dT);
+  virtual bool
+  applyThermalStrain(unsigned qp, SymmTensor & strain_increment, SymmTensor & d_strain_dT);
 
 protected:
   const bool _has_temp;
   const VariableValue & _temperature;
   const VariableValue & _temperature_old;
   const Real _alpha;
-  const Function * _alpha_function;
+  Function * _alpha_function;
   bool _has_stress_free_temp;
   Real _stress_free_temp;
   bool _mean_alpha_function;
@@ -63,4 +64,10 @@ protected:
 
 private:
   using Material::computeProperties;
+  using Material::_qp;
 };
+
+template <>
+InputParameters validParams<ConstitutiveModel>();
+
+#endif // CONSTITUTIVEMODEL_H

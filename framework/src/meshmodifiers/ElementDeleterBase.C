@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ElementDeleterBase.h"
 #include "MooseMesh.h"
@@ -17,15 +22,11 @@ InputParameters
 validParams<ElementDeleterBase>()
 {
   InputParameters params = validParams<MeshModifier>();
-  params.addParam<BoundaryName>("new_boundary",
-                                "optional boundary name to assign to the cut surface");
   return params;
 }
 
 ElementDeleterBase::ElementDeleterBase(const InputParameters & parameters)
-  : MeshModifier(parameters),
-    _assign_boundary(isParamValid("new_boundary")),
-    _boundary_name(_assign_boundary ? getParam<BoundaryName>("new_boundary") : "")
+  : MeshModifier(parameters)
 {
 }
 
@@ -44,8 +45,10 @@ ElementDeleterBase::modify()
   std::set<Elem *> deleteable_elems;
 
   // First let's figure out which elements need to be deleted
-  for (auto & elem : mesh.element_ptr_range())
+  const MeshBase::const_element_iterator end = mesh.elements_end();
+  for (MeshBase::const_element_iterator elem_it = mesh.elements_begin(); elem_it != end; ++elem_it)
   {
+    Elem * elem = *elem_it;
     if (shouldDelete(elem))
       deleteable_elems.insert(elem);
   }
@@ -66,14 +69,6 @@ ElementDeleterBase::modify()
     libmesh_assert(mesh.comm().semiverify(elem ? &is_deleteable : libmesh_nullptr));
   }
 #endif
-
-  // Get the BoundaryID from the mesh
-  BoundaryID boundary_id = 0;
-  if (_assign_boundary)
-    boundary_id = _mesh_ptr->getBoundaryIDs({_boundary_name}, true)[0];
-
-  // Get a reference to our BoundaryInfo object for later use
-  BoundaryInfo & boundary_info = mesh.get_boundary_info();
 
   /**
    * Delete all of the elements
@@ -99,13 +94,7 @@ ElementDeleterBase::modify()
       const unsigned int return_side = neighbor->which_neighbor_am_i(elem);
 
       if (neighbor->neighbor_ptr(return_side) == elem)
-      {
         neighbor->set_neighbor(return_side, nullptr);
-
-        // assign cut surface boundary
-        if (_assign_boundary)
-          boundary_info.add_side(neighbor, return_side, boundary_id);
-      }
     }
 
     mesh.delete_elem(elem);
@@ -128,8 +117,11 @@ ElementDeleterBase::modify()
     // The ghost_elements iterators in libMesh need to be updated
     // before we can use them safely here, so we'll test for
     // ghost-vs-local manually.
-    for (const auto & elem : mesh.element_ptr_range())
+    for (MeshBase::const_element_iterator el = mesh.elements_begin(), end_el = mesh.elements_end();
+         el != end_el;
+         ++el)
     {
+      const Elem * elem = *el;
       const processor_id_type pid = elem->processor_id();
       if (pid == my_proc_id)
         continue;
@@ -201,21 +193,11 @@ ElementDeleterBase::modify()
         mooseAssert(elem->neighbor_ptr(side) == remote_elem, "element neighbor != remote_elem");
 
         elem->set_neighbor(side, nullptr);
-
-        // assign cut surface boundary
-        if (_assign_boundary)
-          boundary_info.add_side(elem, side, boundary_id);
       }
     }
 
     Parallel::wait(query_requests);
     Parallel::wait(reply_requests);
-  }
-
-  if (_assign_boundary)
-  {
-    boundary_info.sideset_name(boundary_id) = _boundary_name;
-    boundary_info.nodeset_name(boundary_id) = _boundary_name;
   }
 
   /**

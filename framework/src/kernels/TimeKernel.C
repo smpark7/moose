@@ -1,19 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "TimeKernel.h"
 
 // MOOSE includes
 #include "Assembly.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "SystemBase.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
 
 template <>
@@ -21,29 +27,24 @@ InputParameters
 validParams<TimeKernel>()
 {
   InputParameters params = validParams<Kernel>();
-
-  params.set<MultiMooseEnum>("vector_tags") = "time";
-  params.set<MultiMooseEnum>("matrix_tags") = "system time";
-
   return params;
 }
 
-TimeKernel::TimeKernel(const InputParameters & parameters)
-  : Kernel(parameters), _u_dot(_var.uDot()), _du_dot_du(_var.duDotDu())
-{
-}
+TimeKernel::TimeKernel(const InputParameters & parameters) : Kernel(parameters) {}
 
 void
 TimeKernel::computeResidual()
 {
-  prepareVectorTag(_assembly, _var.number());
+  DenseVector<Number> & re = _assembly.residualBlock(_var.number(), Moose::KT_TIME);
+  _local_re.resize(re.size());
+  _local_re.zero();
 
   precalculateResidual();
   for (_i = 0; _i < _test.size(); _i++)
     for (_qp = 0; _qp < _qrule->n_points(); _qp++)
       _local_re(_i) += _JxW[_qp] * _coord[_qp] * computeQpResidual();
 
-  accumulateTaggedLocalResidual();
+  re += _local_re;
 
   if (_has_save_in)
   {

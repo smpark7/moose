@@ -35,7 +35,7 @@
 # These are not actally used in this example.
 #
 # Material properties:
-# Young's modulus = 8 GPa
+# Young's modulus = 16 GPa
 # Poisson's ratio = 0.25
 # Cosserat layer thickness = 1 m
 # Cosserat-joint normal stiffness = large
@@ -408,6 +408,7 @@
 []
 
 [Materials]
+  active = 'elasticity_tensor dp wp density strain stress'
   [./elasticity_tensor]
     type = ComputeLayeredCosseratElasticityTensor
     young = 8E3 # MPa
@@ -417,14 +418,16 @@
     joint_shear_stiffness = 1E3
   [../]
 
+  [./elastic_strain]
+    type = ComputeSmallStrain
+  [../]
+  [./elastic_stress]
+    type = ComputeLinearElasticStress
+    initial_stress = 'ini_xx 0 0  0 ini_xx 0  0 0 ini_zz'
+  [../]
+
   [./strain]
     type = ComputeCosseratIncrementalSmallStrain
-    eigenstrain_names = ini_stress
-  [../]
-  [./ini_stress]
-    type = ComputeEigenstrainFromInitialStress
-    initial_stress = 'ini_xx 0 0  0 ini_xx 0  0 0 ini_zz'
-    eigenstrain_name = ini_stress
   [../]
 
   [./stress]
@@ -435,6 +438,7 @@
     absolute_tolerance = 1E6
     max_iterations = 1
     tangent_operator = nonlinear
+    initial_stress = 'ini_xx 0 0  0 ini_xx 0  0 0 ini_zz'
     perform_finite_strain_rotations = false
   [../]
   [./dp]
@@ -443,7 +447,7 @@
     warn_about_precision_loss = false
     host_youngs_modulus = 8E3
     host_poissons_ratio = 0.25
-    base_name = dp
+    name_prepender = dp
     DP_model = drucker_prager_model
     tensile_strength = dp_tensile_str_strong_harden
     compressive_strength = dp_compressive_str
@@ -458,7 +462,7 @@
     type = CappedWeakPlaneCosseratStressUpdate
     block = 0
     warn_about_precision_loss = false
-    base_name = wp
+    name_prepender = wp
     cohesion = wp_coh_harden
     tan_friction_angle = wp_tan_fric
     tan_dilation_angle = wp_tan_dil
@@ -526,6 +530,7 @@
   exodus = true
   [./console]
     type = Console
+    perf_log = true
     output_linear = false
   [../]
 []

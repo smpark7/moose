@@ -30,6 +30,11 @@
 []
 
 [Kernels]
+  # V equation
+  [./td_v]
+    type = TimeDerivative
+    variable = v
+  [../]
   [./diff_v]
     type = CoefDiffusion
     variable = u

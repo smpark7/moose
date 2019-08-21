@@ -1,20 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
+#ifndef MULTIAPP_H
+#define MULTIAPP_H
 
 #include "MooseObject.h"
 #include "SetupInterface.h"
 #include "Restartable.h"
-
-#include "libmesh/communicator.h"
-#include "libmesh/point.h"
 
 class MultiApp;
 class UserObject;
@@ -27,14 +29,13 @@ class Backup;
 // libMesh forward declarations
 namespace libMesh
 {
-class BoundingBox;
 namespace MeshTools
 {
 class BoundingBox;
 }
 template <typename T>
 class NumericVector;
-} // namespace libMesh
+}
 
 template <>
 InputParameters validParams<MultiApp>();
@@ -58,23 +59,6 @@ class MultiApp : public MooseObject, public SetupInterface, public Restartable
 {
 public:
   MultiApp(const InputParameters & parameters);
-
-  virtual void preExecute() {}
-
-  /**
-   * Method called towards the end of the simulation to execute on final.
-   */
-  virtual void finalize();
-
-  /**
-   * Method called at the end of the simulation (after finalize)
-   */
-  virtual void postExecute();
-
-  /**
-   * Called just after construction to allow derived classes to set _positions;
-   */
-  void setupPositions();
 
   virtual void initialSetup() override;
 
@@ -100,20 +84,12 @@ public:
   virtual bool solveStep(Real dt, Real target_time, bool auto_advance = true) = 0;
 
   /**
-   * Advances the multi-apps time step which is important for dt selection.
-   * (Note this does not advance the *time*. That is done in Transient::endStep,
-   * which is called either directly from solveStep() for loose coupling cases
-   * or through finishStep() for Picard coupling cases)
+   * Actually advances time and causes output.
+   *
+   * If auto_advance=true was used in solveStep() then this function
+   * will do nothing.
    */
-  virtual void incrementTStep(Real /*target_time*/) {}
-
-  /**
-   * Calls multi-apps executioners' endStep and postStep methods which creates output and advances
-   * time (not the time step; see incrementTStep()) among other things. This method is only called
-   * for Picard calculations because for loosely coupled calculations the executioners' endStep and
-   * postStep methods are called from solveStep().
-   */
-  virtual void finishStep() {}
+  virtual void advanceStep() = 0;
 
   /**
    * Save off the state of every Sub App
@@ -149,14 +125,18 @@ public:
    * the size it would be if the geometry were 3D (ie if you were to revolve
    * the geometry around the axis to create the 3D geometry).
    * @param app The global app number you want to get the bounding box for
-   * @param displaced_mesh True if the bounding box is retrieved for the displaced mesh, other false
    */
-  virtual BoundingBox getBoundingBox(unsigned int app, bool displaced_mesh);
+  virtual MeshTools::BoundingBox getBoundingBox(unsigned int app);
 
   /**
    * Get the FEProblemBase this MultiApp is part of.
    */
   FEProblemBase & problemBase() { return _fe_problem; }
+
+  /**
+   * Get the FEProblem this MultiApp is part of.
+   */
+  FEProblem & problem();
 
   /**
    * Get the FEProblemBase for the global app is part of.
@@ -202,7 +182,7 @@ public:
   /**
    * @return Number of Apps on local processor.
    */
-  unsigned int numLocalApps() { return _apps.size(); }
+  unsigned int numLocalApps() { return _my_num_apps; }
 
   /**
    * @return The global number of the first app on the local processor.
@@ -307,20 +287,6 @@ protected:
   /// call back executed right before app->runInputFile()
   virtual void preRunInputFile();
 
-  /** Method to aid in getting the "cli_args" parameters.
-   *
-   * The method is virtual because it is needed to allow for batch runs within the stochastic tools
-   * module, see SamplerFullSolveMultiApp for an example.
-   */
-  virtual std::string getCommandLineArgsParamHelper(unsigned int local_app);
-
-  /**
-   * Initialize the MultiApp by creating the provided number of apps.
-   *
-   * This is called in the constructor, by default it utilizes the 'positions' input parameters.
-   */
-  void init(unsigned int num);
-
   /// The FEProblemBase this MultiApp is part of
   FEProblemBase & _fe_problem;
 
@@ -329,9 +295,6 @@ protected:
 
   /// The positions of all of the apps
   std::vector<Point> _positions;
-
-  /// Toggle use of "positions"
-  const bool _use_positions;
 
   /// The input file for each app's simulation
   std::vector<FileName> _input_files;
@@ -348,14 +311,11 @@ protected:
   /// The number of the first app on this processor
   unsigned int _first_local_app;
 
-  /// The original comm handle
-  const MPI_Comm & _orig_comm;
-
-  /// The communicator object that holds the MPI_Comm that we're going to use
-  libMesh::Parallel::Communicator _my_communicator;
+  /// The comm that was passed to us specifying our pool of processors
+  MPI_Comm _orig_comm;
 
   /// The MPI communicator this object is going to use.
-  MPI_Comm & _my_comm;
+  MPI_Comm _my_comm;
 
   /// The number of processors in the original comm
   int _orig_num_procs;
@@ -372,26 +332,14 @@ protected:
   /// Pointers to each of the Apps
   std::vector<std::shared_ptr<MooseApp>> _apps;
 
-  /// Flag if this multi-app computed its bounding box (valid only for non-displaced meshes)
-  std::vector<bool> _has_bounding_box;
-
-  /// This multi-app's bounding box
-  std::vector<BoundingBox> _bounding_box;
-
   /// Relative bounding box inflation
   Real _inflation;
-
-  /// Additional padding added to the bounding box, useful for 1D meshes
-  Point _bounding_box_padding;
 
   /// Maximum number of processors to give to each app
   unsigned int _max_procs_per_app;
 
   /// Whether or not to move the output of the MultiApp into position
   bool _output_in_position;
-
-  /// The offset time so the MultiApp local time relative to the global time
-  const Real _global_time_offset;
 
   /// The time at which to reset apps
   Real _reset_time;
@@ -419,9 +367,6 @@ protected:
 
   /// Backups for each local App
   SubAppBackups & _backups;
-
-  /// Storage for command line arguments
-  const std::vector<std::string> & _cli_args;
 };
 
 template <>
@@ -453,3 +398,5 @@ dataLoad(std::istream & stream, SubAppBackups & backups, void * context)
 
   multi_app->restore();
 }
+
+#endif // MULTIAPP_H

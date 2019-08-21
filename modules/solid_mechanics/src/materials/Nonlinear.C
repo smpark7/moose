@@ -1,17 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "Nonlinear.h"
 #include "SolidModel.h"
 #include "Problem.h"
 #include "SymmIsotropicElasticityTensor.h"
 
+// libmesh includes
 #include "libmesh/quadrature.h"
 
 namespace SolidMechanics
@@ -26,8 +25,7 @@ Nonlinear::Nonlinear(SolidModel & solid_model,
     _Uhat(3, 3)
 {
 
-  std::string increment_calculation =
-      solid_model.getParamTempl<std::string>("increment_calculation");
+  std::string increment_calculation = solid_model.getParam<std::string>("increment_calculation");
   std::transform(increment_calculation.begin(),
                  increment_calculation.end(),
                  increment_calculation.begin(),

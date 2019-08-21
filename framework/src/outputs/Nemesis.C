@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "Nemesis.h"
 
@@ -14,12 +19,9 @@
 #include "MooseApp.h"
 #include "MooseMesh.h"
 #include "MooseVariableScalar.h"
-#include "SystemBase.h"
 
-#include "libmesh/dof_map.h"
+// libMesh includes
 #include "libmesh/nemesis_io.h"
-
-registerMooseObject("MooseApp", Nemesis);
 
 template <>
 InputParameters
@@ -30,7 +32,7 @@ validParams<Nemesis>()
   params += AdvancedOutput::enableOutputTypes("scalar postprocessor input");
 
   // Add description for the Nemesis class
-  params.addClassDescription("Object for output data in the Nemesis (parallel ExodusII) format.");
+  params.addClassDescription("Object for output data in the Nemesis format");
 
   // Return the InputParameters
   return params;
@@ -100,30 +102,14 @@ Nemesis::outputScalarVariables()
   // Append the scalar to the global output lists
   for (const auto & out_name : out)
   {
-    // Make sure scalar values are in sync with the solution vector
-    // and are visible on this processor.  See TableOutput.C for
-    // TableOutput::outputScalarVariables() explanatory comments
-
-    MooseVariableScalar & scalar_var = _problem_ptr->getScalarVariable(0, out_name);
-    scalar_var.reinit();
-    VariableValue value(scalar_var.sln());
-
-    const std::vector<dof_id_type> & dof_indices = scalar_var.dofIndices();
-    const unsigned int n = dof_indices.size();
-    value.resize(n);
-
-    const DofMap & dof_map = scalar_var.sys().dofMap();
-    for (unsigned int i = 0; i != n; ++i)
-    {
-      const processor_id_type pid = dof_map.dof_owner(dof_indices[i]);
-      this->comm().broadcast(value[i], pid);
-    }
+    VariableValue & variable = _problem_ptr->getScalarVariable(0, out_name).sln();
+    unsigned int n = variable.size();
 
     // If the scalar has a single component, output the name directly
     if (n == 1)
     {
       _global_names.push_back(out_name);
-      _global_values.push_back(value[0]);
+      _global_values.push_back(variable[0]);
     }
 
     // If the scalar as many components add indices to the end of the name
@@ -134,7 +120,7 @@ Nemesis::outputScalarVariables()
         std::ostringstream os;
         os << out_name << "_" << i;
         _global_names.push_back(os.str());
-        _global_values.push_back(value[i]);
+        _global_values.push_back(variable[i]);
       }
     }
   }
@@ -153,20 +139,10 @@ Nemesis::output(const ExecFlagType & type)
   // Call the output methods
   AdvancedOutput::output(type);
 
-  // Set up the whitelist of nodal variable names to write.
-  _nemesis_io_ptr->set_output_variables(
-      std::vector<std::string>(getNodalVariableOutput().begin(), getNodalVariableOutput().end()));
-
-  // Write nodal data
+  // Write the data
   _nemesis_io_ptr->write_timestep(
       filename(), *_es_ptr, _nemesis_num, time() + _app.getGlobalTimeOffset());
   _nemesis_initialized = true;
-
-  // Write elemental data
-  std::vector<std::string> elemental(getElementalVariableOutput().begin(),
-                                     getElementalVariableOutput().end());
-  _nemesis_io_ptr->set_output_variables(elemental);
-  _nemesis_io_ptr->write_element_data(*_es_ptr);
 
   // Increment output call counter for the current file
   _nemesis_num++;

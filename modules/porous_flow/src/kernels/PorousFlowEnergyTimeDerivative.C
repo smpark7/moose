@@ -1,17 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowEnergyTimeDerivative.h"
 
+// MOOSE includes
 #include "MooseVariable.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowEnergyTimeDerivative);
 
 template <>
 InputParameters
@@ -26,8 +23,8 @@ validParams<PorousFlowEnergyTimeDerivative>()
                         " If you set this to true, you will also want to set the same parameter to "
                         "true for related Kernels and Materials");
   params.addRequiredParam<UserObjectName>(
-      "PorousFlowDictator", "The UserObject that holds the list of PorousFlow variable names.");
-  params.addClassDescription("Derivative of heat-energy-density wrt time");
+      "PorousFlowDictator", "The UserObject that holds the list of Porous-Flow variable names.");
+  params.addClassDescription("derivative of heat-energy-density wrt time");
   return params;
 }
 
@@ -50,15 +47,18 @@ PorousFlowEnergyTimeDerivative::PorousFlowEnergyTimeDerivative(const InputParame
     _rock_energy_nodal_old(getMaterialPropertyOld<Real>("PorousFlow_matrix_internal_energy_nodal")),
     _drock_energy_nodal_dvar(
         getMaterialProperty<std::vector<Real>>("dPorousFlow_matrix_internal_energy_nodal_dvar")),
-    _fluid_density(_fluid_present ? &getMaterialProperty<std::vector<Real>>(
-                                        "PorousFlow_fluid_phase_density_nodal")
-                                  : nullptr),
-    _fluid_density_old(_fluid_present ? &getMaterialPropertyOld<std::vector<Real>>(
-                                            "PorousFlow_fluid_phase_density_nodal")
-                                      : nullptr),
-    _dfluid_density_dvar(_fluid_present ? &getMaterialProperty<std::vector<std::vector<Real>>>(
-                                              "dPorousFlow_fluid_phase_density_nodal_dvar")
-                                        : nullptr),
+    _fluid_density(
+        _fluid_present
+            ? &getMaterialProperty<std::vector<Real>>("PorousFlow_fluid_phase_density_nodal")
+            : nullptr),
+    _fluid_density_old(
+        _fluid_present
+            ? &getMaterialPropertyOld<std::vector<Real>>("PorousFlow_fluid_phase_density_nodal")
+            : nullptr),
+    _dfluid_density_dvar(_fluid_present
+                             ? &getMaterialProperty<std::vector<std::vector<Real>>>(
+                                   "dPorousFlow_fluid_phase_density_nodal_dvar")
+                             : nullptr),
     _fluid_saturation_nodal(
         _fluid_present ? &getMaterialProperty<std::vector<Real>>("PorousFlow_saturation_nodal")
                        : nullptr),
@@ -69,15 +69,18 @@ PorousFlowEnergyTimeDerivative::PorousFlowEnergyTimeDerivative(const InputParame
                                       ? &getMaterialProperty<std::vector<std::vector<Real>>>(
                                             "dPorousFlow_saturation_nodal_dvar")
                                       : nullptr),
-    _energy_nodal(_fluid_present ? &getMaterialProperty<std::vector<Real>>(
-                                       "PorousFlow_fluid_phase_internal_energy_nodal")
-                                 : nullptr),
-    _energy_nodal_old(_fluid_present ? &getMaterialPropertyOld<std::vector<Real>>(
-                                           "PorousFlow_fluid_phase_internal_energy_nodal")
-                                     : nullptr),
-    _denergy_nodal_dvar(_fluid_present ? &getMaterialProperty<std::vector<std::vector<Real>>>(
-                                             "dPorousFlow_fluid_phase_internal_energy_nodal_dvar")
-                                       : nullptr)
+    _energy_nodal(_fluid_present
+                      ? &getMaterialProperty<std::vector<Real>>(
+                            "PorousFlow_fluid_phase_internal_energy_nodal")
+                      : nullptr),
+    _energy_nodal_old(_fluid_present
+                          ? &getMaterialPropertyOld<std::vector<Real>>(
+                                "PorousFlow_fluid_phase_internal_energy_nodal")
+                          : nullptr),
+    _denergy_nodal_dvar(_fluid_present
+                            ? &getMaterialProperty<std::vector<std::vector<Real>>>(
+                                  "dPorousFlow_fluid_phase_internal_energy_nodal_dvar")
+                            : nullptr)
 {
 }
 
@@ -100,7 +103,7 @@ PorousFlowEnergyTimeDerivative::computeQpResidual()
 Real
 PorousFlowEnergyTimeDerivative::computeQpJacobian()
 {
-  // If the variable is not a PorousFlow variable (very unusual), the diag Jacobian terms are 0
+  /// If the variable is not a PorousFlow variable (very unusual), the diag Jacobian terms are 0
   if (!_var_is_porflow_var)
     return 0.0;
   return computeQpJac(_dictator.porousFlowVariableNum(_var.number()));
@@ -109,7 +112,7 @@ PorousFlowEnergyTimeDerivative::computeQpJacobian()
 Real
 PorousFlowEnergyTimeDerivative::computeQpOffDiagJacobian(unsigned int jvar)
 {
-  // If the variable is not a PorousFlow variable, the OffDiag Jacobian terms are 0
+  /// If the variable is not a PorousFlow variable, the OffDiag Jacobian terms are 0
   if (_dictator.notPorousFlowVariable(jvar))
     return 0.0;
   return computeQpJac(_dictator.porousFlowVariableNum(jvar));
@@ -131,7 +134,7 @@ PorousFlowEnergyTimeDerivative::computeQpJac(unsigned int pvar) const
   if (_i != _j)
     return _test[_i][_qp] * denergy / _dt;
 
-  // As the fluid energy is lumped to the nodes, only non-zero terms are for _i==_j
+  /// As the fluid energy is lumped to the nodes, only non-zero terms are for _i==_j
   denergy += -_dporosity_dvar[_i][pvar] * _rock_energy_nodal[_i];
   denergy += (1.0 - _porosity[_i]) * _drock_energy_nodal_dvar[_i][pvar];
   for (unsigned ph = 0; ph < _num_phases; ++ph)

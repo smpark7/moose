@@ -5,6 +5,7 @@
   nx = 10
   ymax = 2
   ny = 10
+  parallel_type = replicated
 []
 
 [MeshModifiers]
@@ -44,10 +45,12 @@
   [./diff]
     type = Diffusion
     variable = u
+    block = 1
   [../]
   [./source]
     type = BodyForce
     variable = u
+    block = 1
   [../]
 []
 
@@ -57,6 +60,7 @@
     variable = u
     sigma = 4
     epsilon = 1
+    block = 1
   [../]
 []
 
@@ -77,7 +81,6 @@
   [./norm]
     type = ElementL2Norm
     variable = u
-    block = 1
   [../]
 []
 

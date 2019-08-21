@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MooseParsedFunctionBase.h"
 
@@ -20,16 +25,14 @@ validParams<MooseParsedFunctionBase>()
 {
   InputParameters params = emptyInputParameters();
   params.addParam<std::vector<std::string>>(
-      "vars",
-      "Variables (excluding t,x,y,z) that are bound to the values provided by the corresponding "
-      "items in the vals vector.");
+      "vars", "The constant variables (excluding t,x,y,z) in the forcing function.");
   params.addParam<std::vector<std::string>>(
-      "vals", "Constant numeric values, postprocessor names, or function names for vars.");
+      "vals", "Constant numeric values or postprocessor names for vars.");
   return params;
 }
 
 MooseParsedFunctionBase::MooseParsedFunctionBase(const InputParameters & parameters)
-  : _pfb_feproblem(*parameters.getCheckedPointerParam<FEProblemBase *>("_fe_problem_base")),
+  : _pfb_feproblem(*parameters.get<FEProblemBase *>("_fe_problem_base")),
     _vars(parameters.get<std::vector<std::string>>("vars")),
     _vals(parameters.get<std::vector<std::string>>("vals"))
 {

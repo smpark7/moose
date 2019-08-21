@@ -1,15 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MTPiecewiseConst2D.h"
-
-registerMooseObject("MooseTestApp", MTPiecewiseConst2D);
 
 template <>
 InputParameters
@@ -22,7 +25,7 @@ validParams<MTPiecewiseConst2D>()
 MTPiecewiseConst2D::MTPiecewiseConst2D(const InputParameters & parameters) : Function(parameters) {}
 
 Real
-MTPiecewiseConst2D::value(Real /*t*/, const Point & p) const
+MTPiecewiseConst2D::value(Real /*t*/, const Point & p)
 {
   Real val = 0;
   Real x = p(0);

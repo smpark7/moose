@@ -1,15 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef INERTIALFORCE_H
+#define INERTIALFORCE_H
 
-#pragma once
-
-#include "TimeKernel.h"
+#include "Kernel.h"
 #include "Material.h"
 
 // Forward Declarations
@@ -18,7 +16,7 @@ class InertialForce;
 template <>
 InputParameters validParams<InertialForce>();
 
-class InertialForce : public TimeKernel
+class InertialForce : public Kernel
 {
 public:
   InertialForce(const InputParameters & parameters);
@@ -30,23 +28,13 @@ protected:
 
 private:
   const MaterialProperty<Real> & _density;
-  const VariableValue * _u_old;
-  const VariableValue * _vel_old;
-  const VariableValue * _accel_old;
-  const bool _has_beta;
-  const bool _has_gamma;
+  const VariableValue & _u_old;
+  const VariableValue & _vel_old;
+  const VariableValue & _accel_old;
   const Real _beta;
   const Real _gamma;
-  const bool _has_velocity;
-  const bool _has_acceleration;
   const MaterialProperty<Real> & _eta;
   const Real _alpha;
-
-  // Velocity and acceleration calculated by time integrator
-  const VariableValue * _u_dot;
-  const VariableValue * _u_dotdot;
-  const VariableValue * _u_dot_old;
-  const VariableValue * _du_dot_du;
-  const VariableValue * _du_dotdot_du;
 };
 
+#endif // INERTIALFORCE_H

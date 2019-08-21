@@ -6,58 +6,60 @@
 []
 
 [Variables]
-  [u]
+  active = 'u v'
+  [./u]
     order = FIRST
     family = LAGRANGE
-  []
-  [v]
+  [../]
+  [./v]
     order = FIRST
     family = LAGRANGE
-  []
+  [../]
 []
 
 [Kernels]
-  [diff_u]
+  active = 'diff_u conv_v diff_v'
+  [./diff_u]
     type = Diffusion
     variable = u
-  []
-  [conv_v]
+  [../]
+  [./conv_v]
     type = CoupledForce
     variable = v
     v = 'u'
-  []
-  [diff_v]
+  [../]
+  [./diff_v]
     type = Diffusion
     variable = v
-  []
+  [../]
 []
 
 [BCs]
-  inactive = 'right_v'
-  [left_u]
+  active = 'left_u right_u left_v'
+  [./left_u]
     type = DirichletBC
     variable = u
     boundary = '1'
     value = 0
-  []
-  [right_u]
+  [../]
+  [./right_u]
     type = DirichletBC
     variable = u
     boundary = '2'
     value = 100
-  []
-  [left_v]
+  [../]
+  [./left_v]
     type = DirichletBC
     variable = v
     boundary = '1'
     value = 0
-  []
-  [right_v]
+  [../]
+  [./right_v]
     type = DirichletBC
     variable = v
     boundary = '2'
     value = 0
-  []
+  [../]
 []
 
 [Executioner]
@@ -69,11 +71,12 @@
 []
 
 [Preconditioning]
-  [FSP]
+  active = 'FSP'
+  [./FSP]
     # It is the starting point of splitting
     type = FSP
-    topsplit = 'uv' # uv should match the following block name
-    [uv]
+    topsplit = 'uv'    # uv should match the following block name
+    [./uv]
       # Generally speaking, there are four types of splitting we could choose
       # <additive,multiplicative,symmetric_multiplicative,schur>
       # An approximate solution to the original system
@@ -85,26 +88,27 @@
       # control how schur works using PETSc options
       # petsc_options_iname = '-pc_fieldsplit_schur_fact_type -pc_fieldsplit_schur_precondition'
       # petsc_options_value = 'full selfp'
-      splitting = 'u v' # u and v are the names of subsolvers
+      splitting = 'u v'      # u and v are the names of subsolvers
       splitting_type = additive
-    []
-    [u]
+    [../]
+    [./u]
       # PETSc options for this subsolver
       # A prefix will be applied, so just put the options for this subsolver only
       vars = 'u'
       petsc_options_iname = '-pc_type -ksp_type'
       petsc_options_value = '     hypre preonly'
-    []
-    [v]
+    [../]
+    [./v]
       # PETSc options for this subsolver
       vars = 'v'
       petsc_options_iname = '-pc_type -ksp_type'
       petsc_options_value = '     hypre  preonly'
-    []
-  []
+    [../]
+  [../]
 []
 
 [Outputs]
   file_base = out
   exodus = true
 []
+

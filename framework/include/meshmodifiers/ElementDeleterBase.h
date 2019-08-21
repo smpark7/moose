@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ELEMENTDELETERBASE_H
+#define ELEMENTDELETERBASE_H
 
 #include "MeshModifier.h"
 
@@ -36,11 +42,6 @@ protected:
    * element should be removed from the mesh.
    */
   virtual bool shouldDelete(const Elem * elem) = 0;
-
-  ///  Assign a boundary name to the cut surface?
-  const bool _assign_boundary;
-
-  /// Name of the boundary name to assign to the cut surface
-  const BoundaryName _boundary_name;
 };
 
+#endif /* ELEMENTDELETERBASE_H */

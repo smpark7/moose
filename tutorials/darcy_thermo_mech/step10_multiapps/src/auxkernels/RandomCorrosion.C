@@ -1,19 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "RandomCorrosion.h"
 #include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/mesh_tools.h"
-
-registerMooseObject("DarcyThermoMechApp", RandomCorrosion);
 
 template <>
 InputParameters
@@ -35,7 +39,7 @@ validParams<RandomCorrosion>()
                         "Temperature at which corrosion begins, "
                         "the greater the 'temperature' drifts "
                         "from this the greater the amount of "
-                        "corrosion locations that occurs.");
+                        "corrision locations that occurs.");
   params.addParam<PostprocessorName>(
       "temperature",
       274.15,
@@ -79,8 +83,8 @@ RandomCorrosion::computeValue()
 {
 
   // If the current node is at a "corrosion" point, set the phase variable to zero
-  for (const Point & pt : _points)
-    if (_current_node->absolute_fuzzy_equals(pt, _nodal_tol))
+  for (std::vector<Point>::const_iterator it = _points.begin(); it != _points.end(); ++it)
+    if (_current_node->absolute_fuzzy_equals(*it, _nodal_tol))
       return 0.0;
 
   // Do nothing to the phase variable if not at a "corrosion" point

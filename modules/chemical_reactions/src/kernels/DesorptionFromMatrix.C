@@ -1,17 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "DesorptionFromMatrix.h"
 
 #include <iostream>
-
-registerMooseObject("ChemicalReactionsApp", DesorptionFromMatrix);
 
 template <>
 InputParameters
@@ -22,7 +17,7 @@ validParams<DesorptionFromMatrix>()
       "pressure_var",
       "Variable representing the porepressure of the fluid adsorbed into the matrix");
   params.addClassDescription("Mass flow rate from the matrix to the porespace.  Add this to "
-                             "TimeDerivative kernel to get complete DE for the fluid adsorbed "
+                             "TimeDerivative kernel to get complete DE for the fluid in adsorbed "
                              "in the matrix");
   return params;
 }

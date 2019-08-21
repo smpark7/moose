@@ -1,14 +1,6 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
 from FileTester import FileTester
 import os
+import util
 import sys
 from mooseutils.ImageDiffer import ImageDiffer
 
@@ -32,14 +24,14 @@ class ImageDiff(FileTester):
     def getOutputFiles(self):
         return self.specs['imagediff']
 
-    def processResults(self, moose_dir, options, output):
+    def processResults(self, moose_dir, retcode, options, output):
         """
         Perform image diff
         """
 
         # Call base class processResults
-        FileTester.processResults(self, moose_dir, options, output)
-        if self.isFail():
+        output = FileTester.processResults(self, moose_dir, retcode, options, output)
+        if self.getStatus() == self.bucket_fail:
             return output
 
         # Loop through files
@@ -49,7 +41,7 @@ class ImageDiff(FileTester):
             # Error if gold file does not exist
             if not os.path.exists(os.path.join(specs['test_dir'], specs['gold_dir'], filename)):
                 output += "File Not Found: " + os.path.join(specs['test_dir'], specs['gold_dir'], filename)
-                self.setStatus(self.fail, 'MISSING GOLD FILE')
+                self.setStatus('MISSING GOLD FILE', self.bucket_fail)
                 break
 
             # Perform diff
@@ -70,7 +62,11 @@ class ImageDiff(FileTester):
 
                 output += differ.message()
                 if differ.fail():
-                    self.setStatus(self.diff, 'IMAGEDIFF')
+                    self.setStatus('IMAGEDIFF', self.bucket_diff)
                     break
+
+        # If status is still pending, then it is a passing test
+        if self.getStatus() == self.bucket_pending:
+            self.setStatus(self.success_message, self.bucket_success)
 
         return output

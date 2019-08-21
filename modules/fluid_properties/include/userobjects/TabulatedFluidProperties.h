@@ -1,26 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef TABULATEDFLUIDPROPERTIES_H
+#define TABULATEDFLUIDPROPERTIES_H
 
-#include "SinglePhaseFluidProperties.h"
+#include "SinglePhaseFluidPropertiesPT.h"
 #include "DelimitedFileReader.h"
 
 class SinglePhaseFluidPropertiesPT;
-class BicubicInterpolation;
+class BicubicSplineInterpolation;
 class TabulatedFluidProperties;
 
 template <>
 InputParameters validParams<TabulatedFluidProperties>();
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
 
 /**
  * Class for fluid properties read from a file.
@@ -32,25 +28,22 @@ InputParameters validParams<TabulatedFluidProperties>();
  * included or not monotonic, and an error is also thrown if this UserObject is
  * requested to provide a fluid property outside this phase space.
  *
- * This class is intended to be used when complicated formulations for fluid properties
- * (for example, density or enthalpy) are required, which can be computationally expensive.
+ * This class is intended to be used when complicated formulations for density,
+ * internal energy or enthalpy are required, which can be computationally expensive.
  * This is particularly the case where the fluid equation of state is based on a
  * Helmholtz free energy that is a function of density and temperature, like that
  * used in CO2FluidProperties. In this case, density must be solved iteratively using
  * pressure and temperature, which increases the computational burden.
  *
- * Using interpolation to calculate these fluid properties can significantly reduce
- * the computational time for these cases.
+ * In these cases, using an interpolation of the tabulated fluid properties can
+ * significantly reduce the computational time for computing density, internal energy,
+ * and enthalpy.
  *
  * The expected file format for the tabulated fluid properties is now described.
  * The first line must be the header containing the required column
- * names "pressure" and "temperature", and the names of the fluid properties to be
- * read. Available fluid property names are:
- * "density", "enthalpy", "internal_energy", "viscosity", "k" (thermal conductivity),
- * "cp" (isobaric specific heat capacity), "cv" (isochoric specific heat capacity),
- * and "entropy".
- * Note: the order is not important, although having pressure and temperature first
- * makes the data easier for a human to read).
+ * names "pressure", "temperature", "density", "enthalpy", "internal_energy" (note: the
+ * order is not important, although having pressure and temperature first makes the data
+ * easier for a human to read).
  *
  * The data in the pressure and temperature columns must be monotonically increasing. This file
  * format does require duplication of the pressure and temperature data - each pressure value
@@ -70,11 +63,9 @@ InputParameters validParams<TabulatedFluidProperties>();
  *
  * and so on.
  *
- * If no tabulated fluid property data file exists, then data for the fluid supplied
- * by the required FluidProperties UserObject will be generated using the pressure
- * and temperature ranges specified in the input file at the beginning of the simulation.
- * The properties to be tabulated are provided in the "interpolated_properties" input
- * parameter (the properties that can be tabulated are listed above).
+ * If no tabulated fluid property data file exists, then data for density, internal energy
+ * and enthalpy will be generated using the pressure and temperature ranges specified
+ * in the input file at the beginning of the simulation.
  *
  * This tabulated data will be written to file in the correct format,
  * enabling suitable data files to be created for future use. There is an upfront
@@ -85,11 +76,15 @@ InputParameters validParams<TabulatedFluidProperties>();
  * the initial time to generate the data and the subsequent interpolation time can be much
  * less than using the original FluidProperties UserObject.
  *
- * Properties specified in the data file or listed in the input file (and their derivatives
- * wrt pressure and temperature) will be calculated using bicubic interpolation, while all
- * remaining fluid properties are calculated using the supplied FluidProperties UserObject.
+ * Density, internal_energy and enthalpy and their derivatives wrt pressure and
+ * temperature are always calculated using bicubic spline interpolation, while all
+ * remaining fluid properties are calculated using the FluidProperties UserObject _fp.
+ *
+ * A function to write generated data to file using the correct format is provided
+ * to allow suitable files of fluid property data to be generated using the FluidProperties
+ * module UserObjects.
  */
-class TabulatedFluidProperties : public SinglePhaseFluidProperties
+class TabulatedFluidProperties : public SinglePhaseFluidPropertiesPT
 {
 public:
   TabulatedFluidProperties(const InputParameters & parameters);
@@ -97,52 +92,55 @@ public:
 
   virtual void initialSetup() override;
 
+  /// Fluid name
   virtual std::string fluidName() const override;
-
+  /// Molar mass
   virtual Real molarMass() const override;
-
-  virtual Real rho_from_p_T(Real pressure, Real temperature) const override;
-
-  virtual void rho_from_p_T(
+  /// Density
+  virtual Real rho(Real pressure, Real temperature) const override;
+  /// Density and its derivatives wrt pressure and temperature
+  virtual void rho_dpT(
       Real pressure, Real temperature, Real & rho, Real & drho_dp, Real & drho_dT) const override;
-
-  virtual Real e_from_p_T(Real pressure, Real temperature) const override;
-
+  /// Internal energy
+  virtual Real e(Real pressure, Real temperature) const override;
+  /// Internal energy and its derivatives wrt pressure and temperature
   virtual void
-  e_from_p_T(Real pressure, Real temperature, Real & e, Real & de_dp, Real & de_dT) const override;
-
-  virtual Real h_from_p_T(Real p, Real T) const override;
-
+  e_dpT(Real pressure, Real temperature, Real & e, Real & de_dp, Real & de_dT) const override;
+  /// Density and internal energy, and derivatives wrt pressure and temperature
+  virtual void rho_e_dpT(Real pressure,
+                         Real temperature,
+                         Real & rho,
+                         Real & drho_dp,
+                         Real & drho_dT,
+                         Real & e,
+                         Real & de_dp,
+                         Real & de_dT) const override;
+  /// Enthalpy
+  virtual Real h(Real p, Real T) const override;
+  /// Enthalpy and its derivatives wrt pressure and temperature
   virtual void
-  h_from_p_T(Real pressure, Real temperature, Real & h, Real & dh_dp, Real & dh_dT) const override;
-
-  virtual Real mu_from_p_T(Real pressure, Real temperature) const override;
-
-  virtual void mu_from_p_T(
-      Real pressure, Real temperature, Real & mu, Real & dmu_dp, Real & dmu_dT) const override;
-
-  virtual Real cp_from_p_T(Real pressure, Real temperature) const override;
-
-  using SinglePhaseFluidProperties::cp_from_p_T;
-
-  virtual Real cv_from_p_T(Real pressure, Real temperature) const override;
-
-  virtual Real c_from_p_T(Real pressure, Real temperature) const override;
-
-  virtual Real k_from_p_T(Real pressure, Real temperature) const override;
-
-  virtual void
-  k_from_p_T(Real pressure, Real temperature, Real & k, Real & dk_dp, Real & dk_dT) const override;
-
-  virtual Real s_from_p_T(Real pressure, Real temperature) const override;
-
-  virtual void s_from_p_T(Real p, Real T, Real & s, Real & ds_dp, Real & ds_dT) const override;
-
-  virtual std::vector<Real> henryCoefficients() const override;
-
-  virtual Real vaporPressure(Real temperature) const override;
-
-  virtual void vaporPressure(Real temperature, Real & psat, Real & dpsat_dT) const override;
+  h_dpT(Real pressure, Real temperature, Real & h, Real & dh_dp, Real & dh_dT) const override;
+  /// Viscosity
+  virtual Real mu(Real density, Real temperature) const override;
+  /// Derivatives of viscosity wrt density and temperature
+  virtual void mu_drhoT(
+      Real density, Real temperature, Real & mu, Real & dmu_drho, Real & dmu_dT) const override;
+  /// Specific isobaric heat capacity
+  virtual Real cp(Real pressure, Real temperature) const override;
+  /// Specific isochoric heat capacity
+  virtual Real cv(Real pressure, Real temperature) const override;
+  /// Speed of sound
+  virtual Real c(Real pressure, Real temperature) const override;
+  /// Thermal conductivity
+  virtual Real k(Real density, Real temperature) const override;
+  /// Specific entropy
+  virtual Real s(Real pressure, Real temperature) const override;
+  /// Thermal expansion coefficient
+  virtual Real beta(Real pressure, Real temperature) const override;
+  /// Henry's law constant for dissolution in water
+  virtual Real henryConstant(Real temperature) const override;
+  /// Henry's law constant for dissolution in water and derivative wrt temperature
+  virtual void henryConstant_dT(Real temperature, Real & Kh, Real & dKh_dT) const override;
 
 protected:
   /**
@@ -157,7 +155,7 @@ protected:
    * @param pressure input pressure (Pa)
    * @param temperature input temperature (K)
    */
-  virtual void checkInputVariables(Real & pressure, Real & temperature) const;
+  void checkInputVariables(Real pressure, Real temperature) const;
 
   /**
    * Generates a table of fluid properties by looping over pressure and temperature
@@ -183,11 +181,22 @@ protected:
   std::vector<Real> _pressure;
   /// Temperature vector
   std::vector<Real> _temperature;
-  /// Tabulated fluid properties
-  std::vector<std::vector<Real>> _properties;
-
-  /// Interpolated fluid property
-  std::vector<std::unique_ptr<BicubicInterpolation>> _property_ipol;
+  /// Tabulated density
+  std::vector<std::vector<Real>> _density;
+  /// Tabulated internal energy
+  std::vector<std::vector<Real>> _internal_energy;
+  /// Tabulated enthalpy
+  std::vector<std::vector<Real>> _enthalpy;
+  /// Interpoled density
+  std::unique_ptr<BicubicSplineInterpolation> _density_ipol;
+  /// Interpoled internal energy
+  std::unique_ptr<BicubicSplineInterpolation> _internal_energy_ipol;
+  /// Interpoled enthalpy
+  std::unique_ptr<BicubicSplineInterpolation> _enthalpy_ipol;
+  /// Derivatives along the boundary
+  std::vector<Real> _drho_dp_0, _drho_dp_n, _drho_dT_0, _drho_dT_n;
+  std::vector<Real> _de_dp_0, _de_dp_n, _de_dT_0, _de_dT_n;
+  std::vector<Real> _dh_dp_0, _dh_dp_n, _dh_dT_0, _dh_dT_n;
 
   /// Minimum temperature in tabulated data
   Real _temperature_min;
@@ -201,44 +210,19 @@ protected:
   unsigned int _num_T;
   /// Number of pressure points in the tabulated data
   unsigned int _num_p;
-  /// Whether to save a generated fluid properties file to disk
-  const bool _save_file;
+  /// Index for derivatives wrt pressure
+  const unsigned int _wrt_p = 1;
+  /// Index for derivatives wrt temperature
+  const unsigned int _wrt_T = 2;
 
   /// SinglePhaseFluidPropertiesPT UserObject
-  const SinglePhaseFluidProperties & _fp;
+  const SinglePhaseFluidPropertiesPT & _fp;
 
   /// List of required column names to be read
-  const std::vector<std::string> _required_columns{"pressure", "temperature"};
-  /// List of possible property column names to be read
-  const std::vector<std::string> _property_columns{
-      "density", "enthalpy", "internal_energy", "viscosity", "k", "cv", "cp", "entropy"};
-  /// Properties to be interpolated entered in the input file
-  MultiMooseEnum _interpolated_properties_enum;
-  /// List of properties to be interpolated
-  std::vector<std::string> _interpolated_properties;
-  /// Set of flags to note whether a property is to be interpolated
-  bool _interpolate_density;
-  bool _interpolate_enthalpy;
-  bool _interpolate_internal_energy;
-  bool _interpolate_viscosity;
-  bool _interpolate_k;
-  bool _interpolate_cp;
-  bool _interpolate_cv;
-  bool _interpolate_entropy;
-
-  /// Index of each property
-  unsigned int _density_idx;
-  unsigned int _enthalpy_idx;
-  unsigned int _internal_energy_idx;
-  unsigned int _viscosity_idx;
-  unsigned int _k_idx;
-  unsigned int _cp_idx;
-  unsigned int _cv_idx;
-  unsigned int _entropy_idx;
-
+  const std::vector<std::string> _required_columns{
+      "pressure", "temperature", "density", "enthalpy", "internal_energy"};
   /// The MOOSE delimited file reader.
   MooseUtils::DelimitedFileReader _csv_reader;
 };
 
-#pragma GCC diagnostic pop
-
+#endif /* TABULATEDFLUIDPROPERTIES_H */

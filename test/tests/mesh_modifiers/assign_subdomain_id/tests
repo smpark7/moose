@@ -1,5 +1,4 @@
 [Tests]
-  deprecated = True
   [./test]
     type = 'Exodiff'
     input = 'assign_subdomain_id.i'

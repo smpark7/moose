@@ -1,20 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "RankTwoScalarTools.h"
 
 // MOOSE includes
 #include "MooseEnum.h"
 #include "RankTwoTensor.h"
-#include "MooseError.h"
-
-#include "libmesh/point.h"
 
 namespace RankTwoScalarTools
 {
@@ -25,7 +20,7 @@ scalarOptions()
   return MooseEnum("VonMisesStress EffectiveStrain Hydrostatic L2norm MaxPrincipal "
                    "MidPrincipal MinPrincipal VolumetricStrain FirstInvariant SecondInvariant "
                    "ThirdInvariant AxialStress HoopStress RadialStress TriaxialityStress "
-                   "Direction MaxShear StressIntensity");
+                   "Direction");
 }
 
 Real
@@ -53,13 +48,13 @@ getQuantity(const RankTwoTensor & tensor,
       val = L2norm(tensor);
       break;
     case 4:
-      val = maxPrincipal(tensor, direction);
+      val = maxPrinciple(tensor);
       break;
     case 5:
-      val = midPrincipal(tensor, direction);
+      val = midPrinciple(tensor);
       break;
     case 6:
-      val = minPrincipal(tensor, direction);
+      val = minPrinciple(tensor);
       break;
     case 7:
       val = volumetricStrain(tensor);
@@ -87,12 +82,6 @@ getQuantity(const RankTwoTensor & tensor,
       break;
     case 15:
       val = directionValueTensor(tensor, direction);
-      break;
-    case 16:
-      val = maxShear(tensor);
-      break;
-    case 17:
-      val = stressIntensity(tensor);
       break;
     default:
       mooseError("RankTwoScalarAux Error: Pass valid scalar type - " +
@@ -152,23 +141,14 @@ L2norm(const RankTwoTensor & r2tensor)
 Real
 volumetricStrain(const RankTwoTensor & strain)
 {
-  // Since the strains are logarithmic strains, which are by definition log(L/L0),
-  // exp(log_strain) = L/L0
-  // The ratio of the volume change of a strained cube to the original volume
-  // (delta V / V) is thus:
-  // exp(log_strain_11) * exp(log_strain_22) * exp(log_strain_33) - 1
-  //
-  // Since eng_strain = exp(log_strain) - 1, the equivalent calculation using
-  // engineering strains would be:
-  // (1 + eng_strain_11) * (1 + eng_strain_22) + (1 + eng_strain_33) - 1
-  // If strains are small, the resulting terms that involve squared and cubed
-  // strains are negligible, resulting in the following approximate form:
-  // strain_11 + strain_22 + strain_33
-  // There is not currently an option to compute this small-strain form of the
-  // volumetric strain, but at small strains, it is approximately equal to the
-  // finite strain form that is computed.
-  //
-  return std::exp(strain(0, 0)) * std::exp(strain(1, 1)) * std::exp(strain(2, 2)) - 1.0;
+  Real val = strain.trace();
+  for (unsigned int i = 0; i < 2; ++i)
+    for (unsigned int j = i + 1; j < 3; ++j)
+      val += strain(i, i) * strain(j, j);
+
+  val += strain(0, 0) * strain(1, 1) * strain(2, 2);
+
+  return val;
 }
 
 Real
@@ -206,32 +186,48 @@ thirdInvariant(const RankTwoTensor & r2tensor)
 }
 
 Real
-maxPrincipal(const RankTwoTensor & r2tensor, Point & direction)
+maxPrincipal(const RankTwoTensor & r2tensor)
 {
-  return calcEigenValuesEigenVectors(r2tensor, (LIBMESH_DIM - 1), direction);
+  return calcEigenValues(r2tensor, (LIBMESH_DIM - 1));
 }
 
 Real
-midPrincipal(const RankTwoTensor & r2tensor, Point & direction)
+midPrincipal(const RankTwoTensor & r2tensor)
 {
-  return calcEigenValuesEigenVectors(r2tensor, 1, direction);
+  return calcEigenValues(r2tensor, 1);
 }
 
 Real
-minPrincipal(const RankTwoTensor & r2tensor, Point & direction)
+minPrincipal(const RankTwoTensor & r2tensor)
 {
-  return calcEigenValuesEigenVectors(r2tensor, 0, direction);
+  return calcEigenValues(r2tensor, 0);
 }
 
 Real
-calcEigenValuesEigenVectors(const RankTwoTensor & r2tensor, unsigned int index, Point & eigenvec)
+maxPrinciple(const RankTwoTensor & r2tensor)
+{
+  return calcEigenValues(r2tensor, (LIBMESH_DIM - 1));
+}
+
+Real
+midPrinciple(const RankTwoTensor & r2tensor)
+{
+  return calcEigenValues(r2tensor, 1);
+}
+
+Real
+minPrinciple(const RankTwoTensor & r2tensor)
+{
+  return calcEigenValues(r2tensor, 0);
+}
+
+Real
+calcEigenValues(const RankTwoTensor & r2tensor, unsigned int index)
 {
   std::vector<Real> eigenval(LIBMESH_DIM);
-  RankTwoTensor eigvecs;
-  r2tensor.symmetricEigenvaluesEigenvectors(eigenval, eigvecs);
+  r2tensor.symmetricEigenvalues(eigenval);
 
   Real val = eigenval[index];
-  eigenvec = eigvecs.column(index);
 
   return val;
 }
@@ -292,7 +288,7 @@ radialStress(const RankTwoTensor & stress,
   Point radial_norm;
   normalPositionVector(point1, point2, curr_point, radial_norm);
 
-  // Compute the scalar stress component in the direction of the normal vector from the
+  // Compute the scalar stress component in the direciton of the normal vector from the
   // user-defined axis of rotation.
   Real radial_stress = 0.0;
   for (unsigned int i = 0; i < 3; ++i)
@@ -339,18 +335,5 @@ Real
 triaxialityStress(const RankTwoTensor & stress)
 {
   return hydrostatic(stress) / vonMisesStress(stress);
-}
-
-Real
-maxShear(const RankTwoTensor & stress)
-{
-  Point dummy;
-  return (maxPrincipal(stress, dummy) - minPrincipal(stress, dummy)) / 2.;
-}
-
-Real
-stressIntensity(const RankTwoTensor & stress)
-{
-  return 2. * maxShear(stress);
 }
 }

@@ -1,32 +1,36 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
+#ifndef PACKEDCOLUMN_H
+#define PACKEDCOLUMN_H
 
-#pragma once
-
-#include "ADMaterial.h"
+#include "Material.h"
 
 // A helper class from MOOSE that linear interpolates x,y data
 #include "LinearInterpolation.h"
 
-template <ComputeStage>
 class PackedColumn;
 
-declareADValidParams(PackedColumn);
+template <>
+InputParameters validParams<PackedColumn>();
 
 /**
- * Material-derived objects override the computeQpProperties()
- * function.  They must declare and compute material properties for
- * use by other objects in the calculation such as Kernels and
- * BoundaryConditions.
+ * Material objects inherit from Material and override computeQpProperties.
+ *
+ * Their job is to declare properties for use by other objects in the
+ * calculation such as Kernels and BoundaryConditions.
  */
-template <ComputeStage compute_stage>
-class PackedColumn : public ADMaterial<compute_stage>
+class PackedColumn : public Material
 {
 public:
   PackedColumn(const InputParameters & parameters);
@@ -38,67 +42,11 @@ protected:
    */
   virtual void computeQpProperties() override;
 
-  /**
-   * Helper function for reading CSV data for use in an interpolator object.
-   */
-  bool initInputData(const std::string & param_name, ADLinearInterpolation & interp);
-
   /// The radius of the spheres in the column
-  const Function & _input_radius;
+  const Real & _sphere_radius;
 
-  /// The input porosity
-  const Function & _input_porosity;
-
-  /// Temperature
-  const ADVariableValue & _temperature;
-
-  /// Compute permeability based on the radius (mm)
+  /// Based on the paper this will
   LinearInterpolation _permeability_interpolation;
-
-  /// Fluid viscosity
-  bool _use_fluid_mu_interp;
-  const Real & _fluid_mu;
-  ADLinearInterpolation _fluid_mu_interpolation;
-
-  /// Fluid thermal conductivity
-  bool _use_fluid_k_interp = false;
-  const Real & _fluid_k;
-  ADLinearInterpolation _fluid_k_interpolation;
-
-  /// Fluid density
-  bool _use_fluid_rho_interp = false;
-  const Real & _fluid_rho;
-  ADLinearInterpolation _fluid_rho_interpolation;
-
-  /// Fluid specific heat
-  bool _use_fluid_cp_interp;
-  const Real & _fluid_cp;
-  ADLinearInterpolation _fluid_cp_interpolation;
-
-  /// Fluid thermal expansion coefficient
-  bool _use_fluid_cte_interp;
-  const Real & _fluid_cte;
-  ADLinearInterpolation _fluid_cte_interpolation;
-
-  /// Solid thermal conductivity
-  bool _use_solid_k_interp = false;
-  const Real & _solid_k;
-  ADLinearInterpolation _solid_k_interpolation;
-
-  /// Solid density
-  bool _use_solid_rho_interp = false;
-  const Real & _solid_rho;
-  ADLinearInterpolation _solid_rho_interpolation;
-
-  /// Fluid specific heat
-  bool _use_solid_cp_interp;
-  const Real & _solid_cp;
-  ADLinearInterpolation _solid_cp_interpolation;
-
-  /// Solid thermal expansion coefficient
-  bool _use_solid_cte_interp;
-  const Real & _solid_cte;
-  ADLinearInterpolation _solid_cte_interpolation;
 
   /// The permeability (K)
   MaterialProperty<Real> & _permeability;
@@ -107,19 +55,16 @@ protected:
   MaterialProperty<Real> & _porosity;
 
   /// The viscosity of the fluid (mu)
-  ADMaterialProperty(Real) & _viscosity;
+  MaterialProperty<Real> & _viscosity;
 
   /// The bulk thermal conductivity
-  ADMaterialProperty(Real) & _thermal_conductivity;
+  MaterialProperty<Real> & _thermal_conductivity;
 
   /// The bulk heat capacity
-  ADMaterialProperty(Real) & _specific_heat;
+  MaterialProperty<Real> & _heat_capacity;
 
   /// The bulk density
-  ADMaterialProperty(Real) & _density;
-
-  /// The bulk thermal expansion coefficient
-  ADMaterialProperty(Real) & _thermal_expansion;
+  MaterialProperty<Real> & _density;
 
   /// Flag for using the phase for porosity
   bool _use_phase_variable;
@@ -133,6 +78,10 @@ protected:
   /// The coupled thermal conductivity
   const VariableValue & _conductivity_variable;
 
-  usingMaterialMembers;
-  using ADMaterial<compute_stage>::_communicator;
+  /// Single value to store the interpolated permeability base on
+  /// sphere size.  The _sphere_radius is assumed to be constant, so
+  /// we only have to compute this once.
+  Real _interpolated_permeability;
 };
+
+#endif // PACKEDCOLUMN_H

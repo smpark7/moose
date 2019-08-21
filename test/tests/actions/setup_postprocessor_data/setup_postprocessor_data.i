@@ -42,7 +42,6 @@
 [Postprocessors]
   [./num_vars]
     type = NumVars
-    system = 'NL'
   [../]
 []
 

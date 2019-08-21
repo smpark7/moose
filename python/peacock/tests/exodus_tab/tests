@@ -17,9 +17,9 @@
     separate = True
     display_required = True
   [../]
-  [./ColorbarPlugin]
+  [./VariablePlugin]
     type = PythonUnitTest
-    input = test_ColorbarPlugin.py
+    input = test_VariablePlugin.py
     separate = True
     display_required = True
   [../]
@@ -80,12 +80,6 @@
   [./ExodusViewer]
     type = PythonUnitTest
     input = test_ExodusViewer.py
-    separate = True
-    display_required = True
-  [../]
-  [./ExodusViewer2]
-    type = PythonUnitTest
-    input = test_ExodusViewer2.py
     separate = True
     display_required = True
   [../]

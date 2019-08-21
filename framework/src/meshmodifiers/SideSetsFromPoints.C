@@ -1,38 +1,34 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "SideSetsFromPoints.h"
 #include "Parser.h"
 #include "InputParameters.h"
 #include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/mesh_generation.h"
 #include "libmesh/mesh.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/quadrature_gauss.h"
 #include "libmesh/point_locator_base.h"
-#include "libmesh/enum_point_locator_type.h"
-#include "libmesh/elem.h"
-#include "libmesh/fe_base.h"
-
-registerMooseObjectReplaced("MooseApp",
-                            SideSetsFromPoints,
-                            "11/30/2019 00:00",
-                            SideSetsFromPointsGenerator);
 
 template <>
 InputParameters
 validParams<SideSetsFromPoints>()
 {
   InputParameters params = validParams<AddSideSetsBase>();
-  params.addClassDescription("Adds a new sideset starting at the specified point containing all "
-                             "connected element faces with the same normal.");
   params.addRequiredParam<std::vector<BoundaryName>>("new_boundary",
                                                      "The name of the boundary to create");
   params.addRequiredParam<std::vector<Point>>(
@@ -77,7 +73,7 @@ SideSetsFromPoints::modify()
         continue;
 
       // See if this point is on this side
-      std::unique_ptr<const Elem> elem_side = elem->side_ptr(side);
+      std::unique_ptr<Elem> elem_side = elem->side(side);
 
       if (elem_side->contains_point(_points[i]))
       {

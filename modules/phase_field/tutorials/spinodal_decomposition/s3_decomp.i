@@ -111,9 +111,8 @@
     type = NumResidualEvaluations
   [../]
   [./active_time]           # Time computer spent on simulation
-    type = PerfGraphData
-    section_name = "Root"
-    data_type = total
+    type = RunTime
+    time_type = active
   [../]
 []
 

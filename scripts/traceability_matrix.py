@@ -1,16 +1,9 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
+#!/usr/bin/env python
 
 import re, os, sys, argparse
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.units import cm
+from reportlab.lib.pagesizes import A4, inch, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 
@@ -107,11 +100,14 @@ def extractTestedRequirements(args, data):
     os.chdir(test_app_dir)
 
     sys.path.append(os.path.join(args.moose_dir, 'python'))
+    import path_tool
+    path_tool.activate_module('TestHarness')
 
     from TestHarness import TestHarness
+    from Tester import Tester
 
     # Build the TestHarness object here
-    harness = TestHarness([], args.moose_dir, test_app_name)
+    harness = TestHarness([], test_app_name, args.moose_dir)
 
     # Tell it to parse the test files only, not run them
     harness.findAndRunTests(find_only=True)

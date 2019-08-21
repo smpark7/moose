@@ -1,24 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-import mms
-df1 = mms.run_temporal('implicit_convergence.i', 4, file_base='implicitmidpoint_{}'
-                       'Executioner/TimeIntegrator/type=ImplicitMidpoint',
-                       console=False, dt=0.0625, y_pp='l2_err', executable='../../../../test')
-
-fig = mms.ConvergencePlot(xlabel='$\Delta t$', ylabel='$L_2$ Error')
-fig.plot(df1, label='Midpoint (1nd order)', marker='o', markersize=8)
-fig.save('implicit_convergence.pdf')
-
-df1.to_csv('implicit_convergence_midpoint.csv')
-
-"""
+#!/usr/bin/env python
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -207,4 +187,3 @@ plt.savefig('implicit_plot.pdf', format='pdf')
 # Local Variables:
 # python-indent: 2
 # End:
-"""

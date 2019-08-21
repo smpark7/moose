@@ -1,19 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "MultiGrainRigidBodyMotion.h"
 
 // MOOSE includes
 #include "GrainTrackerInterface.h"
 #include "MooseVariable.h"
-
-registerMooseObject("PhaseFieldApp", MultiGrainRigidBodyMotion);
 
 template <>
 InputParameters
@@ -75,7 +70,7 @@ MultiGrainRigidBodyMotion::getUserObjectJacobian(unsigned int jvar, dof_id_type 
 {
   _velocity_advection_jacobian = 0.0;
 
-  for (MooseIndex(_grain_ids) i = 0; i < _grain_ids.size(); ++i)
+  for (auto i = beginIndex(_grain_ids); i < _grain_ids.size(); ++i)
   {
     auto grain_id = _grain_ids[i];
     if (grain_id != FeatureFloodCount::invalid_id)
@@ -128,7 +123,7 @@ MultiGrainRigidBodyMotion::calculateAdvectionVelocity()
   _velocity_advection = 0.0;
   _grain_ids = _grain_tracker.getVarToFeatureVector(_current_elem->id());
 
-  for (MooseIndex(_grain_ids) i = 0; i < _grain_ids.size(); ++i)
+  for (auto i = beginIndex(_grain_ids); i < _grain_ids.size(); ++i)
   {
     auto grain_id = _grain_ids[i];
     if (grain_id != FeatureFloodCount::invalid_id)

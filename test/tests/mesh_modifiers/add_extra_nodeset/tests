@@ -1,5 +1,4 @@
 [Tests]
-  deprecated = True
   [./test]
     type = 'Exodiff'
     input = 'extra_nodeset_test.i'

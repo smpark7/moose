@@ -7,10 +7,7 @@
     max_time = 20
     compiler = 'GCC CLANG'
     method = '!DBG'
-    valgrind = 'NONE'
-
-    requirement = 'The system shall only reinitialize variables values that are consumed by other active objects in the system.'
-    design = 'FEProblemBase.md'
-    issues = '#1386'
+    valgrind = 'HEAVY'
+    min_reported_time = 20
   [../]
 []

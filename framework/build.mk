@@ -37,11 +37,6 @@ libmesh_LIBS     := $(shell METHOD=$(METHOD) $(libmesh_config) --libs)
 libmesh_HOST     := $(shell METHOD=$(METHOD) $(libmesh_config) --host)
 libmesh_LDFLAGS  := $(shell METHOD=$(METHOD) $(libmesh_config) --ldflags)
 
-# You can completely disable timing by setting MOOSE_NO_PERF_GRAPH in your environment
-ifneq (x$(MOOSE_NO_PERF_GRAPH), x)
-  libmesh_CXXFLAGS += -DMOOSE_NO_PERF_GRAPH
-endif
-
 # Make.common used to provide an obj-suffix which was related to the
 # machine in question (from config.guess, i.e. @host@ in
 # contrib/utils/Make.common.in) and the $(METHOD).
@@ -54,70 +49,46 @@ ifeq ($(wildcard $(libmesh_LIBTOOL)),)
   libmesh_LIBTOOL := $(LIBMESH_DIR)/libtool           # uninstalled version
 endif
 libmesh_shared  := $(shell $(libmesh_LIBTOOL) --config | grep build_libtool_libs | cut -d'=' -f2)
-libmesh_static  := $(shell $(libmesh_LIBTOOL) --config | grep build_old_libs | cut -d'=' -f2)
-
-#
-# libPNG Definition
-#
-png_LIB         :=
-# There is a linking problem where we have undefined symbols in the png library on Linux
-# systems that we have not resolved. We won't attempt to use libpng with static
-ifneq ($(libmesh_static),yes)
-  ifneq (, $(shell which pkg-config 2>/dev/null))
-    RET_CODE := $(shell pkg-config --libs libpng 2>/dev/null 1>&2; echo $$?)
-
-    ifeq (0,$(RET_CODE))
-      png_LIB = $(shell pkg-config --libs libpng)
-      libmesh_CXXFLAGS += $(shell pkg-config --cflags-only-I libpng)
-      libmesh_CXXFLAGS += -DMOOSE_HAVE_LIBPNG
-    endif
-  endif
-endif
 
 # If $(libmesh_CXX) is an mpiXXX compiler script, use -show
 # to determine the base compiler
 cxx_compiler := $(libmesh_CXX)
 ifneq (,$(findstring mpi,$(cxx_compiler)))
-	cxx_compiler := $(shell $(libmesh_CXX) -show)
+	cxx_compiler = $(shell $(libmesh_CXX) -show)
 endif
 
-all:
-
-# Add all header symlinks as dependencies to this target
-header_symlinks:
-
-unity_files:
+all::
 
 #
 # C++ rules
 #
 pcre%.$(obj-suffix) : pcre%.cc
-	@echo "Compiling C++ (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling C++ (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=CXX $(LIBTOOLFLAGS) --mode=compile --quiet \
-          $(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(CXXFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -w -DHAVE_CONFIG_H -MMD -MP -MF $@.d -MT $@ -c $< -o $@
+          $(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -DHAVE_CONFIG_H -MMD -MP -MF $@.d -MT $@ -c $< -o $@
 
 %.$(obj-suffix) : %.cc
-	@echo "Compiling C++ (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling C++ (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=CXX $(LIBTOOLFLAGS) --mode=compile --quiet \
-          $(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(CXXFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -DHAVE_CONFIG_H -MMD -MP -MF $@.d -MT $@ -c $< -o $@
+          $(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -DHAVE_CONFIG_H -MMD -MP -MF $@.d -MT $@ -c $< -o $@
 
 define CXX_RULE_TEMPLATE
 %$(1).$(obj-suffix) : %.C
 ifeq ($(1),)
-	@echo "Compiling C++ (in "$$(METHOD)" mode) "$$<"..."
+	@echo "MOOSE Compiling C++ (in "$$(METHOD)" mode) "$$<"..."
 else
-	@echo "Compiling C++ with suffix (in "$$(METHOD)" mode) "$$<"..."
+	@echo "MOOSE Compiling C++ with suffix (in "$$(METHOD)" mode) "$$<"..."
 endif
 	@$$(libmesh_LIBTOOL) --tag=CXX $$(LIBTOOLFLAGS) --mode=compile --quiet \
-	  $$(libmesh_CXX) $$(libmesh_CPPFLAGS) $$(ADDITIONAL_CPPFLAGS) $$(CXXFLAGS) $$(libmesh_CXXFLAGS) $$(app_INCLUDES) $$(libmesh_INCLUDE) -MMD -MP -MF $$@.d -MT $$@ -c $$< -o $$@
+	  $$(libmesh_CXX) $$(libmesh_CPPFLAGS) $$(ADDITIONAL_CPPFLAGS) $$(libmesh_CXXFLAGS) $$(app_INCLUDES) $$(libmesh_INCLUDE) -MMD -MP -MF $$@.d -MT $$@ -c $$< -o $$@
 endef
 # Instantiate Rules
 $(eval $(call CXX_RULE_TEMPLATE,))
 
 %.$(obj-suffix) : %.cpp
-	@echo "Compiling C++ (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling C++ (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=CXX $(LIBTOOLFLAGS) --mode=compile --quiet \
-	  $(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(CXXFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -MMD -MP -MF $@.d -MT $@ -c $< -o $@
+	  $(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -MMD -MP -MF $@.d -MT $@ -c $< -o $@
 
 #
 # Static Analysis
@@ -125,23 +96,19 @@ $(eval $(call CXX_RULE_TEMPLATE,))
 
 %.plist.$(obj-suffix) : %.C
 	@echo "Clang Static Analysis (in "$(METHOD)" mode) "$<"..."
-	@$(libmesh_CXX) $(CXXFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) --analyze $< -o $@
-
-%.plist.$(obj-suffix) : %.cc
-	@echo "Clang Static Analysis (in "$(METHOD)" mode) "$<"..."
-	@$(libmesh_CXX) $(CXXFLAGS) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) --analyze $< -o $@
+	@$(libmesh_CXX) $(libmesh_CXXFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) --analyze $< -o $@
 
 #
 # C rules
 #
 
 pcre%.$(obj-suffix) : pcre%.c
-	@echo "Compiling C (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling C (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=CC $(LIBTOOLFLAGS) --mode=compile --quiet \
-          $(libmesh_CC) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -w -DHAVE_CONFIG_H -MMD -MP -MF $@.d -MT $@ -c $< -o $@
+          $(libmesh_CC) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -DHAVE_CONFIG_H -MMD -MP -MF $@.d -MT $@ -c $< -o $@
 
 %.$(obj-suffix) : %.c
-	@echo "Compiling C (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling C (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=CC $(LIBTOOLFLAGS) --mode=compile --quiet \
 	  $(libmesh_CC) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -MMD -MP -MF $@.d -MT $@ -c $< -o $@
 
@@ -152,7 +119,7 @@ pcre%.$(obj-suffix) : pcre%.c
 #
 
 %.$(obj-suffix) : %.f
-	@echo "Compiling Fortan (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling Fortan (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=F77 $(LIBTOOLFLAGS) --mode=compile --quiet \
 	  $(libmesh_F77) $(libmesh_FFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -c $< -o $@
 
@@ -163,7 +130,7 @@ pcre%.$(obj-suffix) : pcre%.c
 
 PreProcessed_FFLAGS := $(libmesh_FFLAGS)
 %.$(obj-suffix) : %.F
-	@echo "Compiling Fortran (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling Fortran (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=F77 $(LIBTOOLFLAGS) --mode=compile --quiet \
 	  $(libmesh_F90) $(PreProcessed_FFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -c $< $(module_dir_flag) -o $@
 
@@ -176,7 +143,7 @@ mpif90_command := $(libmesh_F90)
 # If $(libmesh_f90) is an mpiXXX compiler script, use -show
 # to determine the base compiler
 ifneq (,$(findstring mpi,$(mpif90_command)))
-	mpif90_command := $(shell $(libmesh_F90) -show)
+	mpif90_command = $(shell $(libmesh_F90) -show)
 endif
 
 # module_dir_flag is a flag that, if defined, instructs the compiler
@@ -189,13 +156,13 @@ endif
 
 #gfortran
 ifneq (,$(findstring gfortran,$(mpif90_command)))
-	module_dir_flag = -J ${@D}
+	module_dir_flag = -J${@D}
 endif
 
 %.$(obj-suffix) : %.f90
-	@echo "Compiling Fortran90 (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling Fortran90 (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_LIBTOOL) --tag=FC $(LIBTOOLFLAGS) --mode=compile --quiet \
-	  $(libmesh_F90) $(libmesh_FFLAGS) $(app_INCLUDES) $(libmesh_INCLUDE) -c $< $(module_dir_flag) -o $@
+	  $(libmesh_F90) $(libmesh_FFLAGS) $(libmesh_INCLUDE) -c $< $(module_dir_flag) -o $@
 
 # Add method to list of defines passed to the compiler
 libmesh_CXXFLAGS += -DMETHOD=$(METHOD)
@@ -242,7 +209,6 @@ ifeq ($(coverage),true)
 	libmesh_CXXFLAGS += -fprofile-arcs -ftest-coverage
 	ifeq (,$(findstring clang++,$(cxx_compiler)))
 		libmesh_LDFLAGS += -lgcov
-		libmesh_LIBS += -lgcov
 	endif
 endif
 
@@ -266,10 +232,10 @@ endif
 CURRENT_APP ?= $(shell basename `pwd`)
 
 ifeq ($(CURRENT_APP),moose)
-  CONTAINING_DIR_FULLPATH := $(shell dirname `pwd`)
-  CONTAINING_DIR := $(shell basename $(CONTAINING_DIR_FULLPATH))
+  CONTAINING_DIR_FULLPATH = $(shell dirname `pwd`)
+  CONTAINING_DIR = $(shell basename $(CONTAINING_DIR_FULLPATH))
   ifeq ($(CONTAINING_DIR), devel)
-    CURRENT_APP := "devel/moose"
+    CURRENT_APP = "devel/moose"
   endif
 endif
 
@@ -279,16 +245,16 @@ endif
 # out to be more trouble than it was worth to get working.
 #
 %-$(METHOD).plugin : %.C
-	@echo "Compiling C++ Plugin (in "$(METHOD)" mode) "$<"..."
-	@$(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(CXXFLAGS) $(libmesh_CXXFLAGS) -shared -fPIC $(app_INCLUDES) $(libmesh_INCLUDE) $< -o $@
+	@echo "MOOSE Compiling C++ Plugin (in "$(METHOD)" mode) "$<"..."
+	@$(libmesh_CXX) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CXXFLAGS) -shared -fPIC $(app_INCLUDES) $(libmesh_INCLUDE) $< -o $@
 %-$(METHOD).plugin : %.c
-	@echo "Compiling C Plugin (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling C Plugin (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_CC) $(libmesh_CPPFLAGS) $(ADDITIONAL_CPPFLAGS) $(libmesh_CFLAGS) -shared -fPIC $(app_INCLUDES) $(libmesh_INCLUDE) $< -o $@
 %-$(METHOD).plugin : %.f
-	@echo "Compiling Fortan Plugin (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling Fortan Plugin (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_F77) $(libmesh_FFLAGS) -shared -fPIC $(app_INCLUDES) $(libmesh_INCLUDE) $< -o $@
 %-$(METHOD).plugin : %.f90
-	@echo "Compiling Fortan Plugin (in "$(METHOD)" mode) "$<"..."
+	@echo "MOOSE Compiling Fortan Plugin (in "$(METHOD)" mode) "$<"..."
 	@$(libmesh_F90) $(libmesh_FFLAGS) -shared -fPIC $(app_INCLUDES) $(libmesh_INCLUDE) $< -o $@
 
 # Define the "test" target, we'll use a variable name so that we can override it without warnings if needed
@@ -299,36 +265,66 @@ $(TEST): all
 	@echo ======================================================
 	@(./run_tests -j $(MOOSE_JOBS))
 
+# Build appliations up the tree
+up:
+	@echo ======================================================
+	@echo Building the following applications:
+	@for app in $(DEP_APPS); do echo \ $$app; done
+	@echo ======================================================
+	@echo
+	@for app in $(DEP_APPS); \
+	do \
+		echo ====== Making in $${app} ====== ; \
+		$(MAKE) -C $${app} || exit; \
+	done
+
+
+test_up: up
+	@echo ======================================================
+	@echo Testing the following applications:
+	@for app in $(DEP_APPS); do echo \ $$app; done
+	@echo ======================================================
+	@echo
+	@for app in $(DEP_APPS); \
+	do \
+		echo ====== Testing in $${app} ====== ; \
+		(cd $${app} && ./run_tests -q -j $(MOOSE_JOBS)) ; \
+	done
+
+test_only_up:
+	@echo ======================================================
+	@echo Testing the following applications:
+	@for app in $(DEP_APPS); do echo \ $$app; done
+	@echo ======================================================
+	@echo
+	@for app in $(DEP_APPS); \
+	do \
+		echo ====== Testing in $${app} ====== ; \
+		(cd $${app} && ./run_tests -q -j $(MOOSE_JOBS)) ; \
+	done
+
+clean_up:
+	@echo ======================================================
+	@echo Cleaning the following applications:
+	@for app in $(DEP_APPS); do echo \ $$app; done
+	@echo ======================================================
+	@echo
+	@for app in $(DEP_APPS); \
+	do \
+		echo ====== Cleaning $${app} ====== ; \
+		$(MAKE) -C $${app} clean; \
+	done
+
 libmesh_update:
 	@echo ======================================================
 	@echo Downloading and updating libMesh
 	@echo ======================================================
 	$(MOOSE_DIR)/scripts/update_and_rebuild_libmesh.sh
 
-libmesh:
-	@echo ======================================================
-	@echo Updating libMesh
-	@echo ======================================================
-	$(MOOSE_DIR)/scripts/update_and_rebuild_libmesh.sh --fast
-
-show_libmesh_configs:
-	@echo "libmesh_CXX     :" $(libmesh_CXX)
-	@echo "libmesh_CC      :" $(libmesh_CC)
-	@echo "libmesh_F77     :" $(libmesh_F77)
-	@echo "libmesh_F90     :" $(libmesh_F90)
-	@echo "libmesh_INCLUDE :" $(libmesh_INCLUDE)
-	@echo "libmesh_CPPFLAGS:" $(libmesh_CPPFLAGS)
-	@echo "libmesh_CXXFLAGS:" $(libmesh_CXXFLAGS)
-	@echo "libmesh_CFLAGS  :" $(libmesh_CFLAGS)
-	@echo "libmesh_FFLAGS  :" $(libmesh_FFLAGS)
-	@echo "libmesh_LIBS    :" $(libmesh_LIBS)
-	@echo "libmesh_HOST    :" $(libmesh_HOST)
-	@echo "libmesh_LDFLAGS :" $(libmesh_LDFLAGS)
-
 #
 # Maintenance
 #
-.PHONY: cleanall clean doc sa test
+.PHONY: cleanall clean doc sa test up test_up test_only_up clean_up
 
 #
 # Misc

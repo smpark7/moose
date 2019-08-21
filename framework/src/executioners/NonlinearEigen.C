@@ -1,15 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NonlinearEigen.h"
-
-registerMooseObject("MooseApp", NonlinearEigen);
 
 template <>
 InputParameters
@@ -54,14 +57,6 @@ NonlinearEigen::init()
   }
 
   EigenExecutionerBase::init();
-
-  // Write the initial.
-  // Note: We need to tempararily change the system time to make the output system work properly.
-  _problem.timeStep() = 0;
-  Real t = _problem.time();
-  _problem.time() = _problem.timeStep();
-  _problem.outputStep(EXEC_INITIAL);
-  _problem.time() = t;
 
   if (_free_iter > 0)
   {
@@ -121,7 +116,7 @@ NonlinearEigen::takeStep()
   _problem.advanceState();
   _problem.execute(EXEC_TIMESTEP_BEGIN);
 
-  _last_solve_converged = nonlinearSolve(_rel_tol, _abs_tol, _pfactor, _eigenvalue);
+  nonlinearSolve(_rel_tol, _abs_tol, _pfactor, _eigenvalue);
   postSolve();
 
   if (lastSolveConverged())

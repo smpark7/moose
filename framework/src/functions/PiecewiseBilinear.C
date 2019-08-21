@@ -1,19 +1,20 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "PiecewiseBilinear.h"
 #include "ColumnMajorMatrix.h"
 #include "BilinearInterpolation.h"
-
-#include <fstream>
-
-registerMooseObject("MooseApp", PiecewiseBilinear);
 
 template <>
 InputParameters
@@ -37,7 +38,6 @@ validParams<PiecewiseBilinear>()
                         "Set to true if you want to interpolate along a radius "
                         "rather that along a specific axis, and note that you "
                         "have to define xaxis and yaxis in the input file");
-  params.addClassDescription("Interpolates values from a csv file");
   return params;
 }
 
@@ -112,7 +112,7 @@ PiecewiseBilinear::PiecewiseBilinear(const InputParameters & parameters)
 PiecewiseBilinear::~PiecewiseBilinear() {}
 
 Real
-PiecewiseBilinear::value(Real t, const Point & p) const
+PiecewiseBilinear::value(Real t, const Point & p)
 {
   Real retVal(0);
   if (_yaxisValid && _xaxisValid && _radial)

@@ -1,26 +1,26 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef USEROBJECTINTERFACE_H
+#define USEROBJECTINTERFACE_H
 
 // MOOSE includes
 #include "FEProblemBase.h"
 #include "MooseTypes.h"
-#include "MemberTemplateMacros.h"
 
 // Forward declarations
 class InputParameters;
-class UserObject;
-
-#define usingUserObjectInterfaceMembers                                                            \
-  using UserObjectInterface::getUserObjectBase;                                                    \
-  using UserObjectInterface::getUserObjectBaseByName
 
 /**
  * Interface for objects that need to use UserObjects.
@@ -42,7 +42,7 @@ public:
    * @return The user object with name associated with the parameter 'name'
    */
   template <class T>
-  const T & getUserObjectTempl(const std::string & name);
+  const T & getUserObject(const std::string & name);
 
   /**
    * Get an user object with a given name
@@ -50,7 +50,7 @@ public:
    * @return The user object with the name
    */
   template <class T>
-  const T & getUserObjectByNameTempl(const std::string & name);
+  const T & getUserObjectByName(const std::string & name);
 
   /**
    * Get an user object with a given parameter name
@@ -76,22 +76,24 @@ private:
   /// Thread ID
   THREAD_ID _uoi_tid;
 
-  /// Check if the threaded copy of the user object is needed
-  bool needThreadedCopy(const UserObject & uo) const;
+  /// Check if the user object is a DiscreteElementUserObject
+  bool isDiscreteUserObject(const UserObject & uo) const;
 };
 
 template <class T>
 const T &
-UserObjectInterface::getUserObjectTempl(const std::string & name)
+UserObjectInterface::getUserObject(const std::string & name)
 {
-  unsigned int tid = needThreadedCopy(getUserObjectBase(name)) ? _uoi_tid : 0;
-  return _uoi_feproblem.getUserObjectTempl<T>(_uoi_params.get<UserObjectName>(name), tid);
+  unsigned int tid = isDiscreteUserObject(getUserObjectBase(name)) ? _uoi_tid : 0;
+  return _uoi_feproblem.getUserObject<T>(_uoi_params.get<UserObjectName>(name), tid);
 }
 
 template <class T>
 const T &
-UserObjectInterface::getUserObjectByNameTempl(const std::string & name)
+UserObjectInterface::getUserObjectByName(const std::string & name)
 {
-  unsigned int tid = needThreadedCopy(getUserObjectBaseByName(name)) ? _uoi_tid : 0;
-  return _uoi_feproblem.getUserObjectTempl<T>(name, tid);
+  unsigned int tid = isDiscreteUserObject(getUserObjectBaseByName(name)) ? _uoi_tid : 0;
+  return _uoi_feproblem.getUserObject<T>(name, tid);
 }
+
+#endif // USEROBJECTINTERFACE_H

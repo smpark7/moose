@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef USEROBJECT_H
+#define USEROBJECT_H
 
 // MOOSE includes
 #include "DistributionInterface.h"
@@ -18,8 +24,8 @@
 #include "Restartable.h"
 #include "ScalarCoupleable.h"
 #include "SetupInterface.h"
-#include "PerfGraphInterface.h"
 
+// libMesh includes
 #include "libmesh/parallel.h"
 
 // Forward declarations
@@ -40,12 +46,11 @@ class UserObject : public MooseObject,
                    public DistributionInterface,
                    public Restartable,
                    public MeshChangedInterface,
-                   public ScalarCoupleable,
-                   public PerfGraphInterface
+                   public ScalarCoupleable
 {
 public:
   UserObject(const InputParameters & params);
-  virtual ~UserObject() = default;
+  virtual ~UserObject();
 
   /**
    * Execute method.
@@ -62,6 +67,18 @@ public:
    * you want to do MPI communication!
    */
   virtual void finalize() = 0;
+
+  /**
+   * Load user data object from a stream
+   * @param stream Stream to load from
+   */
+  virtual void load(std::ifstream & stream);
+
+  /**
+   * Store user data object to a stream
+   * @param stream Stream to store to
+   */
+  virtual void store(std::ofstream & stream);
 
   /**
    * Returns a reference to the subproblem that
@@ -125,14 +142,6 @@ public:
     _communicator.broadcast(proxy, rank);
   }
 
-  void setPrimaryThreadCopy(UserObject * primary)
-  {
-    if (!_primary_thread_copy && primary != this)
-      _primary_thread_copy = primary;
-  }
-
-  UserObject * primaryThreadCopy() { return _primary_thread_copy; }
-
 protected:
   /// Reference to the Subproblem for this user object
   SubProblem & _subproblem;
@@ -148,8 +157,6 @@ protected:
   const Moose::CoordinateSystemType & _coord_sys;
 
   const bool _duplicate_initial_execution;
-
-private:
-  UserObject * _primary_thread_copy = nullptr;
 };
 
+#endif /* USEROBJECT_H */

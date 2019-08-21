@@ -1,38 +1,34 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef LEVELSETADVECTIONSUPG_H
+#define LEVELSETADVECTIONSUPG_H
 
 // MOOSE includes
-#include "ADKernelGrad.h"
+#include "Kernel.h"
 #include "LevelSetVelocityInterface.h"
 
 // Forward declarations
-template <ComputeStage>
 class LevelSetAdvectionSUPG;
 
-declareADValidParams(LevelSetAdvectionSUPG);
+template <>
+InputParameters validParams<LevelSetAdvectionSUPG>();
 
 /**
  * SUPG stabilization for the advection portion of the level set equation.
  */
-template <ComputeStage compute_stage>
-class LevelSetAdvectionSUPG : public LevelSetVelocityInterface<ADKernelGrad<compute_stage>>
+class LevelSetAdvectionSUPG : public LevelSetVelocityInterface<Kernel>
 {
 public:
   LevelSetAdvectionSUPG(const InputParameters & parameters);
 
 protected:
-  virtual ADRealVectorValue precomputeQpResidual() override;
-
-  usingKernelGradMembers;
-  using LevelSetVelocityInterface<ADKernelGrad<compute_stage>>::computeQpVelocity;
-  using LevelSetVelocityInterface<ADKernelGrad<compute_stage>>::_velocity;
+  Real computeQpResidual() override;
+  Real computeQpJacobian() override;
 };
 
+#endif // LEVELSETADVECTIONSUPG_H

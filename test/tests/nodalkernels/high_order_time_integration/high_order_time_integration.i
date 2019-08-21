@@ -80,6 +80,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   end_time = 10
   dt = 1

@@ -38,6 +38,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   num_steps = 1
   dt = 0.1
@@ -47,5 +48,5 @@
 []
 
 [Outputs]
-  perf_graph = true
+  print_perf_log = true
 []

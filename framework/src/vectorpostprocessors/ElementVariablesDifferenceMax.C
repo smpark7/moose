@@ -1,20 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ElementVariablesDifferenceMax.h"
 
 // MOOSE includes
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("MooseApp", ElementVariablesDifferenceMax);
 
 template <>
 InputParameters
@@ -31,10 +35,6 @@ validParams<ElementVariablesDifferenceMax>()
 
   params.addParam<bool>(
       "furthest_from_zero", false, "Find the difference with the highest absolute value");
-
-  // The value from this VPP is naturally already on every processor
-  // TODO: Make this not the case!  See #11415
-  params.set<bool>("_is_broadcast") = true;
 
   return params;
 }

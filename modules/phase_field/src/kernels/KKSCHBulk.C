@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "KKSCHBulk.h"
-
-registerMooseObject("PhaseFieldApp", KKSCHBulk);
 
 template <>
 InputParameters
@@ -58,7 +53,7 @@ KKSCHBulk::KKSCHBulk(const InputParameters & parameters)
   // Iterate over all coupled variables
   for (unsigned int i = 0; i < _nvar; ++i)
   {
-    MooseVariable * cvar = _coupled_standard_moose_vars[i];
+    MooseVariable * cvar = _coupled_moose_vars[i];
 
     // get the second derivative material property (TODO:warn)
     _second_derivatives[i] =
@@ -132,5 +127,5 @@ KKSCHBulk::computeQpOffDiagJacobian(unsigned int jvar)
     res += (*_third_derivatives[i][cvar])[_qp] * (*_grad_args[i])[_qp] * _phi[_j][_qp];
 
   // keeping this term seems to improve the solution.
-  return res * _grad_test[_i][_qp];
+  return res * _grad_test[_j][_qp];
 }

@@ -1,51 +1,127 @@
-#pylint: disable=missing-docstring, wrong-import-position
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
+#pylint: disable=missing-docstring
+####################################################################################################
+#                                    DO NOT MODIFY THIS HEADER                                     #
+#                   MOOSE - Multiphysics Object Oriented Simulation Environment                    #
+#                                                                                                  #
+#                              (c) 2010 Battelle Energy Alliance, LLC                              #
+#                                       ALL RIGHTS RESERVED                                        #
+#                                                                                                  #
+#                            Prepared by Battelle Energy Alliance, LLC                             #
+#                               Under Contract No. DE-AC07-05ID14517                               #
+#                               With the U. S. Department of Energy                                #
+#                                                                                                  #
+#                               See COPYRIGHT for full restrictions                                #
+####################################################################################################
+#pylint: enable=missing-docstring
 import os
 import sys
+import re
+import argparse
 import subprocess
+import multiprocessing
+import collections
 import logging
 
-try:
-    import anytree
-    from anytree import search
-except ImportError as e:
-    MSG = "MooseDocs requires anytree (http://anytree.readthedocs.io/en/latest/index.html)\n"
-    MSG += "version 2.4.0 or greater. If you are using the MOOSE environment package\n"
-    MSG += "you can upgrade by running the following command.\n"
-    MSG += "    pip install --upgrade --user anytree"
-    print MSG
-    sys.exit(1)
+from MooseMarkdown import MooseMarkdown
 
 import mooseutils
 
-# Markdown component types TODO: Move these to reader
-BLOCK = 'block'
-INLINE = 'inline'
-
-# Current logging level, used to allow for debug only type checking, etc.
-LOG_LEVEL = logging.NOTSET
-
-# The repository root location
-ROOT_DIR = mooseutils.git_root_dir()
-os.environ['ROOT_DIR'] = ROOT_DIR
-
-# File extensions to consider when building the content tree
-FILE_EXT = ('.md', '.jpg', '.jpeg', '.gif', '.png', '.svg', '.webm', '.ogv', '.mp4', '.m4v', \
-            '.pdf', '.css', '.js', '.bib', '.woff', '.woff2', '.html', '.ico', 'md.template')
-
-# Setup MOOSE_DIR/ROOT_DIR
-MOOSE_DIR = os.getenv('MOOSE_DIR', None)
-if MOOSE_DIR is None:
-    print "The MOOSE_DIR environment must be set, this should be set within moosedocs.py."
+# Check for the necessary packages, this does a load so they should all get loaded.
+if mooseutils.check_configuration(['yaml', 'jinja2', 'markdown', 'mdx_math', 'bs4', 'lxml',
+                                   'pylatexenc']):
     sys.exit(1)
 
-# List all files with git, this is done here to avoid running this command many times
-PROJECT_FILES = mooseutils.git_ls_files(ROOT_DIR)
-PROJECT_FILES.update(mooseutils.git_ls_files(MOOSE_DIR))
+import yaml #pylint: disable=wrong-import-position
+
+MOOSE_DIR = os.getenv('MOOSE_DIR', os.path.join(os.getcwd(), '..', 'moose'))
+if not os.path.exists(MOOSE_DIR):
+    MOOSE_DIR = os.path.join(os.getenv('HOME'), 'projects', 'moose')
+
+ROOT_DIR = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'],
+                                   cwd=os.getcwd(),
+                                   stderr=subprocess.STDOUT).strip('\n')
+
+TEMP_DIR = os.path.abspath(os.path.join(os.getenv('HOME'), '.local', 'share', 'moose'))
+
+def abspath(*args):
+    """
+    Create an absolute path from paths that are given relative to the ROOT_DIR.
+
+    Inputs:
+      *args: Path(s) defined relative to the git repository root directory as defined in ROOT_DIR.
+    """
+    return os.path.abspath(os.path.join(ROOT_DIR, *args))
+
+
+def relpath(abs_path):
+    """
+    Create a relative path from the absolute path given relative to the ROOT_DIR.
+
+    Inputs:
+      abs_path[str]: Absolute path that to be converted to a relative path to the git repository
+                     root directory as defined in ROOT_DIR
+    """
+    return os.path.relpath(abs_path, ROOT_DIR)
+
+def html_id(string):
+    """
+    Returns valid string for use as html id tag.
+    """
+    return re.sub(r'(-+)', '-', re.sub(r'[^\w]', '-', string).lower()).strip('-')
+
+class Loader(yaml.Loader):
+    """
+    A custom loader that handles nested includes. The nested includes should use absolute paths
+    from the origin yaml file.
+    """
+
+    def include(self, node):
+        """
+        Allow for the embedding of yaml files.
+        http://stackoverflow.com/questions/528281/how-can-i-include-an-yaml-file-inside-another
+        """
+        filename = abspath(self.construct_scalar(node))
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                return yaml.load(f, Loader)
+        else:
+            raise IOError("Unknown included file: {}".format(filename))
+
+
+def yaml_load(filename):
+    """
+    Load a YAML file capable of including other YAML files.
+
+    Args:
+      filename[str]: The name to the file to load, relative to the git root directory
+      loader[yaml.Loader]: The loader to utilize.
+    """
+
+    # Attach the include constructor to our custom loader.
+    Loader.add_constructor('!include', Loader.include)
+
+    if not os.path.exists(filename):
+        raise IOError("The supplied configuration file was not found: {}".format(filename))
+
+    with open(filename, 'r') as fid:
+        yml = yaml.load(fid.read(), Loader)
+
+    return yml
+
+def load_config(config_file, **kwargs):
+    """
+    Read the MooseDocs configure file (e.g., website.yml)
+    """
+    out = collections.OrderedDict()
+    config = yaml_load(config_file)
+    for item in config:
+        if isinstance(item, str):
+            out[item] = dict()
+        else:
+            out[item.keys()[0]] = item.values()[0]
+
+    for value in out.itervalues():
+        for k, v in kwargs.iteritems():
+            if k in value:
+                value[k] = v
+    return out

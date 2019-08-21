@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWTEMPERATURE_H
+#define POROUSFLOWTEMPERATURE_H
 
 #include "DerivativeMaterialInterface.h"
 #include "PorousFlowMaterial.h"
@@ -41,7 +40,7 @@ protected:
   /// Whether the temperature coupled variable is a PorousFlow variable
   const bool _temperature_is_PF;
 
-  /// The PorousFlow variable number of the temperature
+  /// the PorousFlow variable number of the temperature
   const unsigned int _t_var_num;
 
   /// Computed temperature at quadpoints or nodes
@@ -60,3 +59,4 @@ protected:
   MaterialProperty<std::vector<RealGradient>> * const _dgrad_temperature_dv;
 };
 
+#endif // POROUSFLOWTEMPERATURE_H

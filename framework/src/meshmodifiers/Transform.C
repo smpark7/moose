@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "Transform.h"
 #include "MooseMesh.h"
 
 #include "libmesh/mesh_modification.h"
-
-registerMooseObjectReplaced("MooseApp", Transform, "11/30/2019 00:00", TransformGenerator);
 
 template <>
 InputParameters
@@ -21,7 +24,6 @@ validParams<Transform>()
   MooseEnum transforms("TRANSLATE=1 ROTATE=2 SCALE=3");
 
   InputParameters params = validParams<MeshModifier>();
-  params.addClassDescription("Applies a linear transform to the entire mesh.");
   params.addRequiredParam<MooseEnum>(
       "transform", transforms, "The type of transformation to perform (TRANSLATE, ROTATE, SCALE)");
   params.addRequiredParam<RealVectorValue>(

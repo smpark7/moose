@@ -5,215 +5,204 @@
 [Mesh]
   type = GeneratedMesh
   dim = 2
-  nx = 10
-  ny = 100
+  nx = 20
+  ny = 200
   ymax = 0.304 # Length of test chamber
   xmax = 0.0257 # Test chamber radius
 []
 
 [Variables]
-  [pressure]
-  []
-  [temperature]
+  [./pressure]
+  [../]
+  [./temperature]
     initial_condition = 300 # Start at room temperature
-  []
+  [../]
+  [./disp_r]
+  [../]
+  [./disp_z]
+  [../]
 []
 
 [AuxVariables]
-  [k_eff]
-    initial_condition = 15.0 # water at 20C
-  []
-  [velocity_x]
+  [./k_eff]
     order = CONSTANT
     family = MONOMIAL
-  []
-  [velocity_y]
+  [../]
+  [./velocity_x]
     order = CONSTANT
     family = MONOMIAL
-  []
-  [velocity_z]
+  [../]
+  [./velocity_y]
     order = CONSTANT
     family = MONOMIAL
-  []
-[]
-
-[Modules/TensorMechanics/Master]
-  [all]
-    # This block adds all of the proper Kernels, strain calculators, and Variables
-    # for TensorMechanics in the correct coordinate system (autodetected)
-    add_variables = true
-    strain = FINITE
-    eigenstrain_names = eigenstrain
-    use_automatic_differentiation = true
-    generate_output = 'vonmises_stress elastic_strain_xx elastic_strain_yy strain_xx strain_yy'
-  []
+  [../]
+  [./velocity_z]
+    order = CONSTANT
+    family = MONOMIAL
+  [../]
 []
 
 [Kernels]
-  [darcy_pressure]
+  [./darcy_pressure]
     type = DarcyPressure
     variable = pressure
-  []
-  [heat_conduction]
-    type = ADHeatConduction
+  [../]
+  [./heat_conduction]
+    type = HeatConduction
     variable = temperature
-  []
-  [heat_conduction_time_derivative]
-    type = ADHeatConductionTimeDerivative
+  [../]
+  [./heat_conduction_time_derivative]
+    type = HeatCapacityConductionTimeDerivative
     variable = temperature
-  []
-  [heat_convection]
-    type = DarcyAdvection
+  [../]
+  [./heat_convection]
+    type = DarcyConvection
     variable = temperature
-    pressure = pressure
-  []
+    darcy_pressure = pressure
+  [../]
+  [./TensorMechanics]
+    # This block adds all of the proper Kernels for TensorMechanics in RZ
+    use_displaced_mesh = true
+    displacements = 'disp_r disp_z'
+  [../]
 []
 
 [AuxKernels]
-  [velocity_x]
+  [./keff_initial]
+    type = MaterialRealAux
+    variable = k_eff
+    property = thermal_conductivity
+    execute_on = 'initial'
+  [../]
+  [./velocity_x]
     type = DarcyVelocity
     variable = velocity_x
     component = x
     execute_on = timestep_end
-    pressure = pressure
-  []
-  [velocity_y]
+    darcy_pressure = pressure
+  [../]
+  [./velocity_y]
     type = DarcyVelocity
     variable = velocity_y
     component = y
     execute_on = timestep_end
-    pressure = pressure
-  []
-  [velocity_z]
+    darcy_pressure = pressure
+  [../]
+  [./velocity_z]
     type = DarcyVelocity
     variable = velocity_z
     component = z
     execute_on = timestep_end
-    pressure = pressure
-  []
+    darcy_pressure = pressure
+  [../]
 []
 
 [BCs]
-  [inlet]
+  [./inlet]
     type = DirichletBC
     variable = pressure
     boundary = bottom
     value = 4000 # (Pa) From Figure 2 from paper.  First data point for 1mm spheres.
-  []
-  [outlet]
+  [../]
+  [./outlet]
     type = DirichletBC
     variable = pressure
     boundary = top
     value = 0 # (Pa) Gives the correct pressure drop from Figure 2 for 1mm spheres
-  []
-  [inlet_temperature]
-    type = FunctionDirichletBC
+  [../]
+  [./inlet_temperature]
+    type = DirichletBC
     variable = temperature
     boundary = bottom
-    function = 'if(t<0,350+50*t,350)'
-  []
-  [outlet_temperature]
+    value = 350 # (C)
+  [../]
+  [./outlet_temperature]
     type = HeatConductionOutflow
     variable = temperature
     boundary = top
-  []
-  [hold_inlet]
+  [../]
+  [./hold_inlet]
     type = DirichletBC
     variable = disp_z
     boundary = bottom
     value = 0
-  []
-  [hold_center]
+  [../]
+  [./hold_center]
     type = DirichletBC
     variable = disp_r
     boundary = left
     value = 0
-  []
-  [hold_outside]
+  [../]
+  [./hold_outside]
     type = DirichletBC
     variable = disp_r
     boundary = right
     value = 0
-  []
+  [../]
 []
 
 [Materials]
-  viscosity_file = data/water_viscosity.csv
-  density_file = data/water_density.csv
-  specific_heat_file = data/water_specific_heat.csv
-  thermal_expansion_file = data/water_thermal_expansion.csv
-  [column]
+  [./column]
     type = PackedColumn
-    temperature = temperature
-    radius = 1
+    sphere_radius = 1
     thermal_conductivity = k_eff # Use the AuxVariable instead of calculating
-    fluid_viscosity_file = ${viscosity_file}
-    fluid_density_file = ${density_file}
-    fluid_specific_heat_file = ${specific_heat_file}
-    fluid_thermal_expansion_file = ${thermal_expansion_file}
-  []
+  [../]
 
-  [elasticity_tensor]
+  [./elasticity_tensor]
     type = ComputeIsotropicElasticityTensor
     youngs_modulus = 200e9 # (Pa) from wikipedia
     poissons_ratio = .3 # from wikipedia
-  []
-  [elastic_stress]
-    type = ADComputeFiniteStrainElasticStress
-  []
-  [thermal_strain]
-    type = ADComputeThermalExpansionEigenstrain
-    stress_free_temperature = 300
-    thermal_expansion_coeff = 1e-6
-    eigenstrain_name = eigenstrain
-    temperature = temperature
-  []
+  [../]
+
+  [./small_strain_arz]
+    type = ComputeAxisymmetricRZFiniteStrain
+  [../]
+
+  [./elastic_strain]
+    type = ComputeFiniteStrainElasticStress
+  [../]
 []
 
 [Postprocessors]
-  [average_temperature]
+  [./average_temperature]
     type = ElementAverageValue
     variable = temperature
-  []
+  [../]
+[]
+
+[Problem]
+  type = FEProblem
+  coord_type = RZ
 []
 
 [Executioner]
   type = Transient
-  start_time = -1
-  end_time = 200
-  steady_state_tolerance = 1e-7
-  steady_state_detection = true
+  num_steps = 100
   dt = 0.25
   solve_type = PJFNK
-  automatic_scaling = true
-  compute_scaling_once = false
   petsc_options_iname = '-pc_type -pc_hypre_type -ksp_gmres_restart'
-  petsc_options_value = 'hypre boomeramg 500'
+  petsc_options_value = 'hypre boomeramg 100'
   line_search = none
-  [TimeStepper]
-    type = FunctionDT
-    function = 'if(t<0,0.1,0.25)'
-  []
+  nl_rel_tol = 1e-6
 []
 
-
 [MultiApps]
-  [micro]
+  [./micro]
     type = TransientMultiApp
     app_type = DarcyThermoMechApp
-    positions = '0.01285 0.0    0
-                 0.01285 0.0608 0
-                 0.01285 0.1216 0
-                 0.01285 0.1824 0
-                 0.01285 0.2432 0
-                 0.01285 0.304  0'
+    positions = '0.01285 0.0   0
+                 0.01285 0.01  0
+                 0.01285 0.02  0
+                 0.01285 0.1   0
+                 0.01285 0.2   0
+                 0.01285 0.304 0'
     input_files = step10_micro.i
     execute_on = 'timestep_end'
-  []
+  [../]
 []
 
 [Transfers]
-  [keff_from_sub]
+  [./keff_from_sub]
     type = MultiAppPostprocessorInterpolationTransfer
     direction = from_multiapp
     multi_app = micro
@@ -221,29 +210,17 @@
     power = 1
     postprocessor = k_eff
     execute_on = 'timestep_end'
-  []
-  [temperature_to_sub]
+  [../]
+  [./temperature_to_sub]
     type = MultiAppVariableValueSamplePostprocessorTransfer
     direction = to_multiapp
     multi_app = micro
     source_variable = temperature
     postprocessor = temperature_in
     execute_on = 'timestep_end'
-  []
-[]
-
-[Controls]
-  [multiapp]
-    type = TimePeriod
-    disable_objects = 'MultiApps::micro Transfers::keff_from_sub Transfers::temperature_to_sub'
-    start_time = '0'
-    execute_on = 'initial'
-  []
+  [../]
 []
 
 [Outputs]
-  [out]
-    type = Exodus
-    elemental_as_nodal = true
-  []
+  exodus = true
 []

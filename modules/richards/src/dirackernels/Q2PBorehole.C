@@ -1,16 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "Q2PBorehole.h"
 #include "RotationMatrix.h"
-
-registerMooseObject("RichardsApp", Q2PBorehole);
 
 template <>
 InputParameters
@@ -45,7 +41,7 @@ Q2PBorehole::Q2PBorehole(const InputParameters & parameters)
   : PeacemanBorehole(parameters),
     _density(getUserObject<RichardsDensity>("fluid_density")),
     _relperm(getUserObject<RichardsRelPerm>("fluid_relperm")),
-    _other_var_nodal(coupledDofValues("other_var")),
+    _other_var_nodal(coupledNodalValue("other_var")),
     _other_var_num(coupled("other_var")),
     _var_is_pp(getParam<bool>("var_is_porepressure")),
     _viscosity(getParam<Real>("fluid_viscosity")),
@@ -71,7 +67,7 @@ Q2PBorehole::prepareNodalValues()
   {
     for (unsigned int nodenum = 0; nodenum < _num_nodes; ++nodenum)
     {
-      _pp[nodenum] = _var.dofValues()[nodenum];
+      _pp[nodenum] = _var.nodalSln()[nodenum];
       _sat[nodenum] = _other_var_nodal[nodenum];
     }
   }
@@ -80,7 +76,7 @@ Q2PBorehole::prepareNodalValues()
     for (unsigned int nodenum = 0; nodenum < _num_nodes; ++nodenum)
     {
       _pp[nodenum] = _other_var_nodal[nodenum];
-      _sat[nodenum] = _var.dofValues()[nodenum];
+      _sat[nodenum] = _var.nodalSln()[nodenum];
     }
   }
 

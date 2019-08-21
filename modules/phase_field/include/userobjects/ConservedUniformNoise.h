@@ -1,13 +1,5 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+#ifndef CONSERVEDUNIFORMNOISE_H
+#define CONSERVEDUNIFORMNOISE_H
 
 #include "ConservedNoiseBase.h"
 #include "ConservedUniformNoiseVeneer.h"
@@ -16,7 +8,11 @@
 class ConservedUniformNoise;
 
 template <>
-InputParameters validParams<ConservedUniformNoise>();
+InputParameters
+validParams<ConservedUniformNoise>()
+{
+  return validParams<ConservedNoiseBase>();
+}
 
 /**
  * Userobject that generates a uniformly distributed random number in the interval [-1:1]
@@ -34,3 +30,4 @@ public:
   }
 };
 
+#endif // CONSERVEDUNIFORMNOISE_H

@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowVariableBase.h"
 
@@ -14,7 +12,6 @@ InputParameters
 validParams<PorousFlowVariableBase>()
 {
   InputParameters params = validParams<PorousFlowMaterial>();
-  params.addPrivateParam<std::string>("pf_material_type", "pressure_saturation");
   params.addClassDescription("Base class for thermophysical variable materials. Provides pressure "
                              "and saturation material properties for all phases as required");
   return params;
@@ -58,7 +55,7 @@ PorousFlowVariableBase::PorousFlowVariableBase(const InputParameters & parameter
                                             "dPorousFlow_grad_saturation_qp_dgradvar")),
     _dgrads_qp_dv(_nodal_material ? nullptr
                                   : &declareProperty<std::vector<std::vector<RealGradient>>>(
-                                        "dPorousFlow_grad_saturation_qp_dvar"))
+                                        "dPorousFlow_grad_saturation_qp_dv"))
 {
 }
 
@@ -91,7 +88,7 @@ PorousFlowVariableBase::computeQpProperties()
     (*_dgrads_qp_dv)[_qp].resize(_num_phases);
   }
 
-  // Prepare the derivative matrices with zeroes
+  /// Prepare the derivative matrices with zeroes
   for (unsigned phase = 0; phase < _num_phases; ++phase)
   {
     _dporepressure_dvar[_qp][phase].assign(_num_pf_vars, 0.0);

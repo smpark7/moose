@@ -1,20 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTECONCENTRATIONDEPENDENTELASTICITYTENSOR_H
+#define COMPUTECONCENTRATIONDEPENDENTELASTICITYTENSOR_H
 
 #include "ComputeRotatedElasticityTensorBase.h"
-
-class ComputeConcentrationDependentElasticityTensor;
-
-template <>
-InputParameters validParams<ComputeConcentrationDependentElasticityTensor>();
 
 /**
  * ComputeElasticityTensor defines an elasticity tensor material object as a function of
@@ -40,3 +33,4 @@ protected:
   MaterialProperty<RankFourTensor> & _delasticity_tensor_dc;
 };
 
+#endif // COMPUTECONCENTRATIONDEPENDENTELASTICITYTENSOR_H

@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef TRANSIENT_H
+#define TRANSIENT_H
 
 #include "Executioner.h"
 
@@ -66,7 +72,7 @@ public:
   /**
    * Whether or not the last solve converged.
    */
-  virtual bool lastSolveConverged() const override;
+  virtual bool lastSolveConverged() override;
 
   virtual void preExecute() override;
 
@@ -133,7 +139,7 @@ public:
    * Get the time scheme used
    * @return MooseEnum with the time scheme
    */
-  Moose::TimeIntegratorType getTimeScheme() { return _time_scheme; }
+  MooseEnum getTimeScheme() { return _time_scheme; }
 
   /**
    * Get the set of sync times
@@ -172,6 +178,12 @@ public:
   Real & timestepTol() { return _timestep_tolerance; }
 
   /**
+   * Get the verbose output flag
+   * @return The verbose output flag
+   */
+  bool & verbose() { return _verbose; }
+
+  /**
    * Is the current step at a sync point (sync times, time interval, target time, etc)?
    * @return Bool indicataing whether we are at a sync point
    */
@@ -186,18 +198,28 @@ public:
   void parentOutputPositionChanged() override { _fe_problem.parentOutputPositionChanged(); }
 
   /**
+   * Get the number of Picard iterations performed
+   * @return Number of Picard iterations performed
+   */
+  // Because this returns the number of Picard iterations, rather than the current
+  // iteration count (which starts at 0), increment by 1.
+  Real numPicardIts() { return _picard_it + 1; }
+
+  /**
    * The relative L2 norm of the difference between solution and old solution vector.
    */
   virtual Real relativeSolutionDifferenceNorm();
 
 protected:
+  /**
+   * This should execute the solve for one timestep.
+   */
+  virtual void solveStep(Real input_dt = -1.0);
+
   /// Here for backward compatibility
   FEProblemBase & _problem;
 
-  /// Reference to nonlinear system base for faster access
-  NonlinearSystemBase & _nl;
-
-  Moose::TimeIntegratorType _time_scheme;
+  MooseEnum _time_scheme;
   std::shared_ptr<TimeStepper> _time_stepper;
 
   /// Current timestep.
@@ -213,24 +235,33 @@ protected:
   Real & _unconstrained_dt;
   bool & _at_sync_point;
 
+  /// Is it our first time through the execution loop?
+  bool & _first;
+
+  /// Whether or not the multiapps failed during the last timestem
+  bool & _multiapps_converged;
+
   /// Whether or not the last solve converged
   bool & _last_solve_converged;
 
   /// Whether step should be repeated due to xfem modifying the mesh
   bool _xfem_repeat_step;
+  unsigned int _xfem_update_count;
+  unsigned int _max_xfem_update;
 
   Real _end_time;
   Real _dtmin;
   Real _dtmax;
   unsigned int _num_steps;
   int _n_startup_steps;
+  unsigned int _steps_taken;
 
   /**
    * Steady state detection variables:
    */
-  bool _steady_state_detection;
-  Real _steady_state_tolerance;
-  Real _steady_state_start_time;
+  bool _trans_ss_check;
+  Real _ss_check_tol;
+  Real _ss_tmin;
   Real & _sln_diff_norm;
   Real & _old_time_solution_norm;
 
@@ -248,12 +279,28 @@ protected:
   Real & _target_time;
   bool _use_multiapp_dt;
 
+  /**
+   * Picard Related
+   */
+  /// Number of Picard iterations to perform
+  int & _picard_it;
+  Real _picard_max_its;
+  bool & _picard_converged;
+  Real & _picard_initial_norm;
+  Real & _picard_timestep_begin_norm;
+  Real & _picard_timestep_end_norm;
+  Real _picard_rel_tol;
+  Real _picard_abs_tol;
+
+  ///should detailed diagnostic output be printed
+  bool _verbose;
+
   Real _solution_change_norm;
 
   /// The difference of current and old solutions
   NumericVector<Number> & _sln_diff;
 
   void setupTimeIntegrator();
-
-  PerfID _final_timer;
 };
+
+#endif // TRANSIENTEXECUTIONER_H

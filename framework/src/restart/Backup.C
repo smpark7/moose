@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "Backup.h"
@@ -14,8 +19,20 @@
 #include "libmesh/parallel.h"
 
 // Backup Definitions
-Backup::Backup() : _restartable_data(libMesh::n_threads())
+Backup::Backup()
 {
-  for (auto & data_ptr : _restartable_data)
-    data_ptr = libmesh_make_unique<std::stringstream>();
+  unsigned int n_threads = libMesh::n_threads();
+
+  _restartable_data.resize(n_threads);
+
+  for (unsigned int i = 0; i < n_threads; ++i)
+    _restartable_data[i] = new std::stringstream;
+}
+
+Backup::~Backup()
+{
+  unsigned int n_threads = libMesh::n_threads();
+
+  for (unsigned int i = 0; i < n_threads; ++i)
+    delete _restartable_data[i];
 }

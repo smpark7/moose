@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef CONSOLE_H
+#define CONSOLE_H
 
 // MOOSE includes
 #include "TableOutput.h"
@@ -41,8 +47,6 @@ public:
    */
   virtual void initialSetup() override;
 
-  virtual void timestepSetup() override;
-
   /**
    * Customizes the order of output for the various components as well as adds additional
    * output such as timestep information and nonlinear/linear residual information
@@ -71,13 +75,6 @@ public:
    * Performs console related printing when the mesh is changed
    */
   void meshChanged() override;
-
-  /**
-   * A helper function for outputting norms in color
-   * @param old_norm The old residual norm to compare against
-   * @param norm The current residual norm
-   */
-  static std::string outputNorm(const Real & old_norm, const Real & norm);
 
   /**
    * Return system information flags
@@ -125,11 +122,16 @@ protected:
   virtual void outputSystemInformation() override;
 
   /**
-   * Prints the time step information for the screen output. The Boolean controls whether the dt is
-   * output. It doesn't really make sense to output this quantity the first time since it's a delta
-   * quantity indicating the step size from the previous step.
+   * A helper function for outputting norms in color
+   * @param old_norm The old residual norm to compare against
+   * @param norm The current residual norm
    */
-  void writeTimestepInformation(bool output_dt);
+  std::string outputNorm(const Real & old_norm, const Real & norm);
+
+  /**
+   * Prints the time step information for the screen output
+   */
+  void writeTimestepInformation();
 
   /**
    * Write message to screen and/or file
@@ -183,8 +185,14 @@ protected:
   /// State for solve performance log
   bool _solve_log;
 
+  /// State for setup performance log
+  bool _setup_log;
+
   /// Control the display libMesh performance log
   bool _libmesh_log;
+
+  /// State for early setup log printing
+  bool _setup_log_early;
 
   /// State for the performance log header information
   bool _perf_header;
@@ -214,6 +222,9 @@ private:
    */
   void mooseConsole(const std::string & message);
 
+  /// State of the --timing command line argument from MooseApp
+  bool _timing;
+
   /// Reference to cached messages from calls to _console
   const std::ostringstream & _console_buffer;
 
@@ -234,6 +245,6 @@ private:
 private:
   /// A boolean for protecting _system_info_flags from being changed undesirably
   bool _allow_changing_sysinfo_flag;
-
-  bool _last_message_ended_in_newline;
 };
+
+#endif /* CONSOLE_H */

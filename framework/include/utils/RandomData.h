@@ -1,18 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef RANDOMDATA_H
+#define RANDOMDATA_H
 
 // MOOSE includes
 #include "MooseRandom.h"
 #include "MooseTypes.h"
-#include "MooseEnumItem.h"
 
 #include <unordered_map>
 
@@ -23,11 +28,7 @@ class RandomInterface;
 class RandomData
 {
 public:
-  RandomData(FEProblemBase & fe_problem, const RandomInterface & random_interface);
-
-  RandomData(FEProblemBase & fe_problem, bool is_nodal, ExecFlagType reset_on, unsigned int seed);
-
-  ~RandomData() = default;
+  RandomData(FEProblemBase & problem, const RandomInterface & random_interface);
 
   /**
    * This method is called to reset or update the seeds based on the reset_on
@@ -50,6 +51,9 @@ public:
 private:
   void updateGenerators();
 
+  template <typename T>
+  void updateGeneratorHelper(T it, T end_it);
+
   FEProblemBase & _rd_problem;
   MooseMesh & _rd_mesh;
 
@@ -64,3 +68,4 @@ private:
   std::unordered_map<dof_id_type, unsigned int> _seeds;
 };
 
+#endif // RANDOMDATA_H

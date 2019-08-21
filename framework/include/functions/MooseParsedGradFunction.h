@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MOOSEPARSEDGRADFUNCTION_H
+#define MOOSEPARSEDGRADFUNCTION_H
 
 // MOOSE includes
 #include "Function.h"
@@ -45,7 +51,7 @@ public:
    * @param t Current time
    * @param p The current spatial location
    */
-  virtual Real value(Real t, const Point & p) const override;
+  virtual Real value(Real t, const Point & p) override;
 
   /**
    * Compute the gradient of the function
@@ -53,13 +59,13 @@ public:
    * @param p The current point (x,y,z)
    * @return Gradient of the function
    */
-  virtual RealGradient gradient(Real t, const Point & p) const override;
+  virtual RealGradient gradient(Real t, const Point & p) override;
 
   /**
    * Method invalid for ParsedGradFunction
    * @see ParsedVectorFunction
    */
-  virtual RealVectorValue vectorValue(Real t, const Point & p) const override;
+  virtual RealVectorValue vectorValue(Real t, const Point & p) override;
 
   /**
    * Creates two libMesh::ParsedFunction objects for returning a vector via the 'gradient' method
@@ -77,3 +83,5 @@ protected:
   /// Pointer to the Parsed function wrapper object for the gradient
   std::unique_ptr<MooseParsedFunctionWrapper> _grad_function_ptr;
 };
+
+#endif // MOOSEPARSEDGRADFUNCTION_H

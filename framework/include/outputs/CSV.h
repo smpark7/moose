@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef CSV_H
+#define CSV_H
 
 // MOOSE includes
 #include "TableOutput.h"
@@ -69,12 +75,6 @@ protected:
    */
   virtual void outputVectorPostprocessors() override;
 
-  /**
-   * Generates a filename pattern for Vectorpostprocessors
-   * filebase + VPP name + time step + ".csv"
-   */
-  std::string getVectorPostprocessorFileName(const std::string & vpp_name, bool include_time_step);
-
 private:
   /// Flag for aligning data in .csv file
   bool _align;
@@ -82,35 +82,18 @@ private:
   /// Decimal digits per number in the CSV file
   unsigned int _precision;
 
-  /// The delimiter used when writing the CSV file
+  /// Overwrite the default delimiter?
+  bool _set_delimiter;
   std::string _delimiter;
 
-  /// Flag for writing scalar and/or postprocessor data
+  /// Flag for writting scalar and/or postprocessor data
   bool _write_all_table;
 
-  /// Flag for writing vector postprocessor data
+  /// Flag for writting vector postprocessor data
   bool _write_vector_table;
 
   /// Flag for sorting column names
   const bool _sort_columns;
-
-  /// Flag indicating MOOSE is recovering via --recover command-line option
-  bool _recovering;
-
-  /// Flag for creating a _FINAL symlink
-  bool _create_final_symlink;
-
-  /// Flag for creating a _LATEST symlink
-  bool _create_latest_symlink;
-
-  /// Current list of VPP filenames for creating _LATEST/_FINAL symlinks
-  // The pair is composed of the complete filename (foo_variable_0001.csv) and the incomplete name
-  // (foo_variable) to which the _FINAL or _LATEST is to be applied.
-  std::vector<std::pair<std::string, std::string>> _latest_vpp_filenames;
-
-  /**
-   * Returns the filename without the time/timestep information.
-   */
-  std::string getVectorPostprocessorFilePrefix(const std::string & vpp_name);
 };
 
+#endif /* CSV_H */

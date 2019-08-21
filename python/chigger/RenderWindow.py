@@ -1,23 +1,24 @@
 #pylint: disable=missing-docstring
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#################################################################
+#                   DO NOT MODIFY THIS HEADER                   #
+#  MOOSE - Multiphysics Object Oriented Simulation Environment  #
+#                                                               #
+#            (c) 2010 Battelle Energy Alliance, LLC             #
+#                      ALL RIGHTS RESERVED                      #
+#                                                               #
+#           Prepared by Battelle Energy Alliance, LLC           #
+#             Under Contract No. DE-AC07-05ID14517              #
+#              With the U. S. Department of Energy              #
+#                                                               #
+#              See COPYRIGHT for full restrictions              #
+#################################################################
 import os
 import vtk
 
 import base
-import annotations
-import observers
 import misc
 import mooseutils
 
-VTK_MAJOR_VERSION = vtk.vtkVersion.GetVTKMajorVersion()
 
 class RenderWindow(base.ChiggerObject):
     """
@@ -35,19 +36,12 @@ class RenderWindow(base.ChiggerObject):
                 allow=['interactive', 'modal', 'interactive2D'])
         opt.add('test', False, "When True the interaction is disabled and the window closes "
                                "immediately after rendering.")
-        opt.add('motion_factor', "Control the interaction motion rate. "
-                                 "(calls vtkInteractorStyle::SetMotionFactor)",
-                vtype=float)
         opt.add('offscreen', False, "Enable offscreen rendering.")
         opt.add('chigger', False, "Places a chigger logo in the lower left corner.")
         opt.add('smoothing', False, "Enable VTK render window smoothing options.")
+        opt.add('multisamples', None, "Set the number of multi-samples.", vtype=int)
         opt.add('antialiasing', 0, "Number of antialiasing frames to perform "
                                    "(set vtkRenderWindow::SetAAFrames).", vtype=int)
-
-        # Observers
-        opt.add('observers', [], "A list of ChiggerObserver objects, once added they are not " \
-                                 "removed. Hence, changing the observers in this list will not " \
-                                 "remove existing objects.")
 
         # Background settings
         background = misc.ChiggerBackground.getOptions()
@@ -65,18 +59,10 @@ class RenderWindow(base.ChiggerObject):
         super(RenderWindow, self).__init__(**kwargs)
 
         self._results = [misc.ChiggerBackground()]
-        self._groups = []
         self.__active = None
 
-        self.__watermark = annotations.ImageAnnotation(filename='chigger_white.png',
-                                                       width=0.025,
-                                                       horizontal_alignment='left',
-                                                       vertical_alignment='bottom',
-                                                       position=[0, 0])
         # Store the supplied result objects
         self.append(*args)
-        if kwargs.pop('chigger', False):
-            self.append(self.__watermark)
 
     def __contains__(self, item):
         """
@@ -105,7 +91,6 @@ class RenderWindow(base.ChiggerObject):
             mooseutils.mooseDebug('RenderWindow.append {}'.format(type(result).__name__))
             if isinstance(result, base.ResultGroup):
                 self.append(*result.getResults())
-                self._groups.append(result)
             elif not isinstance(result, self.RESULT_TYPE):
                 n = result.__class__.__name__
                 t = self.RESULT_TYPE.__name__
@@ -113,7 +98,7 @@ class RenderWindow(base.ChiggerObject):
                 raise mooseutils.MooseException(msg)
             self._results.append(result)
 
-    def remove(self, *args):
+    def pop(self, *args):
         """
         Remove result object(s) from the window.
         """
@@ -132,7 +117,7 @@ class RenderWindow(base.ChiggerObject):
         """
         Remove all objects from the render window.
         """
-        self.remove(*self._results)
+        self.pop(*self._results)
         self.append(misc.ChiggerBackground())
         self.update()
 
@@ -166,10 +151,6 @@ class RenderWindow(base.ChiggerObject):
         """
         Begin the interactive VTK session.
         """
-        if timer:
-            msg = "The timer argument is deprecated, please use the 'observers' setting."
-            mooseutils.mooseWarning(msg)
-
         mooseutils.mooseDebug("{}.start()".format(self.__class__.__name__), color='MAGENTA')
 
         if self.needsUpdate():
@@ -177,6 +158,15 @@ class RenderWindow(base.ChiggerObject):
 
         if self.__vtkinteractor:
             self.__vtkinteractor.Initialize()
+
+            if timer:
+                if not isinstance(timer, base.ChiggerTimer):
+                    n = type(timer).__name__
+                    msg = "The supplied timer of type {} must be a ChiggerTimer object.".format(n)
+                    raise mooseutils.MooseException(msg)
+                self.__vtkinteractor.AddObserver('TimerEvent', timer.callback)
+                self.__vtkinteractor.CreateRepeatingTimer(timer.duration())
+
             self.__vtkinteractor.Start()
 
         if self.getOption('style') == 'test':
@@ -206,10 +196,6 @@ class RenderWindow(base.ChiggerObject):
             elif style == 'modal':
                 self.__vtkinteractor.SetInteractorStyle(vtk.vtkInteractorStyleUser())
 
-        if self.isOptionValid('motion_factor'):
-            self.__vtkinteractor.GetInteractorStyle(). \
-                SetMotionFactor(self.getOption('motion_factor'))
-
         # Background settings
         self._results[0].updateOptions(self._options)
 
@@ -223,6 +209,12 @@ class RenderWindow(base.ChiggerObject):
             self.__vtkwindow.SetPolygonSmoothing(smooth)
             self.__vtkwindow.SetPointSmoothing(smooth)
 
+        if self.isOptionValid('antialiasing'):
+            self.__vtkwindow.SetAAFrames(self.getOption('antialiasing'))
+
+        if self.isOptionValid('multisamples'):
+            self.__vtkwindow.SetMultiSamples(self.getOption('multisamples'))
+
         if self.isOptionValid('size'):
             self.__vtkwindow.SetSize(self.getOption('size'))
 
@@ -230,19 +222,8 @@ class RenderWindow(base.ChiggerObject):
 
         # Setup the result objects
         n = self.__vtkwindow.GetNumberOfLayers()
-        for group in self._groups:
-            if group.needsUpdate():
-                group.update()
-
         for result in self._results:
             renderer = result.getVTKRenderer()
-            if self.isOptionValid('antialiasing'):
-                if VTK_MAJOR_VERSION < 8:
-                    self.__vtkwindow.SetAAFrames(self.getOption('antialiasing'))
-                else:
-                    renderer.SetUseFXAA(True)
-                    self.__vtkwindow.SetMultiSamples(self.getOption('antialiasing'))
-
             if not self.__vtkwindow.HasRenderer(renderer):
                 self.__vtkwindow.AddRenderer(renderer)
             if result.needsUpdate():
@@ -252,17 +233,6 @@ class RenderWindow(base.ChiggerObject):
 
         if (self.__active is None) and len(self._results) > 1:
             self.setActive(self._results[1])
-
-        # Observers
-        if self.__vtkinteractor:
-            for observer in self.getOption('observers'):
-                if not isinstance(observer, observers.ChiggerObserver):
-                    msg = "The supplied observer of type {} must be a {} object."
-                    raise mooseutils.MooseException(msg.format(type(observer),
-                                                               observers.ChiggerObserver))
-
-                elif not observer.isActive() is None:
-                    observer.init(self)
 
         self.__vtkwindow.Render()
 
@@ -276,21 +246,14 @@ class RenderWindow(base.ChiggerObject):
         for result in self._results:
             result.getVTKRenderer().ResetCamera()
 
-    def resetCameraClippingRange(self):
-        """
-        Resets the clipping range, this may be needed if you see artifacts in the renderering.
-        """
-        for result in self._results:
-            result.getVTKRenderer().ResetCameraClippingRange()
-
-    def write(self, filename, dialog=False, **kwargs):
+    def write(self, filename, dialog=False):
         """
         Writes the VTKWindow to an image.
         """
         mooseutils.mooseDebug('RenderWindow.write()', color='MAGENTA')
 
-        if self.needsUpdate() or kwargs:
-            self.update(**kwargs)
+        if self.needsUpdate():
+            self.update()
 
         # Allowed extensions and the associated readers
         writers = dict()

@@ -1,17 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "Nonlinear3D.h"
 #include "SolidModel.h"
 #include "Problem.h"
 #include "SymmIsotropicElasticityTensor.h"
 
+// libmesh includes
 #include "libmesh/quadrature.h"
 
 namespace SolidMechanics
@@ -27,8 +26,7 @@ Nonlinear3D::Nonlinear3D(SolidModel & solid_model,
     _grad_disp_x_old(coupledGradientOld("disp_x")),
     _grad_disp_y_old(coupledGradientOld("disp_y")),
     _grad_disp_z_old(coupledGradientOld("disp_z")),
-    _volumetric_locking_correction(
-        _solid_model.getParamTempl<bool>("volumetric_locking_correction"))
+    _volumetric_locking_correction(_solid_model.getParam<bool>("volumetric_locking_correction"))
 {
 }
 

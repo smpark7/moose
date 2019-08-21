@@ -1,5 +1,4 @@
 [Tests]
-  deprecated = True
   [./parsed_sideset]
     type = 'Exodiff'
     input = ' parsed_sideset.i'

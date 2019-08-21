@@ -1,17 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "PLC_LSH.h"
 
 #include "SymmIsotropicElasticityTensor.h"
-
-registerMooseObject("SolidMechanicsApp", PLC_LSH);
 
 template <>
 InputParameters
@@ -33,9 +28,8 @@ validParams<PLC_LSH>()
 
   // Sub-Newton Iteration control parameters
   params.addParam<unsigned int>("max_its", 30, "Maximum number of sub-newton iterations");
-  params.addParam<bool>("internal_solve_full_iteration_history",
-                        false,
-                        "Set true to output sub-newton iteration information");
+  params.addParam<bool>(
+      "output_iteration_info", false, "Set true to output sub-newton iteration information");
   params.addParam<Real>(
       "relative_tolerance", 1e-5, "Relative convergence tolerance for sub-newtion iteration");
   params.addParam<Real>(
@@ -63,20 +57,20 @@ PLC_LSH::PLC_LSH(const InputParameters & parameters)
     _hardening_constant(parameters.get<Real>("hardening_constant")),
 
     _max_its(parameters.get<unsigned int>("max_its")),
-    _internal_solve_full_iteration_history(getParam<bool>("internal_solve_full_iteration_history")),
+    _output_iteration_info(getParam<bool>("output_iteration_info")),
     _relative_tolerance(parameters.get<Real>("relative_tolerance")),
     _absolute_tolerance(parameters.get<Real>("absolute_tolerance")),
 
     _absolute_stress_tolerance(parameters.get<Real>("absolute_stress_tolerance")),
 
     _creep_strain(declareProperty<SymmTensor>("creep_strain")),
-    _creep_strain_old(getMaterialPropertyOld<SymmTensor>("creep_strain")),
+    _creep_strain_old(declarePropertyOld<SymmTensor>("creep_strain")),
 
     _plastic_strain(declareProperty<SymmTensor>("plastic_strain")),
-    _plastic_strain_old(getMaterialPropertyOld<SymmTensor>("plastic_strain")),
+    _plastic_strain_old(declarePropertyOld<SymmTensor>("plastic_strain")),
 
     _hardening_variable(declareProperty<Real>("hardening_variable")),
-    _hardening_variable_old(getMaterialPropertyOld<Real>("hardening_variable")),
+    _hardening_variable_old(declarePropertyOld<Real>("hardening_variable")),
 
     _output(getParam<PostprocessorName>("output") != "" ? &getPostprocessorValue("output") : NULL)
 
@@ -90,7 +84,7 @@ PLC_LSH::PLC_LSH(const InputParameters & parameters)
 void
 PLC_LSH::initQpStatefulProperties()
 {
-  _hardening_variable[_qp] = 0;
+  _hardening_variable[_qp] = _hardening_variable_old[_qp] = 0;
   SolidModel::initQpStatefulProperties();
 }
 
@@ -105,7 +99,7 @@ PLC_LSH::computeStress()
   if (_t_step == 0 && !_app.isRestarting())
     return;
 
-  if (_internal_solve_full_iteration_history == true)
+  if (_output_iteration_info == true)
   {
     _console << std::endl
              << "iteration output for combined creep-plasticity solve:"
@@ -154,7 +148,7 @@ PLC_LSH::computeStress()
     }
     stress_new_last = stress_new;
 
-    if (_internal_solve_full_iteration_history == true)
+    if (_output_iteration_info == true)
     {
       _console << "stress_it=" << counter << " rel_delS=" << delS / first_delS
                << " rel_tol=" << _relative_tolerance << " abs_delS=" << delS
@@ -223,7 +217,7 @@ PLC_LSH::computeCreep(const SymmTensor & strain_increment,
 
     del_p += creep_residual / (1 / _dt - dphi_ddelp);
 
-    if (_internal_solve_full_iteration_history == true)
+    if (_output_iteration_info == true)
     {
       _console << "crp_it=" << it << " trl_strs=" << effective_trial_stress << " phi=" << phi
                << " dphi=" << dphi_ddelp << " del_p=" << del_p
@@ -311,7 +305,7 @@ PLC_LSH::computeLSH(const SymmTensor & strain_increment,
       _hardening_variable[_qp] =
           _hardening_variable_old[_qp] + (_hardening_constant * scalar_plastic_strain_increment);
 
-      if (_internal_solve_full_iteration_history == true)
+      if (_output_iteration_info == true)
       {
         _console << "pls_it=" << it << " trl_strs=" << effective_trial_stress
                  << " del_p=" << scalar_plastic_strain_increment

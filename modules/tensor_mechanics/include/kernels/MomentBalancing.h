@@ -1,24 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef MOMENTBALANCING_H
+#define MOMENTBALANCING_H
 
 #include "Kernel.h"
 
 // Forward Declarations
 class MomentBalancing;
-template <typename>
-class RankTwoTensorTempl;
-typedef RankTwoTensorTempl<Real> RankTwoTensor;
-template <typename>
-class RankFourTensorTempl;
-typedef RankFourTensorTempl<Real> RankFourTensor;
+class RankFourTensor;
+class RankTwoTensor;
+
 template <>
 InputParameters validParams<MomentBalancing>();
 
@@ -67,3 +62,4 @@ protected:
   std::vector<unsigned int> _disp_var;
 };
 
+#endif // MOMENTBALANCING_H

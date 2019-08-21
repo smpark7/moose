@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MOOSEPARSEDFUNCTION_H
+#define MOOSEPARSEDFUNCTION_H
 
 // MOOSE includes
 #include "Function.h"
@@ -43,13 +49,13 @@ public:
    * @param pt The current point (x,y,z)
    * @return The result of evaluating the function
    */
-  virtual Real value(Real t, const Point & pt) const override;
+  virtual Real value(Real t, const Point & pt) override;
 
   /**
    * Evaluate the gradient of the function. This is computed in libMesh
    * through automatic symbolic differentiation.
    */
-  virtual RealGradient gradient(Real t, const Point & p) const override;
+  virtual RealGradient gradient(Real t, const Point & p) override;
 
   /**
    * Evaluate the time derivative of the function. This is computed in libMesh
@@ -58,13 +64,13 @@ public:
    * \param p The point in space (x,y,z)
    * \return The time derivative of the function at the specified time and location
    */
-  virtual Real timeDerivative(Real t, const Point & p) const override;
+  virtual Real timeDerivative(Real t, const Point & p) override;
 
   /**
    * Method invalid for ParsedGradFunction
    * @see ParsedVectorFunction
    */
-  virtual RealVectorValue vectorValue(Real t, const Point & p) const override;
+  virtual RealVectorValue vectorValue(Real t, const Point & p) override;
 
   /**
    * Creates the parsed function.
@@ -77,3 +83,4 @@ protected:
 
   friend class ParsedFunctionTest;
 };
+#endif // MOOSEPARSEDFUNCTION_H

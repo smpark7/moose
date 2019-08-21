@@ -1,1 +1,7 @@
-../../../../step08_postprocessors/tests/materials/packed_column/tests
+[Tests]
+  [./test]
+    type = 'Exodiff'
+    input = 'packed_column.i'
+    exodiff = 'packed_column_out.e'
+  [../]
+[]

@@ -1,16 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "FormattedTable.h"
 #include "MooseError.h"
-#include "MooseUtils.h"
+#include "InfixIterator.h"
 
+// libMesh includes
 #include "libmesh/exodusII_io.h"
 
 #include <iomanip>
@@ -23,18 +29,18 @@
 const unsigned short FormattedTable::_column_width = 15;
 const unsigned short FormattedTable::_min_pps_width = 40;
 
-const unsigned short DEFAULT_CSV_PRECISION = 14;
-const std::string DEFAULT_CSV_DELIMITER = ",";
-
 template <>
 void
 dataStore(std::ostream & stream, FormattedTable & table, void * context)
 {
   storeHelper(stream, table._data, context);
-  storeHelper(stream, table._align_widths, context);
   storeHelper(stream, table._column_names, context);
-  storeHelper(stream, table._output_row_index, context);
-  storeHelper(stream, table._headers_output, context);
+
+  // Don't store these
+  // _output_file
+  // _stream_open
+
+  storeHelper(stream, table._last_key, context);
 }
 
 template <>
@@ -42,71 +48,57 @@ void
 dataLoad(std::istream & stream, FormattedTable & table, void * context)
 {
   loadHelper(stream, table._data, context);
-  loadHelper(stream, table._align_widths, context);
+
   loadHelper(stream, table._column_names, context);
-  loadHelper(stream, table._output_row_index, context);
-  loadHelper(stream, table._headers_output, context);
+
+  table._stream_open = false;
+  // table.close();
+
+  loadHelper(stream, table._last_key, context);
 }
 
 void
 FormattedTable::close()
 {
-  if (!_output_file.is_open())
+  if (!_stream_open)
     return;
   _output_file.flush();
   _output_file.close();
+  _stream_open = false;
   _output_file_name = "";
 }
 
 void
 FormattedTable::open(const std::string & file_name)
 {
-  if (_output_file.is_open() && _output_file_name == file_name)
+  if (!_stream_open && _output_file_name == file_name)
     return;
   close();
   _output_file_name = file_name;
-
-  std::ios_base::openmode open_flags = std::ios::out;
-  if (_append)
-    open_flags |= std::ios::app;
-  else
-  {
-    open_flags |= std::ios::trunc;
-    _output_row_index = 0;
-    _headers_output = false;
-  }
-
-  _output_file.open(file_name.c_str(), open_flags);
-  if (_output_file.fail())
-    mooseError("Unable to open file ", file_name);
+  _output_file.open(file_name.c_str(), std::ios::trunc | std::ios::out);
+  _stream_open = true;
 }
 
 FormattedTable::FormattedTable()
-  : _output_row_index(0),
-    _headers_output(false),
-    _append(false),
-    _output_time(true),
-    _csv_delimiter(DEFAULT_CSV_DELIMITER),
-    _csv_precision(DEFAULT_CSV_PRECISION)
+  : _stream_open(false), _last_key(-1), _output_time(true), _csv_delimiter(","), _csv_precision(14)
 {
 }
 
 FormattedTable::FormattedTable(const FormattedTable & o)
   : _column_names(o._column_names),
     _output_file_name(""),
-    _output_row_index(o._output_row_index),
-    _headers_output(o._headers_output),
-    _append(o._append),
+    _stream_open(o._stream_open),
+    _last_key(o._last_key),
     _output_time(o._output_time),
-    _csv_delimiter(o._csv_delimiter),
-    _csv_precision(o._csv_precision),
+    _csv_delimiter(","),
+    _csv_precision(14),
     _column_names_unsorted(o._column_names_unsorted)
 {
-  if (_output_file.is_open())
+  if (_stream_open)
     mooseError("Copying a FormattedTable with an open stream is not supported");
 
   for (const auto & it : o._data)
-    _data.emplace_back(it.first, it.second);
+    _data[it.first] = it.second;
 }
 
 FormattedTable::~FormattedTable() { close(); }
@@ -114,100 +106,26 @@ FormattedTable::~FormattedTable() { close(); }
 bool
 FormattedTable::empty() const
 {
-  return _data.empty();
-}
-
-void
-FormattedTable::append(bool append_existing_file)
-{
-  _append = append_existing_file;
-}
-
-void
-FormattedTable::addRow(Real time)
-{
-  _data.emplace_back(time, std::map<std::string, Real>());
-}
-
-void
-FormattedTable::addData(const std::string & name, Real value)
-{
-  if (empty())
-    mooseError("No Data stored in the the FormattedTable");
-
-  auto back_it = _data.rbegin();
-  back_it->second[name] = value;
-
-  if (std::find(_column_names.begin(), _column_names.end(), name) == _column_names.end())
-  {
-    _column_names.push_back(name);
-    _column_names_unsorted = true;
-  }
+  return _last_key == -1;
 }
 
 void
 FormattedTable::addData(const std::string & name, Real value, Real time)
 {
-  auto back_it = _data.rbegin();
-
-  mooseAssert(back_it == _data.rend() || !MooseUtils::absoluteFuzzyLessThan(time, back_it->first),
-              "Attempting to add data to FormattedTable with the dependent variable in a "
-              "non-increasing order.\nDid you mean to use addData(std::string &, const "
-              "std::vector<Real> &)?");
-
-  // See if the current "row" is already in the table
-  if (back_it == _data.rend() || !MooseUtils::absoluteFuzzyEqual(time, back_it->first))
-  {
-    _data.emplace_back(time, std::map<std::string, Real>());
-    back_it = _data.rbegin();
-  }
-  // Insert or update value
-  back_it->second[name] = value;
-
+  _data[time][name] = value;
   if (std::find(_column_names.begin(), _column_names.end(), name) == _column_names.end())
-  {
     _column_names.push_back(name);
-    _column_names_unsorted = true;
-  }
-}
-
-void
-FormattedTable::addData(const std::string & name, const std::vector<Real> & vector)
-{
-  for (MooseIndex(vector) i = 0; i < vector.size(); ++i)
-  {
-    if (i == _data.size())
-      _data.emplace_back(i, std::map<std::string, Real>());
-
-    mooseAssert(MooseUtils::absoluteFuzzyEqual(_data[i].first, i),
-                "Inconsistent indexing in VPP vector");
-
-    auto & curr_entry = _data[i];
-    curr_entry.second[name] = vector[i];
-  }
-
-  if (std::find(_column_names.begin(), _column_names.end(), name) == _column_names.end())
-  {
-    _column_names.push_back(name);
-    _column_names_unsorted = true;
-  }
-}
-
-Real
-FormattedTable::getLastTime()
-{
-  mooseAssert(!empty(), "No Data stored in the FormattedTable");
-  return _data.rbegin()->first;
+  _last_key = time;
+  _column_names_unsorted = true;
 }
 
 Real &
 FormattedTable::getLastData(const std::string & name)
 {
-  mooseAssert(!empty(), "No Data stored in the FormattedTable");
+  mooseAssert(_last_key != -1, "No Data stored in the FormattedTable");
 
-  auto & last_data_map = _data.rbegin()->second;
-  auto it = last_data_map.find(name);
-  if (it == last_data_map.end())
+  std::map<std::string, Real>::iterator it = (_data[_last_key]).find(name);
+  if (it == (_data[_last_key]).end())
     mooseError("No Data found for name: " + name);
 
   return it->second;
@@ -241,8 +159,8 @@ FormattedTable::printNoDataRow(char intersect_char,
 {
   out.fill(fill_char);
   out << std::right << intersect_char << std::setw(_column_width + 2) << intersect_char;
-  for (auto header_it = col_begin; header_it != col_end; ++header_it)
-    out << std::setw(col_widths[*header_it] + 2) << intersect_char;
+  for (std::vector<std::string>::iterator header = col_begin; header != col_end; ++header)
+    out << std::setw(col_widths[*header] + 2) << intersect_char;
   out << "\n";
 
   // Clear the fill character
@@ -274,7 +192,7 @@ FormattedTable::printTable(std::ostream & out,
   else if (suggested_term_width == "AUTO")
     term_width = getTermWidth(false);
   else
-    term_width = MooseUtils::stringToInteger(suggested_term_width);
+    term_width = suggested_term_width;
 
   if (term_width < _min_pps_width)
     term_width = _min_pps_width;
@@ -319,38 +237,43 @@ FormattedTable::printTablePiece(std::ostream & out,
                                 std::vector<std::string>::iterator & col_begin,
                                 std::vector<std::string>::iterator & col_end)
 {
+  std::map<Real, std::map<std::string, Real>>::iterator i;
+  std::vector<std::string>::iterator header;
+
   /**
    * Print out the header row
    */
   printRowDivider(out, col_widths, col_begin, col_end);
   out << "|" << std::setw(_column_width) << std::left << " time"
       << " |";
-  for (auto header_it = col_begin; header_it != col_end; ++header_it)
-    out << " " << std::setw(col_widths[*header_it]) << *header_it << "|";
+  for (header = col_begin; header != col_end; ++header)
+    out << " " << std::setw(col_widths[*header]) << *header << "|";
   out << "\n";
   printRowDivider(out, col_widths, col_begin, col_end);
 
-  auto data_it = _data.begin();
+  /**
+   * Skip over values that we don't want to see.
+   * This step may be able to optimized if the table gets really big.  We could
+   * iterate backwards from the end and create a new forward iterator from there.
+   */
+  i = _data.begin();
   if (last_n_entries)
   {
     if (_data.size() > last_n_entries)
-    {
       // Print a blank row to indicate that values have been ommited
       printOmittedRow(out, col_widths, col_begin, col_end);
 
-      // Jump to the right place in the vector
-      data_it += _data.size() - last_n_entries;
-    }
+    for (int counter = 0; counter < static_cast<int>(_data.size() - last_n_entries); ++counter)
+      ++i;
   }
   // Now print the remaining data rows
-  for (; data_it != _data.end(); ++data_it)
+  for (; i != _data.end(); ++i)
   {
-    out << "|" << std::right << std::setw(_column_width) << std::scientific << data_it->first
-        << " |";
-    for (auto header_it = col_begin; header_it != col_end; ++header_it)
+    out << "|" << std::right << std::setw(_column_width) << std::scientific << i->first << " |";
+    for (header = col_begin; header != col_end; ++header)
     {
-      auto & tmp = data_it->second;
-      out << std::setw(col_widths[*header_it]) << tmp[*header_it] << " |";
+      std::map<std::string, Real> & tmp = i->second;
+      out << std::setw(col_widths[*header]) << tmp[*header] << " |";
     }
     out << "\n";
   }
@@ -362,112 +285,107 @@ void
 FormattedTable::printCSV(const std::string & file_name, int interval, bool align)
 {
   open(file_name);
+  _output_file.seekp(0, std::ios::beg);
 
-  if (_output_row_index == 0)
+  /* When the alignment option is set to true, the widths of the columns needs to be computed based
+   * on
+   * longest of the column name of the data supplied. This is done here by creating a map of the
+   * widths for each of the columns, including time */
+  std::map<std::string, unsigned int> width;
+  if (align)
   {
-    /**
-     * When the alignment option is set to true, the widths of the columns needs to be computed
-     * based on longest of the column name of the data supplied. This is done here by creating a
-     * map
-     * of the widths for each of the columns, including time
-     */
-    if (align)
+    // Set the initial width to the names of the columns
+    width["time"] = 4;
+
+    for (const auto & col_name : _column_names)
+      width[col_name] = col_name.size();
+
+    // Loop through the various times
+    for (const auto & it : _data)
     {
-      // Set the initial width to the names of the columns
-      _align_widths["time"] = 4;
-
-      for (const auto & col_name : _column_names)
-        _align_widths[col_name] = col_name.size();
-
-      // Loop through the various times
-      for (const auto & it : _data)
+      // Update the time width
       {
-        // Update the time _align_width
-        {
-          std::ostringstream oss;
-          oss << std::setprecision(_csv_precision) << it.first;
-          unsigned int w = oss.str().size();
-          _align_widths["time"] = std::max(_align_widths["time"], w);
-        }
+        std::ostringstream oss;
+        oss << std::setprecision(_csv_precision) << it.first;
+        unsigned int w = oss.str().size();
+        width["time"] = std::max(width["time"], w);
+      }
 
-        // Loop through the data for the current time and update the _align_widths
-        for (const auto & jt : it.second)
-        {
-          std::ostringstream oss;
-          oss << std::setprecision(_csv_precision) << jt.second;
-          unsigned int w = oss.str().size();
-          _align_widths[jt.first] = std::max(_align_widths[jt.first], w);
-        }
+      // Loop through the data for the current time and update the widths
+      for (const auto & jt : it.second)
+      {
+        std::ostringstream oss;
+        oss << std::setprecision(_csv_precision) << jt.second;
+        unsigned int w = oss.str().size();
+        width[jt.first] = std::max(width[jt.first], w);
       }
     }
+  }
 
-    // Output Header
-    if (!_headers_output)
+  { // Output Header
+    bool first = true;
+
+    if (_output_time)
     {
+      if (align)
+        _output_file << std::setw(width["time"]) << "time";
+      else
+        _output_file << "time";
+      first = false;
+    }
+
+    for (const auto & col_name : _column_names)
+    {
+      if (!first)
+        _output_file << _csv_delimiter;
+
+      if (align)
+        _output_file << std::right << std::setw(width[col_name]) << col_name;
+      else
+        _output_file << col_name;
+      first = false;
+    }
+  }
+
+  _output_file << "\n";
+
+  int counter = 0;
+  for (auto & i : _data)
+  {
+    if (counter++ % interval == 0)
+    {
+      bool first = true;
+
       if (_output_time)
       {
         if (align)
-          _output_file << std::setw(_align_widths["time"]) << "time";
+          _output_file << std::setprecision(_csv_precision) << std::right
+                       << std::setw(width["time"]) << i.first;
         else
-          _output_file << "time";
-        _headers_output = true;
+          _output_file << std::setprecision(_csv_precision) << i.first;
+        first = false;
       }
 
       for (const auto & col_name : _column_names)
       {
-        if (_headers_output)
+        std::map<std::string, Real> & tmp = i.second;
+
+        if (!first)
           _output_file << _csv_delimiter;
+        else
+          first = false;
 
         if (align)
-          _output_file << std::right << std::setw(_align_widths[col_name]) << col_name;
+          _output_file << std::setprecision(_csv_precision) << std::right
+                       << std::setw(width[col_name]) << tmp[col_name];
         else
-          _output_file << col_name;
-        _headers_output = true;
+          _output_file << std::setprecision(_csv_precision) << tmp[col_name];
       }
       _output_file << "\n";
     }
   }
-
-  for (; _output_row_index < _data.size(); ++_output_row_index)
-  {
-    if (_output_row_index % interval == 0)
-      printRow(_data[_output_row_index], align);
-  }
-
-  _output_file.flush();
-}
-
-void
-FormattedTable::printRow(std::pair<Real, std::map<std::string, Real>> & row_data, bool align)
-{
-  bool first = true;
-
-  if (_output_time)
-  {
-    if (align)
-      _output_file << std::setprecision(_csv_precision) << std::right
-                   << std::setw(_align_widths["time"]) << row_data.first;
-    else
-      _output_file << std::setprecision(_csv_precision) << row_data.first;
-    first = false;
-  }
-
-  for (const auto & col_name : _column_names)
-  {
-    std::map<std::string, Real> & tmp = row_data.second;
-
-    if (!first)
-      _output_file << _csv_delimiter;
-    else
-      first = false;
-
-    if (align)
-      _output_file << std::setprecision(_csv_precision) << std::right
-                   << std::setw(_align_widths[col_name]) << tmp[col_name];
-    else
-      _output_file << std::setprecision(_csv_precision) << tmp[col_name];
-  }
   _output_file << "\n";
+  _output_file.flush();
 }
 
 // const strings that the gnuplot generator needs
@@ -513,20 +431,18 @@ FormattedTable::makeGnuplot(const std::string & base_file, const std::string & f
   std::string dat_name = base_file + ".dat";
   std::ofstream datfile;
   datfile.open(dat_name.c_str(), std::ios::trunc | std::ios::out);
-  if (datfile.fail())
-    mooseError("Unable to open file ", dat_name);
 
   datfile << "# time";
   for (const auto & col_name : _column_names)
     datfile << '\t' << col_name;
   datfile << '\n';
 
-  for (auto & data_it : _data)
+  for (auto & i : _data)
   {
-    datfile << data_it.first;
+    datfile << i.first;
     for (const auto & col_name : _column_names)
     {
-      auto & tmp = data_it.second;
+      std::map<std::string, Real> & tmp = i.second;
       datfile << '\t' << tmp[col_name];
     }
     datfile << '\n';
@@ -538,8 +454,6 @@ FormattedTable::makeGnuplot(const std::string & base_file, const std::string & f
   std::string gp_name = base_file + ".gp";
   std::ofstream gpfile;
   gpfile.open(gp_name.c_str(), std::ios::trunc | std::ios::out);
-  if (gpfile.fail())
-    mooseError("Unable to open file ", gp_name);
 
   gpfile << gnuplot::before_terminal << terminal << gnuplot::before_ext << extension
          << gnuplot::after_ext;
@@ -569,6 +483,17 @@ FormattedTable::makeGnuplot(const std::string & base_file, const std::string & f
 
   gpfile.flush();
   gpfile.close();
+
+  // Run the gnuplot script
+  /* We aren't going to run gnuplot automatically
+
+    if (!system(NULL))
+      mooseError("No way to run gnuplot on this computer");
+
+    std::string command = "gnuplot " + gp_name;
+    if (system(command.c_str()))
+      mooseError("gnuplot command failed");
+  */
 }
 
 void

@@ -1,56 +1,66 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "AverageElementSize.h"
-
-registerMooseObject("MooseApp", AverageElementSize);
 
 template <>
 InputParameters
 validParams<AverageElementSize>()
 {
-  InputParameters params = validParams<ElementPostprocessor>();
+  InputParameters params = validParams<ElementAverageValue>();
   return params;
 }
 
 AverageElementSize::AverageElementSize(const InputParameters & parameters)
-  : ElementPostprocessor(parameters)
+  : ElementAverageValue(parameters)
 {
 }
 
 void
 AverageElementSize::initialize()
 {
-  _total_size = 0;
+  ElementAverageValue::initialize();
   _elems = 0;
 }
 
 void
 AverageElementSize::execute()
 {
-  _total_size += _current_elem->hmax();
+  ElementIntegralPostprocessor::execute();
   _elems++;
+}
+
+Real
+AverageElementSize::computeIntegral()
+{
+  return _current_elem->hmax();
 }
 
 Real
 AverageElementSize::getValue()
 {
-  gatherSum(_total_size);
+  Real integral = ElementIntegralPostprocessor::getValue();
+
   gatherSum(_elems);
 
-  return _total_size / _elems;
+  return integral / _elems;
 }
 
 void
 AverageElementSize::threadJoin(const UserObject & y)
 {
+  ElementAverageValue::threadJoin(y);
   const AverageElementSize & pps = static_cast<const AverageElementSize &>(y);
-  _total_size += pps._total_size;
   _elems += pps._elems;
 }

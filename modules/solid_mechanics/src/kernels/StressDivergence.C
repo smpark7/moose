@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "StressDivergence.h"
 
 // MOOSE includes
@@ -17,9 +14,8 @@
 #include "SymmElasticityTensor.h"
 #include "SystemBase.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("SolidMechanicsApp", StressDivergence);
 
 template <>
 InputParameters
@@ -258,10 +254,9 @@ StressDivergence::computeQpJacobian()
 }
 
 void
-StressDivergence::computeOffDiagJacobian(MooseVariableFEBase & jvar)
+StressDivergence::computeOffDiagJacobian(unsigned int jvar)
 {
-  size_t jvar_num = jvar.number();
-  if (jvar_num == _var.number())
+  if (jvar == _var.number())
     computeJacobian();
   else
   {
@@ -280,8 +275,8 @@ StressDivergence::computeOffDiagJacobian(MooseVariableFEBase & jvar)
         _avg_grad_test[_i][_component] /= _current_elem_volume;
       }
 
-      _avg_grad_phi.resize(jvar.phiSize());
-      for (_i = 0; _i < jvar.phiSize(); _i++)
+      _avg_grad_phi.resize(_phi.size());
+      for (_i = 0; _i < _phi.size(); _i++)
       {
         _avg_grad_phi[_i].resize(3);
         for (unsigned int component = 0; component < _mesh.dimension(); component++)
@@ -295,12 +290,12 @@ StressDivergence::computeOffDiagJacobian(MooseVariableFEBase & jvar)
       }
     }
 
-    DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar_num);
+    DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar);
 
     for (_i = 0; _i < _test.size(); _i++)
-      for (_j = 0; _j < jvar.phiSize(); _j++)
+      for (_j = 0; _j < _phi.size(); _j++)
         for (_qp = 0; _qp < _qrule->n_points(); _qp++)
-          ke(_i, _j) += _JxW[_qp] * _coord[_qp] * computeQpOffDiagJacobian(jvar_num);
+          ke(_i, _j) += _JxW[_qp] * _coord[_qp] * computeQpOffDiagJacobian(jvar);
   }
 }
 

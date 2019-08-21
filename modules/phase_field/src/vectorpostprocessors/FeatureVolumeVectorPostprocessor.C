@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "FeatureVolumeVectorPostprocessor.h"
 
@@ -16,16 +14,14 @@
 #include "MooseMesh.h"
 #include "MooseVariable.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("PhaseFieldApp", FeatureVolumeVectorPostprocessor);
 
 template <>
 InputParameters
 validParams<FeatureVolumeVectorPostprocessor>()
 {
   InputParameters params = validParams<GeneralVectorPostprocessor>();
-  params += validParams<BoundaryRestrictable>();
 
   params.addRequiredParam<UserObjectName>("flood_counter",
                                           "The FeatureFloodCount UserObject to get values from.");
@@ -34,11 +30,6 @@ validParams<FeatureVolumeVectorPostprocessor>()
                         "Set this Boolean if you wish to use an element based volume where"
                         " the dominant order parameter determines the feature that accumulates the "
                         "entire element volume");
-  params.addParam<bool>("output_centroids", false, "Set to true to output the feature centroids");
-  params.addClassDescription("This object is designed to pull information from the data structures "
-                             "of a \"FeatureFloodCount\" or derived object (e.g. individual "
-                             "feature volumes)");
-
   return params;
 }
 
@@ -46,31 +37,23 @@ FeatureVolumeVectorPostprocessor::FeatureVolumeVectorPostprocessor(
     const InputParameters & parameters)
   : GeneralVectorPostprocessor(parameters),
     MooseVariableDependencyInterface(),
-    BoundaryRestrictable(this, false),
     _single_feature_per_elem(getParam<bool>("single_feature_per_element")),
-    _output_centroids(getParam<bool>("output_centroids")),
     _feature_counter(getUserObject<FeatureFloodCount>("flood_counter")),
     _var_num(declareVector("var_num")),
     _feature_volumes(declareVector("feature_volumes")),
     _intersects_bounds(declareVector("intersects_bounds")),
-    _intersects_specified_bounds(declareVector("intersects_specified_bounds")),
-    _percolated(declareVector("percolated")),
-    _vars(_feature_counter.getFECoupledVars()),
+    _vars(_feature_counter.getCoupledVars()),
     _mesh(_subproblem.mesh()),
     _assembly(_subproblem.assembly(_tid)),
     _q_point(_assembly.qPoints()),
     _qrule(_assembly.qRule()),
     _JxW(_assembly.JxW()),
-    _coord(_assembly.coordTransformation()),
-    _qrule_face(_assembly.qRuleFace()),
-    _JxW_face(_assembly.JxWFace())
+    _coord(_assembly.coordTransformation())
 {
   addMooseVariableDependency(_vars);
 
-  _is_boundary_restricted = boundaryRestricted();
-
   _coupled_sln.reserve(_vars.size());
-  for (auto & var : _feature_counter.getCoupledVars())
+  for (auto & var : _vars)
     _coupled_sln.push_back(&var->sln());
 }
 
@@ -85,11 +68,9 @@ FeatureVolumeVectorPostprocessor::execute()
   const auto num_features = _feature_counter.getTotalFeatureCount();
 
   // Reset the variable index and intersect bounds vectors
-  _var_num.assign(num_features, -1);                     // Invalid
-  _intersects_bounds.assign(num_features, -1);           // Invalid
-  _intersects_specified_bounds.assign(num_features, -1); // Invalid
-  _percolated.assign(num_features, -1);                  // Invalid
-  for (MooseIndex(num_features) feature_num = 0; feature_num < num_features; ++feature_num)
+  _var_num.assign(num_features, -1);           // Invalid
+  _intersects_bounds.assign(num_features, -1); // Invalid
+  for (auto feature_num = beginIndex(_var_num); feature_num < num_features; ++feature_num)
   {
     auto var_num = _feature_counter.getFeatureVar(feature_num);
     if (var_num != FeatureFloodCount::invalid_id)
@@ -97,79 +78,27 @@ FeatureVolumeVectorPostprocessor::execute()
 
     _intersects_bounds[feature_num] =
         static_cast<unsigned int>(_feature_counter.doesFeatureIntersectBoundary(feature_num));
-
-    _intersects_specified_bounds[feature_num] = static_cast<unsigned int>(
-        _feature_counter.doesFeatureIntersectSpecifiedBoundary(feature_num));
-
-    _percolated[feature_num] =
-        static_cast<unsigned int>(_feature_counter.isFeaturePercolated(feature_num));
-  }
-
-  if (_output_centroids)
-  {
-    VectorPostprocessorValue & center_x = declareVector("centroid_x");
-    center_x.resize(num_features);
-    VectorPostprocessorValue & center_y = declareVector("centroid_y");
-    center_y.resize(num_features);
-    VectorPostprocessorValue & center_z = declareVector("centroid_z");
-    center_z.resize(num_features);
-
-    for (MooseIndex(_var_num) feature_num = 0; feature_num < num_features; ++feature_num)
-    {
-      auto p = _feature_counter.featureCentroid(feature_num);
-      center_x[feature_num] = p(0);
-      center_y[feature_num] = p(1);
-      center_z[feature_num] = p(2);
-    }
   }
 
   // Reset the volume vector
   _feature_volumes.assign(num_features, 0);
-
-  // Calculate coverage of a boundary if one has been supplied in the input file
-  if (_is_boundary_restricted)
+  const auto end = _mesh.getMesh().active_local_elements_end();
+  for (auto el = _mesh.getMesh().active_local_elements_begin(); el != end; ++el)
   {
-    const std::set<BoundaryID> supplied_bnd_ids = BoundaryRestrictable::boundaryIDs();
-    for (auto elem_it = _mesh.bndElemsBegin(), elem_end = _mesh.bndElemsEnd(); elem_it != elem_end;
-         ++elem_it)
+    const Elem * elem = *el;
+    _fe_problem.prepare(elem, 0);
+    _fe_problem.reinitElem(elem, 0);
 
-      // loop over only boundaries supplied by user in boundary param
-      for (auto & supplied_bnd_id : supplied_bnd_ids)
-        if (((*elem_it)->_bnd_id) == supplied_bnd_id)
-        {
-          const auto & elem = (*elem_it)->_elem;
-          auto rank = processor_id();
+    /**
+     * Here we retrieve the var to features vector on the current element.
+     * We'll use that information to figure out which variables are non-zero
+     * (from a threshold perspective) then we can sum those values into
+     * appropriate grain index locations.
+     */
+    const auto & var_to_features = _feature_counter.getVarToFeatureVector(elem->id());
 
-          if (elem->processor_id() == rank)
-          {
-            _fe_problem.setCurrentSubdomainID(elem, 0);
-            _fe_problem.prepare(elem, 0);
-            _fe_problem.reinitElem(elem, 0);
-            _fe_problem.reinitElemFace(elem, (*elem_it)->_side, (*elem_it)->_bnd_id, 0);
-
-            const auto & var_to_features = _feature_counter.getVarToFeatureVector(elem->id());
-
-            accumulateBoundaryFaces(elem, var_to_features, num_features, (*elem_it)->_side);
-          }
-        }
+    accumulateVolumes(elem, var_to_features, num_features);
   }
-  else // If no boundary is supplied, calculate volumes of features as normal
-    for (const auto & elem : _mesh.getMesh().active_local_element_ptr_range())
-    {
-      _fe_problem.setCurrentSubdomainID(elem, 0);
-      _fe_problem.prepare(elem, 0);
-      _fe_problem.reinitElem(elem, 0);
-
-      /**
-       * Here we retrieve the var to features vector on the current element.
-       * We'll use that information to figure out which variables are non-zero
-       * (from a threshold perspective) then we can sum those values into
-       * appropriate grain index locations.
-       */
-      const auto & var_to_features = _feature_counter.getVarToFeatureVector(elem->id());
-
-      accumulateVolumes(elem, var_to_features, num_features);
-    }
 }
 
 void
@@ -195,7 +124,8 @@ FeatureVolumeVectorPostprocessor::accumulateVolumes(
   unsigned int dominant_feature_id = FeatureFloodCount::invalid_id;
   Real max_var_value = std::numeric_limits<Real>::lowest();
 
-  for (MooseIndex(var_to_features) var_index = 0; var_index < var_to_features.size(); ++var_index)
+  for (auto var_index = beginIndex(var_to_features); var_index < var_to_features.size();
+       ++var_index)
   {
     // Only sample "active" variables
     if (var_to_features[var_index] != FeatureFloodCount::invalid_id)
@@ -232,55 +162,6 @@ FeatureVolumeVectorPostprocessor::computeIntegral(std::size_t var_index) const
 
   for (unsigned int qp = 0; qp < _qrule->n_points(); ++qp)
     sum += _JxW[qp] * _coord[qp] * (*_coupled_sln[var_index])[qp];
-
-  return sum;
-}
-
-void
-FeatureVolumeVectorPostprocessor::accumulateBoundaryFaces(
-    const Elem * elem,
-    const std::vector<unsigned int> & var_to_features,
-    std::size_t libmesh_dbg_var(num_features),
-    unsigned int side)
-{
-  unsigned int dominant_feature_id = FeatureFloodCount::invalid_id;
-  Real max_var_value = std::numeric_limits<Real>::lowest();
-
-  for (MooseIndex(var_to_features) var_index = 0; var_index < var_to_features.size(); ++var_index)
-  {
-    // Only sample "active" variables
-    if (var_to_features[var_index] != FeatureFloodCount::invalid_id)
-    {
-      auto feature_id = var_to_features[var_index];
-      mooseAssert(feature_id < num_features, "Feature ID out of range");
-      auto integral_value = computeFaceIntegral(var_index);
-
-      if (_single_feature_per_elem)
-      {
-        if (integral_value > max_var_value)
-        {
-          // Update the current dominant feature and associated value
-          max_var_value = integral_value;
-          dominant_feature_id = feature_id;
-        }
-      }
-      // Solution based boundary area/length calculation (integral value)
-      else
-        _feature_volumes[feature_id] += integral_value;
-    }
-  }
-
-  // Accumulate the boundary area/length into the dominant feature. Do not use the integral value
-  if (_single_feature_per_elem && dominant_feature_id != FeatureFloodCount::invalid_id)
-    _feature_volumes[dominant_feature_id] += elem->side_ptr(side)->volume();
-}
-
-Real
-FeatureVolumeVectorPostprocessor::computeFaceIntegral(std::size_t var_index) const
-{
-  Real sum = 0;
-  for (unsigned int qp = 0; qp < _qrule_face->n_points(); ++qp)
-    sum += _JxW_face[qp] * _coord[qp] * (*_coupled_sln[var_index])[qp];
 
   return sum;
 }

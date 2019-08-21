@@ -1,29 +1,31 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MeshExtruder.h"
 #include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/mesh_generation.h"
 #include "libmesh/mesh.h"
 #include "libmesh/elem.h"
 #include "libmesh/boundary_info.h"
-
-registerMooseObjectReplaced("MooseApp", MeshExtruder, "11/30/2019 00:00", MeshExtruderGenerator);
 
 template <>
 InputParameters
 validParams<MeshExtruder>()
 {
   InputParameters params = validParams<MeshModifier>();
-  params.addClassDescription("Takes a 1D or 2D mesh and extrudes the entire structure along the "
-                             "specified axis increasing the dimensionality of the mesh.");
   params.addRequiredParam<RealVectorValue>("extrusion_vector",
                                            "The direction and length of the extrusion");
   params.addParam<unsigned int>("num_layers", 1, "The number of layers in the extruded mesh");
@@ -66,7 +68,9 @@ MeshExtruder::MeshExtruder(const InputParameters & parameters)
 void
 MeshExtruder::modify()
 {
-  std::unique_ptr<MooseMesh> source_mesh = _mesh_ptr->safeClone();
+  // When we clone, we're responsible to clean up after ourselves!
+  // TODO: traditionally clone() methods return pointers...
+  MooseMesh * source_mesh = &(_mesh_ptr->clone());
 
   if (source_mesh->getMesh().mesh_dimension() == 3)
     mooseError("You cannot extrude a 3D mesh!");
@@ -109,8 +113,8 @@ MeshExtruder::modify()
   // Update the dimension
   _mesh_ptr->getMesh().set_mesh_dimension(source_mesh->getMesh().mesh_dimension() + 1);
 
-  // Redetect the mesh extents
-  _mesh_ptr->prepared(false);
+  // Clean up the source mesh we allocated
+  delete source_mesh;
 }
 
 void

@@ -7,51 +7,41 @@
 []
 
 [Variables]
-  [u]
+  [./u]
     family = LAGRANGE
     order = FIRST
-  []
-[]
-
-[Kernels]
-  [diff]
-    type = Diffusion
-    variable = u
-  []
+  [../]
 []
 
 [AuxVariables]
-  [nodal_source_from_sub_nodal]
-    family = LAGRANGE
-    order = FIRST
-  []
-  [nodal_source_from_sub_elemental]
-    family = MONOMIAL
+  [./from_sub]
+  [../]
+  [./elemental_from_sub]
     order = CONSTANT
-  []
-  [elemental_source_from_sub_nodal]
-    family = LAGRANGE
-    order = FIRST
-  []
-  [elemental_source_from_sub_elemental]
     family = MONOMIAL
-    order = CONSTANT
-  []
+  [../]
+[]
+
+[Kernels]
+  [./diff]
+    type = Diffusion
+    variable = u
+  [../]
 []
 
 [BCs]
-  [left]
+  [./left]
     type = DirichletBC
     variable = u
     boundary = left
     value = 0
-  []
-  [right]
+  [../]
+  [./right]
     type = DirichletBC
     variable = u
     boundary = right
     value = 1
-  []
+  [../]
 []
 
 [Executioner]
@@ -59,6 +49,7 @@
   num_steps = 1
   dt = 1
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'
@@ -70,41 +61,27 @@
 []
 
 [MultiApps]
-  [sub]
+  [./sub]
     type = TransientMultiApp
     app_type = MooseTestApp
-    positions = '0.48 0.01 0 -1.01 0.01 0'
-    input_files = fromsub_sub.i
-  []
+    positions = '0.48 0 0 -1.01 0 0'
+    input_files = tosub_sub.i
+  [../]
 []
 
 [Transfers]
-  [from_sub_nodal_from_nodal]
+  [./from_sub]
     type = MultiAppNearestNodeTransfer
     direction = from_multiapp
     multi_app = sub
     source_variable = u
-    variable = nodal_source_from_sub_nodal
-  []
-  [from_sub_nodal_from_elemental]
+    variable = from_sub
+  [../]
+  [./elemental_from_sub]
     type = MultiAppNearestNodeTransfer
     direction = from_multiapp
     multi_app = sub
     source_variable = u
-    variable = nodal_source_from_sub_elemental
-  []
-  [from_sub_elemental_from_nodal]
-    type = MultiAppNearestNodeTransfer
-    direction = from_multiapp
-    multi_app = sub
-    source_variable = u_elemental
-    variable = elemental_source_from_sub_nodal
-  []
-  [from_sub_elemental_from_elemental]
-    type = MultiAppNearestNodeTransfer
-    direction = from_multiapp
-    multi_app = sub
-    source_variable = u_elemental
-    variable = elemental_source_from_sub_elemental
-  []
+    variable = elemental_from_sub
+  [../]
 []

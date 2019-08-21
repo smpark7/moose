@@ -12,16 +12,10 @@
   ymax = 60
 []
 
-[Modules]
-  [./PhaseField]
-    [./Conserved]
-      [./c]
-        free_energy = fbulk
-        mobility = M
-        kappa = kappa_c
-        solve_type = REVERSE_SPLIT
-      [../]
-    [../]
+[Variables]
+  [./c]
+  [../]
+  [./w]
   [../]
 []
 
@@ -38,6 +32,26 @@
     variable = c
     min = -0.1
     max =  0.1
+  [../]
+[]
+
+[Kernels]
+  [./c_dot]
+    type = CoupledTimeDerivative
+    variable = w
+    v = c
+  [../]
+  [./c_res]
+    type = SplitCHParsed
+    variable = c
+    f_name = fbulk
+    kappa_name = kappa_c
+    w = w
+  [../]
+  [./w_res]
+    type = SplitCHWRes
+    variable = w
+    mob_name = M
   [../]
 []
 
@@ -116,5 +130,5 @@
 
 [Outputs]
   exodus = true
-  perf_graph = true
+  print_perf_log = true
 []

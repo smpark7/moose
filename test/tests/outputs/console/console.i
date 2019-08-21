@@ -80,11 +80,10 @@
 [Postprocessors]
   [./num_vars]
     type = NumVars
-    system = 'NL'
   [../]
   [./num_aux]
     type = NumVars
-    system = 'AUX'
+    system = auxiliary
   [../]
 []
 
@@ -100,7 +99,7 @@
   color = false
   [./screen]
     type = Console
-    fit_mode = 40
+    fit_mode = 100
   [../]
 []
 

@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "PartitionerAction.h"
@@ -13,8 +18,6 @@
 #include "FEProblem.h"
 #include "MooseEnum.h"
 #include "MooseMesh.h"
-
-registerMooseAction("MooseApp", PartitionerAction, "add_partitioner");
 
 template <>
 InputParameters
@@ -34,4 +37,9 @@ PartitionerAction::act()
   std::shared_ptr<MoosePartitioner> mp =
       _factory.create<MoosePartitioner>(_type, _name, _moose_object_pars);
   _mesh->setCustomPartitioner(mp.get());
+  if (_displaced_mesh)
+  {
+    _displaced_mesh->setIsCustomPartitionerRequested(true);
+    _displaced_mesh->setCustomPartitioner(mp.get());
+  }
 }

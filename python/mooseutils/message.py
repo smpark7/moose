@@ -1,12 +1,3 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
 import os
 import traceback
 from mooseutils import colorText
@@ -88,15 +79,14 @@ def mooseMessage(*args, **kwargs):
         box.exec_()
 
     # Emit the message to any listeners
-    if MOOSE_USE_QT5:
-      messageEmitter.write(message, color)
+    messageEmitter.write(message, color)
 
     # Print the message to screen
     if color:
         message = colorText(message, color)
     print message
     # Show the traceback
-    if trace and MOOSE_USE_QT5:
+    if trace:
         traceback.print_stack()
         stack = ''.join(traceback.format_stack())
         messageEmitter.write(stack, color)

@@ -10,7 +10,6 @@
 EXAMPLE_DIR        ?= $(shell dirname `pwd`)
 MOOSE_DIR          ?= $(shell dirname $(EXAMPLE_DIR))
 FRAMEWORK_DIR      ?= $(MOOSE_DIR)/framework
-ADDITIONAL_CPPFLAGS += -Wall -Wextra
 ###############################################################################
 
 TEST := test_ignore
@@ -25,7 +24,7 @@ APPLICATION_NAME := ex14
 APPLICATION_DIR    := $(shell pwd)
 APPLICATION_NAME   := ex14
 BUILD_EXEC         := yes
-GEN_REVISION       := no
+DEP_APPS           := $(shell $(FRAMEWORK_DIR)/scripts/find_dep_apps.py $(APPLICATION_NAME))
 include            $(FRAMEWORK_DIR)/app.mk
 include            ../test.mk
 
@@ -38,6 +37,6 @@ ex_deps     := $(patsubst %.C, %.$(obj-suffix).d, $(ex_srcfiles))
 # Additional special case targets should be added here
 
 test: all
-	$(call TEST_exodiff,ex14.i,ex14_out.e)
+	$(call TEST_exodiff,ex14.i,ex14_out.e-s006)
 	$(call TEST_exodiff,ex14_compare_solutions_1.i,ex14_compare_solutions_1_out.e)
 	$(call TEST_exodiff,ex14_compare_solutions_2.i,ex14_compare_solutions_2_out.e)

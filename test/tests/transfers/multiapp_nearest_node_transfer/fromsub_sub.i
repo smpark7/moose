@@ -20,21 +20,6 @@
   [../]
 []
 
-[AuxVariables]
-  [./u_elemental]
-    family = MONOMIAL
-    order = CONSTANT
-  [../]
-[]
-
-[AuxKernels]
-  [./fun_aux]
-    type = FunctionAux
-    function = 'x + y'
-    variable = u_elemental
-  [../]
-[]
-
 [BCs]
   [./left]
     type = DirichletBC
@@ -55,6 +40,7 @@
   num_steps = 1
   dt = 1
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'

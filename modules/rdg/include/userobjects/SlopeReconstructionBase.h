@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef SLOPERECONSTRUCTIONBASE_H
+#define SLOPERECONSTRUCTIONBASE_H
 
 #include "BCUserObject.h"
 #include "ElementLoopUserObject.h"
@@ -70,46 +69,46 @@ protected:
   virtual void deserialize(std::vector<std::string> & serialized_buffers);
 
   /// store the reconstructed slopes into this map indexed by element ID
-  std::map<dof_id_type, std::vector<RealGradient>> & _rslope;
+  std::map<dof_id_type, std::vector<RealGradient>> _rslope;
 
   /// store the average variable values into this map indexed by element ID
-  std::map<dof_id_type, std::vector<Real>> & _avars;
+  std::map<dof_id_type, std::vector<Real>> _avars;
 
   /// store the boundary average variable values into this map indexed by pair of element ID and local side ID
-  std::map<std::pair<dof_id_type, unsigned int>, std::vector<Real>> & _bnd_avars;
+  std::map<std::pair<dof_id_type, unsigned int>, std::vector<Real>> _bnd_avars;
 
   /// store the side centroid into this map indexed by pair of element ID and neighbor ID
-  std::map<std::pair<dof_id_type, dof_id_type>, Point> & _side_centroid;
+  std::map<std::pair<dof_id_type, dof_id_type>, Point> _side_centroid;
 
   /// store the boundary side centroid into this map indexed by pair of element ID and local side ID
-  std::map<std::pair<dof_id_type, unsigned int>, Point> & _bnd_side_centroid;
+  std::map<std::pair<dof_id_type, unsigned int>, Point> _bnd_side_centroid;
 
   /// store the side area into this map indexed by pair of element ID and neighbor ID
-  std::map<std::pair<dof_id_type, dof_id_type>, Real> & _side_area;
+  std::map<std::pair<dof_id_type, dof_id_type>, Real> _side_area;
 
   /// store the boundary side area into this map indexed by pair of element ID and local side ID
-  std::map<std::pair<dof_id_type, unsigned int>, Real> & _bnd_side_area;
+  std::map<std::pair<dof_id_type, unsigned int>, Real> _bnd_side_area;
 
   /// store the side normal into this map indexed by pair of element ID and neighbor ID
-  std::map<std::pair<dof_id_type, dof_id_type>, Point> & _side_normal;
+  std::map<std::pair<dof_id_type, dof_id_type>, Point> _side_normal;
 
   /// store the boundary side normal into this map indexed by pair of element ID and local side ID
-  std::map<std::pair<dof_id_type, unsigned int>, Point> & _bnd_side_normal;
+  std::map<std::pair<dof_id_type, unsigned int>, Point> _bnd_side_normal;
 
   /// required data for face assembly
   const MooseArray<Point> & _q_point_face;
-  const QBase * const & _qrule_face;
+  QBase *& _qrule_face;
   const MooseArray<Real> & _JxW_face;
   const MooseArray<Point> & _normals_face;
 
   /// current side of the current element
-  const unsigned int & _side;
+  unsigned int & _side;
 
-  const Elem * const & _side_elem;
+  const Elem *& _side_elem;
   const Real & _side_volume;
 
   /// the neighboring element
-  const Elem * const & _neighbor_elem;
+  const Elem *& _neighbor_elem;
 
   /// flag to indicated if side geometry info is cached
   bool _side_geoinfo_cached;
@@ -117,3 +116,5 @@ protected:
 private:
   static Threads::spin_mutex _mutex;
 };
+
+#endif

@@ -38,7 +38,7 @@
   [../]
 
   [./func_time]
-    type = BodyForce
+    type = UserForcingFunction
     variable = Time
     function = func
   [../]
@@ -68,8 +68,8 @@
     scale = 1.0
   [../]
 
-  steady_state_tolerance = .00000000000000001
-  steady_state_detection = true
+  ss_check_tol = .00000000000000001
+  trans_ss_check = true
   nl_abs_tol = 1e-15
   petsc_options = '-snes_converged_reason'
   abort_on_solve_fail = true

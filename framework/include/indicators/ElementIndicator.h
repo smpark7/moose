@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ELEMENTINDICATOR_H
+#define ELEMENTINDICATOR_H
 
 #include "Indicator.h"
 #include "TransientInterface.h"
@@ -16,13 +22,11 @@
 #include "ScalarCoupleable.h"
 #include "MooseVariableInterface.h"
 #include "MaterialPropertyInterface.h"
+#include "ZeroInterface.h"
 
 // Forward declarations
 class ElementIndicator;
-template <typename>
-class MooseVariableFE;
-typedef MooseVariableFE<Real> MooseVariable;
-typedef MooseVariableFE<VectorValue<Real>> VectorMooseVariable;
+class MooseVariable;
 
 template <>
 InputParameters validParams<ElementIndicator>();
@@ -32,7 +36,8 @@ class ElementIndicator : public Indicator,
                          public PostprocessorInterface,
                          public Coupleable,
                          public ScalarCoupleable,
-                         public MooseVariableInterface<Real>
+                         public MooseVariableInterface,
+                         public ZeroInterface
 {
 public:
   ElementIndicator(const InputParameters & parameters);
@@ -40,13 +45,13 @@ public:
 protected:
   MooseVariable & _field_var;
 
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
   /// Volume of the current element
   const Real & _current_elem_volume;
 
   unsigned int _qp;
   const MooseArray<Point> & _q_point;
-  const QBase * const & _qrule;
+  QBase *& _qrule;
   const MooseArray<Real> & _JxW;
   const MooseArray<Real> & _coord;
 
@@ -58,7 +63,14 @@ protected:
   /// Holds the solution gradient at the current quadrature points
   const VariableGradient & _grad_u;
 
+  /// Time derivative of u
+  const VariableValue & _u_dot;
+
+  /// Derivative of u_dot wrt u
+  const VariableValue & _du_dot_du;
+
   /// Holds local indicator entries as their accumulated by this ElementIndicator
   DenseVector<Number> _local_indtr;
 };
 
+#endif /* ELEMENTINDICATOR_H */

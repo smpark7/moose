@@ -5,15 +5,6 @@
   ny = 10
 []
 
-[Functions]
-  [./dts]
-    # These mimic the behavior of the failing solve
-    type = PiecewiseConstant
-    x = '0     0.1    0.105'
-    y = '0.01  0.005  0.01'
-  [../]
-[]
-
 [Variables]
   [./u]
   [../]
@@ -46,13 +37,17 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   num_steps = 4
   dt = 0.01
 
   [./TimeStepper]
+    # These mimic the behavior of the failing solve
     type = FunctionDT
-    function = dts
+    interpolate = false
+    time_t  = '0     0.1    0.105'
+    time_dt = '0.01  0.005  0.01'
   [../]
 
   solve_type = PJFNK

@@ -32,9 +32,9 @@
     type = NormalizationAux
     variable = u_normalized
     source_variable = u
+    normalization = unorm
     normal_factor = 2.0
     execute_on = timestep_end
-    # Note: 'normalization' or 'shift' are provided as CLI args
   [../]
 []
 
@@ -42,20 +42,23 @@
   [./left_u]
     type = DirichletBC
     variable = u
-    boundary = left
+    boundary = 1
     value = 1
   [../]
 
   [./right_u]
     type = DirichletBC
     variable = u
-    boundary = right
+    boundary = 2
     value = 2
   [../]
 []
 
 [Executioner]
   type = Steady
+
+  # Preconditioned JFNK (default)
+  solve_type = 'PJFNK'
 []
 
 [Postprocessors]
@@ -67,12 +70,6 @@
   [./u_normalized_norm]
     type = ElementIntegralVariablePostprocessor
     variable = u_normalized
-    execute_on = 'initial timestep_end'
-  [../]
-  [./u0]
-    type = PointValue
-    variable = u
-    point = '0 0 0'
     execute_on = 'initial timestep_end'
   [../]
 []

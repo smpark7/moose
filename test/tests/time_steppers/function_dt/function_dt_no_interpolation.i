@@ -20,13 +20,6 @@
     type = ParsedFunction
     value = 2*t*(x*x+y*y)-4*t*t
   [../]
-
-  [./dts]
-    type = PiecewiseConstant
-    x = '0  4  8 12  20'
-    y = '0  1  2  4  8'
-    direction = right
-  [../]
 []
 
 [Variables]
@@ -56,7 +49,7 @@
   [../]
 
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -78,7 +71,9 @@
   end_time = 20
   [./TimeStepper]
     type = FunctionDT
-    function = dts
+    time_t  = '0  4  8 12'
+    time_dt = '1  2  4  8'
+    interpolate = false
   [../]
 []
 

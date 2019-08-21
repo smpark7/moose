@@ -1,30 +1,43 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "HeatConductionOutflow.h"
 
-registerADMooseObject("DarcyThermoMechApp", HeatConductionOutflow);
+template <>
+InputParameters
+validParams<HeatConductionOutflow>()
+{
+  InputParameters params = validParams<IntegratedBC>();
+  return params;
+}
 
-defineADValidParams(HeatConductionOutflow,
-                    ADIntegratedBC,
-                    params.addClassDescription("Compute the outflow boundary condition."););
-
-template <ComputeStage compute_stage>
-HeatConductionOutflow<compute_stage>::HeatConductionOutflow(const InputParameters & parameters)
-  : ADIntegratedBC<compute_stage>(parameters),
-    _thermal_conductivity(getADMaterialProperty<Real>("thermal_conductivity"))
+HeatConductionOutflow::HeatConductionOutflow(const InputParameters & parameters)
+  : IntegratedBC(parameters),
+    // IntegratedBCs can retrieve material properties!
+    _thermal_conductivity(getMaterialProperty<Real>("thermal_conductivity"))
 {
 }
 
-template <ComputeStage compute_stage>
-ADReal
-HeatConductionOutflow<compute_stage>::computeQpResidual()
+Real
+HeatConductionOutflow::computeQpResidual()
 {
   return -_test[_i][_qp] * _thermal_conductivity[_qp] * _grad_u[_qp] * _normals[_qp];
+}
+
+Real
+HeatConductionOutflow::computeQpJacobian()
+{
+  // Derivative of the residual with respect to "u"
+  return -_test[_i][_qp] * _thermal_conductivity[_qp] * _grad_phi[_j][_qp] * _normals[_qp];
 }

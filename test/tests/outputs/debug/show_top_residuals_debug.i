@@ -1,82 +1,52 @@
 [Mesh]
   type = GeneratedMesh
   dim = 2
-  nx = 2
-  ny = 2
-  block_id = '0 1'
-  block_name = 'block_zero block_one'
-[]
-
-[MeshModifiers]
-  [./subdomain_id]
-    type = AssignSubdomainID
-    subdomain_id = 1
-  [../]
+  nx = 10
+  ny = 10
 []
 
 [Variables]
   [./u]
-    family = LAGRANGE
-    order = FIRST
-  [../]
-  [./v]
-    family = MONOMIAL
-    order = CONSTANT
-  [../]
-  [./w]
-    family = SCALAR
-    order = FIRST
   [../]
 []
 
 [Kernels]
-  [./u_kernel]
+  [./diff]
     type = Diffusion
     variable = u
-  [../]
-  [./v_kernel]
-    type = Diffusion
-    variable = v
   [../]
 []
 
 [BCs]
-  [./u_bc]
+  [./left]
     type = DirichletBC
     variable = u
-    value = 100
     boundary = left
+    value = 0
   [../]
-  [./v_bc]
-    type = NeumannBC
-    variable = v
-    value = 100
-    boundary = left
-  [../]
-[]
-
-[ScalarKernels]
-  [./w_kernel]
-    type = AlphaCED
-    variable = w
-    value = 100
+  [./right]
+    type = DirichletBC
+    variable = u
+    boundary = right
+    value = 1
   [../]
 []
 
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
-  # For this test, we don't actually want the solution to converge because we
-  # want nonzero nonlinear residual entries at the end of the time step.
-  nl_abs_tol = 0.999
-  nl_rel_tol = 0.999
-  l_max_its = 1
-  petsc_options_iname = '-pc_type'
-  petsc_options_value = 'none'
+
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre boomeramg'
+[]
+
+[Outputs]
+  exodus = true
 []
 
 [Debug]
-  show_top_residuals = 10
+  show_top_residuals = 1
 []

@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 // Navier-Stokes includes
 #include "AddNavierStokesKernelsAction.h"
@@ -13,8 +11,6 @@
 
 // MOOSE includes
 #include "FEProblem.h"
-
-registerMooseAction("NavierStokesApp", AddNavierStokesKernelsAction, "add_navier_stokes_kernels");
 
 template <>
 InputParameters
@@ -69,7 +65,7 @@ AddNavierStokesKernelsAction::act()
   addNSEnthalpyAux();
   addNSMachAux();
   addNSInternalEnergyAux();
-  addSpecificVolumeComputation();
+  addNSSpecificVolumeAux();
   for (unsigned int component = 0; component < _dim; ++component)
     addNSVelocityAux(component);
 }
@@ -125,19 +121,15 @@ AddNavierStokesKernelsAction::addNSSUPGEnergy()
 }
 
 void
-AddNavierStokesKernelsAction::addSpecificVolumeComputation()
+AddNavierStokesKernelsAction::addNSSpecificVolumeAux()
 {
-  const std::string kernel_type = "ParsedAux";
+  const std::string kernel_type = "NSSpecificVolumeAux";
 
   InputParameters params = _factory.getValidParams(kernel_type);
   params.set<AuxVariableName>("variable") = NS::specific_volume;
 
-  // arguments
-  params.set<CoupledName>("args") = {NS::density};
-
-  // expression
-  std::string function = "if(" + NS::density + " = 0, 1e10, 1 / " + NS::density + ")";
-  params.set<std::string>("function") = function;
+  // coupled variables
+  params.set<CoupledName>(NS::density) = {NS::density};
 
   _problem->addAuxKernel(kernel_type, "specific_volume_auxkernel", params);
 }

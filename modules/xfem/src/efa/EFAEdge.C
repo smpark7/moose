@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "EFAEdge.h"
 
@@ -42,14 +40,6 @@ EFAEdge::equivalent(const EFAEdge & other) const
     isEqual = true;
   else if (other._edge_node2 == _edge_node1 && other._edge_node1 == _edge_node2)
     isEqual = true;
-
-  // For cut along the edge case
-  if (isEqual)
-  {
-    if (_edge_node1->category() == EFANode::N_CATEGORY_EMBEDDED_PERMANENT &&
-        _edge_node2->category() == EFANode::N_CATEGORY_EMBEDDED_PERMANENT)
-      isEqual = false;
-  }
   return isEqual;
 }
 
@@ -197,14 +187,7 @@ EFAEdge::reverseNodes()
 bool
 EFAEdge::hasIntersection() const
 {
-  bool has = false;
-  if (_edge_node1->parent() != NULL)
-    has = has || _edge_node1->parent()->category() == EFANode::N_CATEGORY_EMBEDDED_PERMANENT;
-
-  if (_edge_node2->parent() != NULL)
-    has = has || _edge_node2->parent()->category() == EFANode::N_CATEGORY_EMBEDDED_PERMANENT;
-
-  return has || _embedded_nodes.size() > 0;
+  return _embedded_nodes.size() > 0;
 }
 
 bool

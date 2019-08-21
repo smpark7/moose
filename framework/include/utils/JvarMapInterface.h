@@ -1,17 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef JVARMAPINTERFACE_H
+#define JVARMAPINTERFACE_H
 
-#pragma once
-
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "NonlinearSystemBase.h"
-#include "Enumerate.h"
 
 template <class T>
 class JvarMapInterfaceBase;
@@ -21,7 +18,7 @@ class JvarMapInterfaceBase;
  * computeQpOffDiagJacobian into the _coupled_moose_vars array.
  *
  * This class is useful in conjunction with DerivativeMaterialInterface,
- * where vectors of material property derivatives with respect to all coupled
+ * where vectors of material property derviatives with respect to all coupled
  * variables (iterating over _coupled_moose_vars array) are generated.
  * The mapping enabled the look up of the correct material property derivatives
  * for the current jvar.
@@ -31,8 +28,7 @@ class JvarMapKernelInterface : public JvarMapInterfaceBase<T>
 {
 public:
   JvarMapKernelInterface(const InputParameters & parameters);
-  virtual void computeOffDiagJacobian(MooseVariableFEBase & jvar) override;
-  using T::computeOffDiagJacobian;
+  virtual void computeOffDiagJacobian(unsigned int jvar) override;
 };
 
 /**
@@ -40,7 +36,7 @@ public:
  * computeJacobianBlock into the _coupled_moose_vars array.
  *
  * This class is useful in conjunction with DerivativeMaterialInterface,
- * where vectors of material property derivatives with respect to all coupled
+ * where vectors of material property derviatives with respect to all coupled
  * variables (iterating over _coupled_moose_vars array) are generated.
  * The mapping enabled the look up of the correct material property derivatives
  * for the current jvar.
@@ -50,8 +46,7 @@ class JvarMapIntegratedBCInterface : public JvarMapInterfaceBase<T>
 {
 public:
   JvarMapIntegratedBCInterface(const InputParameters & parameters);
-  virtual void computeJacobianBlock(MooseVariableFEBase & jvar) override;
-  using T::computeJacobianBlock;
+  virtual void computeJacobianBlock(unsigned int jvar) override;
 };
 
 /**
@@ -89,14 +84,16 @@ template <class T>
 JvarMapInterfaceBase<T>::JvarMapInterfaceBase(const InputParameters & parameters)
   : T(parameters), _jvar_map(this->_fe_problem.getNonlinearSystemBase().nVariables(), -1)
 {
+  auto nvar = this->_coupled_moose_vars.size();
+
   // populate map;
-  for (auto it : Moose::enumerate(this->_coupled_moose_vars))
+  for (auto i = beginIndex(this->_coupled_moose_vars); i < nvar; ++i)
   {
-    auto number = it.value()->number();
+    auto number = this->_coupled_moose_vars[i]->number();
 
     // skip AuxVars as off-diagonal jacobian entries are not calculated for them
     if (number < _jvar_map.size())
-      _jvar_map[number] = it.index();
+      _jvar_map[number] = i;
   }
 
   // mark the kernel variable for the check in computeOffDiagJacobian
@@ -129,10 +126,10 @@ JvarMapIntegratedBCInterface<T>::JvarMapIntegratedBCInterface(const InputParamet
 
 template <class T>
 void
-JvarMapKernelInterface<T>::computeOffDiagJacobian(MooseVariableFEBase & jvar)
+JvarMapKernelInterface<T>::computeOffDiagJacobian(unsigned int jvar)
 {
   // the Kernel is not coupled to the variable; no need to loop over QPs
-  if (this->_jvar_map[jvar.number()] < 0)
+  if (this->_jvar_map[jvar] < 0)
     return;
 
   // call the underlying class' off-diagonal Jacobian
@@ -141,12 +138,14 @@ JvarMapKernelInterface<T>::computeOffDiagJacobian(MooseVariableFEBase & jvar)
 
 template <class T>
 void
-JvarMapIntegratedBCInterface<T>::computeJacobianBlock(MooseVariableFEBase & jvar)
+JvarMapIntegratedBCInterface<T>::computeJacobianBlock(unsigned int jvar)
 {
   // the Kernel is not coupled to the variable; no need to loop over QPs
-  if (this->_jvar_map[jvar.number()] < 0)
+  if (this->_jvar_map[jvar] < 0)
     return;
 
   // call the underlying class' off-diagonal Jacobian
   T::computeJacobianBlock(jvar);
 }
+
+#endif // JVARMAPINTERFACE_H

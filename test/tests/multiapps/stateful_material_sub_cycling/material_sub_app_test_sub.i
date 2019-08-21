@@ -1,3 +1,7 @@
+[GlobalParams]
+  dim = 2
+[]
+
 [Problem]
   solve = false
 []

@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ELEMENTVARIABLEPOSTPROCESSOR_H
+#define ELEMENTVARIABLEPOSTPROCESSOR_H
 
 #include "ElementPostprocessor.h"
 #include "MooseVariableInterface.h"
@@ -18,8 +24,7 @@ class ElementVariablePostprocessor;
 template <>
 InputParameters validParams<ElementVariablePostprocessor>();
 
-class ElementVariablePostprocessor : public ElementPostprocessor,
-                                     public MooseVariableInterface<Real>
+class ElementVariablePostprocessor : public ElementPostprocessor, public MooseVariableInterface
 {
 public:
   ElementVariablePostprocessor(const InputParameters & parameters);
@@ -36,7 +41,11 @@ protected:
   /// Holds the solution gradient at the current quadrature points
   const VariableGradient & _grad_u;
 
+  /// Holds the solution derivative at the current quadrature points
+  const VariableValue & _u_dot;
+
   /// The current quadrature point
   unsigned int _qp;
 };
 
+#endif

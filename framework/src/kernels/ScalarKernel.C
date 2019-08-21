@@ -1,16 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ScalarKernel.h"
 #include "Assembly.h"
 #include "MooseVariableScalar.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "Problem.h"
 #include "SubProblem.h"
 #include "NonlinearSystem.h"
@@ -21,7 +26,6 @@ validParams<ScalarKernel>()
 {
   InputParameters params = validParams<MooseObject>();
   params += validParams<TransientInterface>();
-  params += validParams<TaggingInterface>();
   params.addRequiredParam<NonlinearVariableName>(
       "variable", "The name of the variable that this kernel operates on");
 
@@ -33,8 +37,6 @@ validParams<ScalarKernel>()
                         "displacements are provided in the Mesh block "
                         "the undisplaced mesh will still be used.");
   params.addParamNamesToGroup("use_displaced_mesh", "Advanced");
-
-  params.declareControllable("enable");
 
   params.registerBase("ScalarKernel");
 
@@ -49,19 +51,20 @@ ScalarKernel::ScalarKernel(const InputParameters & parameters)
     UserObjectInterface(this),
     PostprocessorInterface(this),
     TransientInterface(this),
+    ZeroInterface(parameters),
     MeshChangedInterface(parameters),
-    // VPPs used by ScalarKernels must be broadcast because we don't know where the
-    // ScalarKernel will end up being evaluated
-    VectorPostprocessorInterface(this, /*broadcast_by_default=*/true),
-    TaggingInterface(this),
-    _subproblem(*getCheckedPointerParam<SubProblem *>("_subproblem")),
-    _sys(*getCheckedPointerParam<SystemBase *>("_sys")),
+    VectorPostprocessorInterface(this),
+    _subproblem(*parameters.get<SubProblem *>("_subproblem")),
+    _sys(*parameters.get<SystemBase *>("_sys")),
+
     _tid(parameters.get<THREAD_ID>("_tid")),
     _assembly(_subproblem.assembly(_tid)),
     _var(_sys.getScalarVariable(_tid, parameters.get<NonlinearVariableName>("variable"))),
     _mesh(_subproblem.mesh()),
     _u(_is_implicit ? _var.sln() : _var.slnOld()),
-    _u_old(_var.slnOld())
+    _u_old(_var.slnOld()),
+    _u_dot(_var.uDot()),
+    _du_dot_du(_var.duDotDu())
 {
 }
 

@@ -1,20 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
 #include "DerivativeMaterialPropertyNameInterface.h"
 
 #include <sstream>
 #include <algorithm>
 
 const MaterialPropertyName
-DerivativeMaterialPropertyNameInterface::derivativePropertyName(
-    const MaterialPropertyName & base, const std::vector<VariableName> & c) const
+DerivativeMaterialPropertyNameInterface::propertyName(const MaterialPropertyName & base,
+                                                      const std::vector<VariableName> & c) const
 {
   // to obtain well defined names we sort alphabetically
   std::vector<VariableName> a(c);
@@ -53,25 +44,25 @@ DerivativeMaterialPropertyNameInterface::derivativePropertyName(
 }
 
 const MaterialPropertyName
-DerivativeMaterialPropertyNameInterface::derivativePropertyNameFirst(
-    const MaterialPropertyName & base, const VariableName & c1) const
+DerivativeMaterialPropertyNameInterface::propertyNameFirst(const MaterialPropertyName & base,
+                                                           const VariableName & c1) const
 {
   return "d" + base + "/d" + c1;
 }
 
 const MaterialPropertyName
-DerivativeMaterialPropertyNameInterface::derivativePropertyNameSecond(
-    const MaterialPropertyName & base, const VariableName & c1, const VariableName & c2) const
+DerivativeMaterialPropertyNameInterface::propertyNameSecond(const MaterialPropertyName & base,
+                                                            const VariableName & c1,
+                                                            const VariableName & c2) const
 {
-  return derivativePropertyName(base, {c1, c2});
+  return propertyName(base, {c1, c2});
 }
 
 const MaterialPropertyName
-DerivativeMaterialPropertyNameInterface::derivativePropertyNameThird(
-    const MaterialPropertyName & base,
-    const VariableName & c1,
-    const VariableName & c2,
-    const VariableName & c3) const
+DerivativeMaterialPropertyNameInterface::propertyNameThird(const MaterialPropertyName & base,
+                                                           const VariableName & c1,
+                                                           const VariableName & c2,
+                                                           const VariableName & c3) const
 {
-  return derivativePropertyName(base, {c1, c2, c3});
+  return propertyName(base, {c1, c2, c3});
 }

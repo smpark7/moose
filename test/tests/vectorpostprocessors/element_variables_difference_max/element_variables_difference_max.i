@@ -40,7 +40,7 @@
     variable = v
   [../]
   [./forcing_v]
-    type = BodyForce
+    type = UserForcingFunction
     variable = v
     function = forcing_v
   [../]
@@ -53,14 +53,14 @@
 [BCs]
   [./bottom]
     type = DirichletBC
-    variable = 'u'
+    variable = 'u v'
     boundary = 'bottom'
     value = 1
   [../]
 
   [./top]
     type = DirichletBC
-    variable = 'u'
+    variable = 'u v'
     boundary = 'top'
     value = 0
   [../]

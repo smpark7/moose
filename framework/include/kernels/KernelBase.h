@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef KERNELBASE_H
+#define KERNELBASE_H
 
 #include "MooseObject.h"
 #include "BlockRestrictable.h"
@@ -22,24 +28,21 @@
 #include "RandomInterface.h"
 #include "GeometricSearchInterface.h"
 #include "Restartable.h"
+#include "ZeroInterface.h"
 #include "MeshChangedInterface.h"
-#include "TaggingInterface.h"
 
 class MooseMesh;
 class SubProblem;
 class KernelBase;
 class Assembly;
-template <typename>
-class MooseVariableFE;
-typedef MooseVariableFE<Real> MooseVariable;
-typedef MooseVariableFE<VectorValue<Real>> VectorMooseVariable;
+class MooseVariable;
 
 template <>
 InputParameters validParams<KernelBase>();
 
 /**
- * This is the common base class for the three main
- * kernel types implemented in MOOSE, Kernel, VectorKernel and ArrayKernel.
+ * This is the common base class for the two main
+ * kernel types implemented in MOOSE, EigenKernel and Kernel.
  */
 class KernelBase : public MooseObject,
                    public BlockRestrictable,
@@ -54,8 +57,8 @@ class KernelBase : public MooseObject,
                    public RandomInterface,
                    protected GeometricSearchInterface,
                    public Restartable,
-                   public MeshChangedInterface,
-                   public TaggingInterface
+                   public ZeroInterface,
+                   public MeshChangedInterface
 {
 public:
   KernelBase(const InputParameters & parameters);
@@ -69,12 +72,7 @@ public:
   virtual void computeJacobian() = 0;
 
   /// Computes d-residual / d-jvar... storing the result in Ke.
-  virtual void computeOffDiagJacobian(MooseVariableFEBase & jvar) = 0;
-
-  virtual void computeADOffDiagJacobian()
-  {
-    mooseError("The computeADOffDiagJacobian method should only be called on ADKernel objects");
-  }
+  virtual void computeOffDiagJacobian(unsigned int jvar) = 0;
 
   /**
    * Computes jacobian block with respect to a scalar variable
@@ -94,23 +92,13 @@ public:
    */
   virtual void computeNonlocalOffDiagJacobian(unsigned int /* jvar */) {}
 
-  /**
-   * Returns the variable that this Kernel operates on.
-   */
-  virtual MooseVariableFEBase & variable() = 0;
+  /// Returns the variable number that this Kernel operates on.
+  MooseVariable & variable();
 
-  /**
-   * Returns a reference to the SubProblem for which this Kernel is active
-   */
-  SubProblem & subProblem() { return _subproblem; }
+  /// Returns a reference to the SubProblem for which this Kernel is active
+  SubProblem & subProblem();
 
-protected:
-  /**
-   * Following methods are used for Kernels that need to perform a per-element calculation
-   */
-  virtual void precalculateResidual() {}
-  virtual void precalculateJacobian() {}
-  virtual void precalculateOffDiagJacobian(unsigned int /* jvar */) {}
+  virtual bool isEigenKernel() const { return _eigen_kernel; }
 
 protected:
   /// Reference to this kernel's SubProblem
@@ -128,10 +116,13 @@ protected:
   /// Reference to this Kernel's assembly object
   Assembly & _assembly;
 
+  /// Reference to this Kernel's MooseVariable object
+  MooseVariable & _var;
+
   /// Reference to this Kernel's mesh object
   MooseMesh & _mesh;
 
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
 
   /// Volume of the current element
   const Real & _current_elem_volume;
@@ -143,7 +134,7 @@ protected:
   const MooseArray<Point> & _q_point;
 
   /// active quadrature rule
-  const QBase * const & _qrule;
+  QBase *& _qrule;
 
   /// The current quadrature point weight value
   const MooseArray<Real> & _JxW;
@@ -157,15 +148,35 @@ protected:
   /// current index for the shape function
   unsigned int _j;
 
+  /// the current test function
+  const VariableTestValue & _test;
+
+  /// gradient of the test function
+  const VariableTestGradient & _grad_test;
+
+  /// the current shape functions
+  const VariablePhiValue & _phi;
+
+  /// gradient of the shape function
+  const VariablePhiGradient & _grad_phi;
+
+  /// Holds residual entries as they are accumulated by this Kernel
+  DenseVector<Number> _local_re;
+
+  /// Holds residual entries as they are accumulated by this Kernel
+  DenseMatrix<Number> _local_ke;
+
   /// The aux variables to save the residual contributions to
   bool _has_save_in;
-  std::vector<MooseVariableFEBase *> _save_in;
+  std::vector<MooseVariable *> _save_in;
   std::vector<AuxVariableName> _save_in_strings;
 
   /// The aux variables to save the diagonal Jacobian contributions to
   bool _has_diag_save_in;
-  std::vector<MooseVariableFEBase *> _diag_save_in;
+  std::vector<MooseVariable *> _diag_save_in;
   std::vector<AuxVariableName> _diag_save_in_strings;
 
-  std::vector<unsigned int> _displacements;
+  bool _eigen_kernel;
 };
+
+#endif /* KERNELBASE_H */

@@ -45,6 +45,7 @@
 
 [Executioner]
   type = Steady
+  [../]
 []
 
 [Outputs]

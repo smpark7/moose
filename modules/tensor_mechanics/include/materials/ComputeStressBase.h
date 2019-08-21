@@ -1,24 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTESTRESSBASE_H
+#define COMPUTESTRESSBASE_H
 
 #include "Material.h"
 #include "RankTwoTensor.h"
 #include "RankFourTensor.h"
 #include "RotationTensor.h"
 #include "DerivativeMaterialInterface.h"
-
-class ComputeStressBase;
-
-template <>
-InputParameters validParams<ComputeStressBase>();
 
 /**
  * ComputeStressBase is the base class for stress tensors
@@ -31,30 +24,42 @@ public:
 protected:
   virtual void initQpStatefulProperties() override;
   virtual void computeQpProperties() override;
-
-  /**
-   * Compute the stress and store it in the _stress material property
-   * for the current quadrature point
-   **/
   virtual void computeQpStress() = 0;
 
-  /// Base name prepended to all material property names to allow for
-  /// multi-material systems
-  const std::string _base_name;
+  /// check if all materials responsible for providing the elasticity tensor guarantee an isotropic tensor
+  bool isElasticityTensorGuaranteedIsotropic();
 
-  /// Mechanical strain material property
+  const std::string _base_name;
+  const std::string _elasticity_tensor_name;
+
   const MaterialProperty<RankTwoTensor> & _mechanical_strain;
-  /// Stress material property
   MaterialProperty<RankTwoTensor> & _stress;
-  /// Elastic strain material property
   MaterialProperty<RankTwoTensor> & _elastic_strain;
+
+  const MaterialProperty<RankFourTensor> & _elasticity_tensor;
 
   /// Extra stress tensor
   const MaterialProperty<RankTwoTensor> & _extra_stress;
 
   /// initial stress components
-  std::vector<const Function *> _initial_stress_fcn;
+  std::vector<Function *> _initial_stress;
 
   /// derivative of stress w.r.t. strain (_dstress_dstrain)
   MaterialProperty<RankFourTensor> & _Jacobian_mult;
+
+  /// Parameter which decides whether to store old stress. This is required for HHT time integration and Rayleigh damping
+  const bool _store_stress_old;
+
+private:
+  enum class OptionalBool
+  {
+    VALUE_UNDEFINED = -1,
+    VALUE_FALSE = 0,
+    VALUE_TRUE = 1
+  };
+
+  /// store
+  OptionalBool _elasticity_tensor_isotropic_guarantee;
 };
+
+#endif // COMPUTESTRESSBASE_H

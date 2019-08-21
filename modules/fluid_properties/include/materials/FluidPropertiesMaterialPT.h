@@ -1,16 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef FLUIDPROPERTIESMATERIALPT_H
+#define FLUIDPROPERTIESMATERIALPT_H
 
 #include "Material.h"
-#include "SinglePhaseFluidProperties.h"
+#include "SinglePhaseFluidPropertiesPT.h"
 
 class FluidPropertiesMaterialPT;
 
@@ -53,6 +52,7 @@ protected:
   MaterialProperty<Real> & _c;
 
   /// Fluid properties UserObject
-  const SinglePhaseFluidProperties & _fp;
+  const SinglePhaseFluidPropertiesPT & _fp;
 };
 
+#endif /* FLUIDPROPERTIESMATERIALPT_H */

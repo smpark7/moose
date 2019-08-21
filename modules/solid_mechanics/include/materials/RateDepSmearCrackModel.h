@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef RATEDEPSMEARCRACKMODEL_H
+#define RATEDEPSMEARCRACKMODEL_H
 
 #include "ConstitutiveModel.h"
 #include "SymmElasticityTensor.h"
@@ -38,12 +36,13 @@ public:
 
 protected:
   virtual void computeStress(const Elem & current_elem,
+                             unsigned qp,
                              const SymmElasticityTensor & elasticity_tensor,
                              const SymmTensor & stress_old,
                              SymmTensor & strain_increment,
                              SymmTensor & stress_new);
 
-  virtual void initQpStatefulProperties();
+  virtual void initStatefulProperties(unsigned int n_points);
 
   virtual void initVariables();
 
@@ -106,10 +105,10 @@ protected:
   Real _rndm_scale_var;       ///Variable value
 
   MaterialProperty<std::vector<Real>> & _intvar;
-  const MaterialProperty<std::vector<Real>> & _intvar_old;
+  MaterialProperty<std::vector<Real>> & _intvar_old;
 
   MaterialProperty<SymmTensor> & _stress_undamaged;
-  const MaterialProperty<SymmTensor> & _stress_undamaged_old;
+  MaterialProperty<SymmTensor> & _stress_undamaged_old;
 
   std::vector<Real> _intvar_incr;
   std::vector<Real> _intvar_tmp, _intvar_old_tmp;
@@ -120,9 +119,11 @@ protected:
   SymmElasticityTensor _elasticity;
   SymmTensor _stress_old, _dstrain, _stress_new;
   SymmTensor _stress0, _dstress0;
-  bool _nconv;   ///Convergence flag
+  bool _nconv; ///Convergence flag
+  unsigned int _qp;
   bool _err_tol; ///Flag to indicate that increment size has exceeded tolerance and needs cutback
 
 private:
 };
 
+#endif // RATEDEPSMEARCRACKMODEL

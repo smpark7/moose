@@ -1,15 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlow1PhaseMD_Gaussian.h"
-
-registerMooseObject("PorousFlowApp", PorousFlow1PhaseMD_Gaussian);
 
 template <>
 InputParameters
@@ -29,7 +25,7 @@ validParams<PorousFlow1PhaseMD_Gaussian>()
       "bulk_modulus", "bulk_modulus>0", "The constant bulk modulus of the fluid phase");
   params.addClassDescription("This Material is used for the single-phase situation where "
                              "log(mass-density) is the primary variable.  calculates the 1 "
-                             "porepressure and the 1 saturation in a 1-phase situation, "
+                             "porepressure and the 1 saturation in a 1-phase isothermal situation, "
                              "and derivatives of these with respect to the PorousFlowVariables.  A "
                              "gaussian capillary function is assumed");
   return params;
@@ -45,7 +41,7 @@ PorousFlow1PhaseMD_Gaussian::PorousFlow1PhaseMD_Gaussian(const InputParameters &
     _recip_bulk(1.0 / _al / _bulk),
     _recip_bulk2(std::pow(_recip_bulk, 2)),
 
-    _md_var(_nodal_material ? coupledDofValues("mass_density") : coupledValue("mass_density")),
+    _md_var(_nodal_material ? coupledNodalValue("mass_density") : coupledValue("mass_density")),
     _gradmd_qp_var(coupledGradient("mass_density")),
     _md_varnum(coupled("mass_density")),
     _pvar(_dictator.isPorousFlowVariable(_md_varnum) ? _dictator.porousFlowVariableNum(_md_varnum)

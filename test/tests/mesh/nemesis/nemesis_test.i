@@ -25,36 +25,6 @@
   [../]
 []
 
-[AuxVariables]
-  [./aux_elem]
-    order = CONSTANT
-    family = MONOMIAL
-  [../]
-
-  [./aux_nodal]
-    order = FIRST
-    family = LAGRANGE
-  [../]
-[]
-
-[AuxKernels]
-  [./aux_elem]
-    type = CoupledAux
-    variable = aux_elem
-    operator = '*'
-    value = 1
-    coupled = u
-  [../]
-
-  [./aux_nodal]
-    type = CoupledAux
-    variable = aux_nodal
-    operator = '*'
-    value = 1
-    coupled = u
-  [../]
-[]
-
 [Kernels]
   active = 'diff'
 
@@ -92,9 +62,8 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
-  petsc_options_iname = '-pc_type -pc_hypre_type'
-  petsc_options_value = 'hypre boomeramg'
 []
 
 [Outputs]

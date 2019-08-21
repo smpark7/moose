@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "TestGetActionsAction.h"
 
@@ -14,8 +19,6 @@
 #include "MooseApp.h"
 
 #include <libmesh/parallel_implementation.h>
-
-registerMooseAction("MooseTestApp", TestGetActionsAction, "meta_action");
 
 template <>
 InputParameters
@@ -36,7 +39,7 @@ TestGetActionsAction::act()
   auto actions = _awh.getActions<AddMaterialAction>();
 
   // test on each processor
-  for (MooseIndex(actions) i = 0; i < actions.size(); ++i)
+  for (auto i = beginIndex(actions); i < actions.size(); ++i)
   {
     if (i > 0)
       if (actions[i]->name() < actions[i - 1]->name())
@@ -50,7 +53,7 @@ TestGetActionsAction::act()
   auto & comm = _app.comm();
   if (comm.rank() == 0)
   {
-    for (MooseIndex(comm.size()) pid = 1; pid < comm.size(); ++pid)
+    for (unsigned int pid = 1; pid < comm.size(); ++pid)
     {
       auto size = actions.size();
       comm.receive(pid, size);
@@ -58,7 +61,7 @@ TestGetActionsAction::act()
         mooseError("error occurs during getting actions, sizes of actions on master and rank ",
                    pid,
                    " are different");
-      for (MooseIndex(actions) i = 0; i < actions.size(); ++i)
+      for (auto i = beginIndex(actions); i < actions.size(); ++i)
       {
         std::string action_name;
         comm.receive(pid, action_name);
@@ -73,7 +76,7 @@ TestGetActionsAction::act()
   {
     auto size = actions.size();
     comm.send(0, size);
-    for (MooseIndex(actions) i = 0; i < actions.size(); ++i)
+    for (auto i = beginIndex(actions); i < actions.size(); ++i)
     {
       auto name = actions[i]->name();
       comm.send(0, name);

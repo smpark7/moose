@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MonotoneCubicInterpolation.h"
 
@@ -48,6 +53,11 @@ MonotoneCubicInterpolation::errorCheck()
 
   if (error)
     throw std::domain_error("x-values are not strictly increasing");
+
+  checkMonotone();
+  if (_monotonic_status == monotonic_not)
+    throw std::domain_error("Don't ask for a monotonic interpolation routine if your dependent "
+                            "variable data isn't monotonic.");
 }
 
 Real
@@ -59,6 +69,30 @@ MonotoneCubicInterpolation::sign(const Real & x) const
     return 1;
   else
     return 0;
+}
+
+void
+MonotoneCubicInterpolation::checkMonotone()
+{
+  Real y_diff = _y[1] - _y[0];
+  Real s = sign(y_diff);
+  for (unsigned int i = 1; i < _y.size() - 1; ++i)
+  {
+    y_diff = _y[i + 1] - _y[i];
+    if (s == 0)
+      s = sign(y_diff);
+    if (s * y_diff < 0)
+    {
+      _monotonic_status = monotonic_not;
+      return;
+    }
+  }
+  if (s > 0)
+    _monotonic_status = monotonic_increase;
+  else if (s < 0)
+    _monotonic_status = monotonic_decrease;
+  else
+    _monotonic_status = monotonic_constant;
 }
 
 Real
@@ -276,7 +310,7 @@ MonotoneCubicInterpolation::modify_derivs(
 void
 MonotoneCubicInterpolation::solve()
 {
-  _n_knots = _x.size(), _n_intervals = _x.size() - 1, _internal_knots = _x.size() - 2;
+  _n_knots = _x.size(), _n_intervals = _x.size() - 1;
   _h.resize(_n_intervals);
   _yp.resize(_n_knots);
   _delta.resize(_n_intervals);
@@ -293,23 +327,20 @@ MonotoneCubicInterpolation::solve()
     _yp[0] = 0;
   if (sign(_delta[_n_intervals - 1]) != sign(_yp[_n_knots - 1]))
     _yp[_n_knots - 1] = 0;
-  for (unsigned int i = 0; i < _internal_knots; ++i)
-    if (sign(_delta[i + 1]) == 0 || sign(_delta[i]) == 0 || sign(_delta[i + 1]) != sign(_delta[i]))
-      _yp[1 + i] = 0;
 
   for (unsigned int i = 0; i < _n_intervals; ++i)
   {
     // Test for zero slope
-    if (_yp[i] == 0)
-      _alpha[i] = 0;
+    if (_yp[i] == 0 && _delta[i] == 0)
+      _alpha[i] = 1;
     else if (_delta[i] == 0)
       _alpha[i] = 4;
     else
       _alpha[i] = _yp[i] / _delta[i];
 
     // Test for zero slope
-    if (_yp[i + 1] == 0)
-      _beta[i] = 0;
+    if (_yp[i + 1] == 0 && _delta[i] == 0)
+      _beta[i] = 1;
     else if (_delta[i] == 0)
       _beta[i] = 4;
     else

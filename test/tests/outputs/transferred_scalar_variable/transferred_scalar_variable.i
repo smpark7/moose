@@ -39,6 +39,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   num_steps = 1
   solve_type = PJFNK

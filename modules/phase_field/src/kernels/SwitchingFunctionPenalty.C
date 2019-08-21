@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "SwitchingFunctionPenalty.h"
-
-registerMooseObject("PhaseFieldApp", SwitchingFunctionPenalty);
 
 template <>
 InputParameters
@@ -38,7 +33,8 @@ SwitchingFunctionPenalty::SwitchingFunctionPenalty(const InputParameters & param
 {
   // parameter check. We need exactly one eta per h
   if (_num_h != coupledComponents("etas"))
-    paramError("h_names", "Need to pass in as many h_names as etas");
+    mooseError("Need to pass in as many h_names as etas in SwitchingFunctionPenalty kernel ",
+               name());
 
   // fetch switching functions (for the residual) and h derivatives (for the Jacobian)
   for (unsigned int i = 0; i < _num_h; ++i)
@@ -57,7 +53,8 @@ SwitchingFunctionPenalty::SwitchingFunctionPenalty(const InputParameters & param
   }
 
   if (_a < 0)
-    paramError("etas", "Kernel variable must be listed in etas");
+    mooseError("Kernel variable must be listed in etas for SwitchingFunctionPenalty kernel ",
+               name());
 
   _d2h = &getMaterialPropertyDerivative<Real>(_h_names[_a], _var.name(), _var.name());
 }

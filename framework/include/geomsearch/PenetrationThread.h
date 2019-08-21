@@ -1,44 +1,48 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef PENETRATIONTHREAD_H
+#define PENETRATIONTHREAD_H
 
 // MOOSE includes
 #include "MooseTypes.h"
 #include "PenetrationLocator.h"
 
 // Forward declarations
-template <typename>
-class MooseVariableFE;
-typedef MooseVariableFE<Real> MooseVariable;
-typedef MooseVariableFE<VectorValue<Real>> VectorMooseVariable;
+class MooseVariable;
 
 class PenetrationThread
 {
 public:
-  PenetrationThread(
-      SubProblem & subproblem,
-      const MooseMesh & mesh,
-      BoundaryID master_boundary,
-      BoundaryID slave_boundary,
-      std::map<dof_id_type, PenetrationInfo *> & penetration_info,
-      bool check_whether_reasonable,
-      bool update_location,
-      Real tangential_tolerance,
-      bool do_normal_smoothing,
-      Real normal_smoothing_distance,
-      PenetrationLocator::NORMAL_SMOOTHING_METHOD normal_smoothing_method,
-      std::vector<std::vector<FEBase *>> & fes,
-      FEType & fe_type,
-      NearestNodeLocator & nearest_node,
-      const std::map<dof_id_type, std::vector<dof_id_type>> & node_to_elem_map,
-      const std::vector<std::tuple<dof_id_type, unsigned short int, boundary_id_type>> & bc_tuples);
+  PenetrationThread(SubProblem & subproblem,
+                    const MooseMesh & mesh,
+                    BoundaryID master_boundary,
+                    BoundaryID slave_boundary,
+                    std::map<dof_id_type, PenetrationInfo *> & penetration_info,
+                    bool check_whether_reasonable,
+                    bool update_location,
+                    Real tangential_tolerance,
+                    bool do_normal_smoothing,
+                    Real normal_smoothing_distance,
+                    PenetrationLocator::NORMAL_SMOOTHING_METHOD normal_smoothing_method,
+                    std::vector<std::vector<FEBase *>> & fes,
+                    FEType & fe_type,
+                    NearestNodeLocator & nearest_node,
+                    const std::map<dof_id_type, std::vector<dof_id_type>> & node_to_elem_map,
+                    std::vector<dof_id_type> & elem_list,
+                    std::vector<unsigned short int> & side_list,
+                    std::vector<boundary_id_type> & id_list);
 
   // Splitting Constructor
   PenetrationThread(PenetrationThread & x, Threads::split split);
@@ -46,9 +50,6 @@ public:
   void operator()(const NodeIdRange & range);
 
   void join(const PenetrationThread & other);
-
-  /// List of slave nodes for which penetration was not detected in the current patch and for which patch has to be updated.
-  std::vector<dof_id_type> _recheck_slave_nodes;
 
 protected:
   SubProblem & _subproblem;
@@ -78,8 +79,11 @@ protected:
 
   const std::map<dof_id_type, std::vector<dof_id_type>> & _node_to_elem_map;
 
-  // Each boundary condition tuple has three entries, (0=elem-id, 1=side-id, 2=bc-id)
-  const std::vector<std::tuple<dof_id_type, unsigned short int, boundary_id_type>> & _bc_tuples;
+  std::vector<dof_id_type> & _elem_list;
+  std::vector<unsigned short int> & _side_list;
+  std::vector<boundary_id_type> & _id_list;
+
+  unsigned int _n_elems;
 
   THREAD_ID _tid;
 
@@ -98,24 +102,7 @@ protected:
     EDGE_AND_COMMON_NODE
   };
 
-  /**
-   * When interactions are identified between a node and two faces, compete between the faces
-   * to determine whether first (pi1) or second (pi2) interaction is stronger
-   * @param pi1 Pointer to the PenetrationInfo object for the first face
-   * @param pi2 Pointer to the PenetrationInfo object for the second face
-   * @return Appropriate ComputeInterationResult enum entry identifying which face is a better match
-   */
   CompeteInteractionResult competeInteractions(PenetrationInfo * pi1, PenetrationInfo * pi2);
-
-  /**
-   * Determine whether first (pi1) or second (pi2) interaction is stronger when it is known
-   * that the node projects to both of the two competing faces
-   * @param pi1 Pointer to the PenetrationInfo object for the first face
-   * @param pi2 Pointer to the PenetrationInfo object for the second face
-   * @return Appropriate ComputeInterationResult enum entry identifying which face is a better match
-   */
-  CompeteInteractionResult competeInteractionsBothOnFace(PenetrationInfo * pi1,
-                                                         PenetrationInfo * pi2);
 
   CommonEdgeResult interactionsOffCommonEdge(PenetrationInfo * pi1, PenetrationInfo * pi2);
 
@@ -128,12 +115,12 @@ protected:
                              const unsigned int index1,
                              const unsigned int index2);
 
-  void getSideCornerNodes(const Elem * side, std::vector<const Node *> & corner_nodes);
+  void getSideCornerNodes(Elem * side, std::vector<Node *> & corner_nodes);
 
   bool restrictPointToSpecifiedEdgeOfFace(Point & p,
                                           const Node *& closest_node,
                                           const Elem * side,
-                                          const std::vector<const Node *> & edge_nodes);
+                                          const std::vector<Node *> & edge_nodes);
   bool restrictPointToFace(Point & p, const Node *& closest_node, const Elem * side);
 
   bool isFaceReasonableCandidate(const Elem * master_elem,
@@ -194,3 +181,4 @@ protected:
   };
 };
 
+#endif // PENETRATIONTHREAD_H

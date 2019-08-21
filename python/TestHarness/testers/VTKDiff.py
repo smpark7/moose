@@ -1,16 +1,7 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
 from RunApp import RunApp
-from TestHarness import util
+import util
 import os
-from TestHarness.XMLDiffer import XMLDiffer
+from XMLDiffer import XMLDiffer
 
 class VTKDiff(RunApp):
 
@@ -32,14 +23,12 @@ class VTKDiff(RunApp):
         if self.specs['delete_output_before_running'] == True:
             util.deleteFilesAndFolders(self.specs['test_dir'], self.specs['vtkdiff'])
 
-    def processResults(self, moose_dir, options, output):
-        output += self.testFileOutput(moose_dir, options, output)
-        self.testExitCodes(moose_dir, options, output)
+    def processResults(self, moose_dir, retcode, options, output):
+        output = RunApp.processResults(self, moose_dir, retcode, options, output)
 
         # Skip
         specs = self.specs
-
-        if self.isFail() or specs['skip_checks']:
+        if self.getStatus() == self.bucket_fail or specs['skip_checks']:
             return output
 
         # Don't Run VTKDiff on Scaled Tests
@@ -52,7 +41,7 @@ class VTKDiff(RunApp):
             # Error if gold file does not exist
             if not os.path.exists(os.path.join(specs['test_dir'], specs['gold_dir'], file)):
                 output += "File Not Found: " + os.path.join(specs['test_dir'], specs['gold_dir'], file)
-                self.setStatus(self.fail, 'MISSING GOLD FILE')
+                self.setStatus('MISSING GOLD FILE', self.bucket_fail)
                 break
 
             # Perform diff
@@ -72,8 +61,11 @@ class VTKDiff(RunApp):
                     output += differ.message() + '\n'
 
                     if differ.fail():
-                        self.addCaveats('VTKDIFF')
-                        self.setStatus(self.skip)
+                        self.setStatus('VTKDIFF', self.bucket_skip)
                         break
+
+        # If status is still pending, then it is a passing test
+        if self.getStatus() == self.bucket_pending:
+            self.setStatus(self.success_message, self.bucket_success)
 
         return output

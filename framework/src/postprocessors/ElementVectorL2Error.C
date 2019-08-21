@@ -1,16 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ElementVectorL2Error.h"
 #include "Function.h"
-
-registerMooseObject("MooseApp", ElementVectorL2Error);
 
 template <>
 InputParameters
@@ -23,9 +26,6 @@ validParams<ElementVectorL2Error>()
   params.addRequiredCoupledVar("var_x", "The FE solution in x direction");
   params.addCoupledVar("var_y", 0, "The FE solution in y direction");
   params.addCoupledVar("var_z", 0, "The FE solution in z direction");
-
-  params.addClassDescription("Computes the Vector L2 difference of up to three variables "
-                             "simultaneously (normally x, y, z)");
   return params;
 }
 

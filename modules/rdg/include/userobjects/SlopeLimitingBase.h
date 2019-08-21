@@ -1,15 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef SLOPELIMITINGBASE_H
+#define SLOPELIMITINGBASE_H
 
 #include "ElementLoopUserObject.h"
+#include "SlopeReconstructionBase.h"
 
 // Forward Declarations
 class SlopeLimitingBase;
@@ -42,26 +42,31 @@ protected:
   virtual void deserialize(std::vector<std::string> & serialized_buffers);
 
   /// store the updated slopes into this map indexed by element ID
-  std::map<dof_id_type, std::vector<RealGradient>> & _lslope;
+  std::map<dof_id_type, std::vector<RealGradient>> _lslope;
 
   /// option whether to include BCs
-  const bool _include_bc;
+  bool _include_bc;
+
+  /// slope reconstruction user object
+  const SlopeReconstructionBase & _rslope;
 
   /// required data for face assembly
   const MooseArray<Point> & _q_point_face;
-  const QBase * const & _qrule_face;
+  QBase *& _qrule_face;
   const MooseArray<Real> & _JxW_face;
   const MooseArray<Point> & _normals_face;
 
   /// current side of the current element
-  const unsigned int & _side;
+  unsigned int & _side;
 
-  const Elem * const & _side_elem;
+  const Elem *& _side_elem;
   const Real & _side_volume;
 
   /// the neighboring element
-  const Elem * const & _neighbor_elem;
+  const Elem *& _neighbor_elem;
 
 private:
   static Threads::spin_mutex _mutex;
 };
+
+#endif

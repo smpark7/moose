@@ -1,19 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "FauxGrainTracker.h"
 
 // MOOSE includes
 #include "MooseMesh.h"
 #include "MooseVariable.h"
-
-registerMooseObject("PhaseFieldApp", FauxGrainTracker);
 
 template <>
 InputParameters
@@ -35,7 +31,7 @@ FauxGrainTracker::FauxGrainTracker(const InputParameters & parameters)
 {
   // initialize faux data with identity map
   _op_to_grains.resize(_n_vars);
-  for (MooseIndex(_op_to_grains) i = 0; i < _op_to_grains.size(); ++i)
+  for (auto i = beginIndex(_op_to_grains); i < _op_to_grains.size(); ++i)
     _op_to_grains[i] = i;
 
   _empty_var_to_features.resize(_n_vars, FeatureFloodCount::invalid_id);
@@ -75,7 +71,7 @@ FauxGrainTracker::getEntityValue(dof_id_type entity_id,
 
       // If this element contains the centroid of one of features, return it's index
       const auto * elem_ptr = _mesh.elemPtr(entity_id);
-      for (MooseIndex(_vars) var_num = 0; var_num < _n_vars; ++var_num)
+      for (auto var_num = beginIndex(_vars); var_num < _n_vars; ++var_num)
       {
         const auto centroid = _centroid.find(var_num);
         if (centroid != _centroid.end())
@@ -156,8 +152,12 @@ FauxGrainTracker::execute()
 {
   Moose::perf_log.push("execute()", "FauxGrainTracker");
 
-  for (const auto & current_elem : _mesh.getMesh().active_local_element_ptr_range())
+  const MeshBase::element_iterator end = _mesh.getMesh().active_local_elements_end();
+  for (MeshBase::element_iterator el = _mesh.getMesh().active_local_elements_begin(); el != end;
+       ++el)
   {
+    const Elem * current_elem = *el;
+
     // Loop over elements or nodes and populate the data structure with the first variable with a
     // value above a threshold
     if (_is_elemental)
@@ -166,13 +166,12 @@ FauxGrainTracker::execute()
       _fe_problem.reinitElemPhys(current_elem, centroid, 0);
 
       auto entity = current_elem->id();
-      auto insert_pair =
-          moose_try_emplace(_entity_var_to_features,
-                            entity,
-                            std::vector<unsigned int>(_n_vars, FeatureFloodCount::invalid_id));
-      auto & vec_ref = insert_pair.first->second;
+      auto map_it = _entity_var_to_features.lower_bound(entity);
+      if (map_it == _entity_var_to_features.end() || map_it->first != entity)
+        map_it = _entity_var_to_features.emplace_hint(
+            map_it, entity, std::vector<unsigned int>(_n_vars, FeatureFloodCount::invalid_id));
 
-      for (MooseIndex(_vars) var_num = 0; var_num < _n_vars; ++var_num)
+      for (auto var_num = beginIndex(_vars); var_num < _n_vars; ++var_num)
       {
         auto entity_value = _vars[var_num]->sln()[0];
 
@@ -185,7 +184,7 @@ FauxGrainTracker::execute()
           _vol_count[var_num]++;
           // Sum the centroid values for now, we'll average them later
           _centroid[var_num] += current_elem->centroid();
-          vec_ref[var_num] = var_num;
+          map_it->second[var_num] = var_num;
           break;
         }
       }
@@ -195,9 +194,9 @@ FauxGrainTracker::execute()
       unsigned int n_nodes = current_elem->n_vertices();
       for (unsigned int i = 0; i < n_nodes; ++i)
       {
-        const Node * current_node = current_elem->node_ptr(i);
+        const Node * current_node = current_elem->get_node(i);
 
-        for (MooseIndex(_vars) var_num = 0; var_num < _n_vars; ++var_num)
+        for (auto var_num = beginIndex(_vars); var_num < _n_vars; ++var_num)
         {
           auto entity_value = _vars[var_num]->getNodalValue(*current_node);
           if ((_use_less_than_threshold_comparison && (entity_value >= _threshold)) ||
@@ -226,7 +225,7 @@ FauxGrainTracker::finalize()
   _communicator.set_union(_entity_id_to_var_num);
 
   if (_is_elemental)
-    for (MooseIndex(_vars) var_num = 0; var_num < _n_vars; ++var_num)
+    for (auto var_num = beginIndex(_vars); var_num < _n_vars; ++var_num)
     {
       /**
        * Convert elements of the maps into simple values or vector of Real.

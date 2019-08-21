@@ -1,16 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWPOROSITYBASE_H
+#define POROUSFLOWPOROSITYBASE_H
 
 #include "PorousFlowMaterialVectorBase.h"
 
+// Forward Declarations
 class PorousFlowPorosityBase;
 
 template <>
@@ -25,7 +25,7 @@ public:
   PorousFlowPorosityBase(const InputParameters & parameters);
 
 protected:
-  /// Computed porosity at the nodes or quadpoints
+  /// computed porosity at the nodes or quadpoints
   MaterialProperty<Real> & _porosity;
 
   /// d(porosity)/d(PorousFlow variable)
@@ -35,3 +35,4 @@ protected:
   MaterialProperty<std::vector<RealGradient>> & _dporosity_dgradvar;
 };
 
+#endif // POROUSFLOWPOROSITYBASE_H

@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef SOLUTIONFUNCTION_H
+#define SOLUTIONFUNCTION_H
 
 #include "Function.h"
 
@@ -37,7 +43,7 @@ public:
    * @param p Spatial location of desired data
    * @return The value at t and p
    */
-  virtual Real value(Real t, const Point & p) const override;
+  virtual Real value(Real t, const Point & p) override;
 
   /**
    * Extract a gradient from the solution
@@ -45,7 +51,7 @@ public:
    * @param p Spatial location of desired data
    * @return The value at t and p
    */
-  virtual RealGradient gradient(Real t, const Point & p) const override;
+  virtual RealGradient gradient(Real t, const Point & p) override;
 
   /**
    * Setup the function for use
@@ -71,3 +77,5 @@ protected:
   /// Factor to add to the solution if gradient is requested (default = \vec{0})
   RealGradient _add_grad;
 };
+
+#endif // SOLUTIONFUNCTION_H

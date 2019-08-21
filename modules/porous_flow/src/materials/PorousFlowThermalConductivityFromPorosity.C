@@ -1,25 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowThermalConductivityFromPorosity.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowThermalConductivityFromPorosity);
 
 template <>
 InputParameters
 validParams<PorousFlowThermalConductivityFromPorosity>()
 {
-  InputParameters params = validParams<PorousFlowThermalConductivityBase>();
+  InputParameters params = validParams<PorousFlowMaterialVectorBase>();
   params.addRequiredParam<RealTensorValue>("lambda_s",
                                            "The thermal conductivity of the solid matrix material");
   params.addRequiredParam<RealTensorValue>("lambda_f",
                                            "The thermal conductivity of the single fluid phase");
+  params.set<bool>("at_nodes") = false;
   params.addClassDescription("This Material calculates rock-fluid combined thermal conductivity "
                              "for the single phase, fully saturated case by using a linear "
                              "weighted average. "
@@ -31,18 +28,23 @@ validParams<PorousFlowThermalConductivityFromPorosity>()
 
 PorousFlowThermalConductivityFromPorosity::PorousFlowThermalConductivityFromPorosity(
     const InputParameters & parameters)
-  : PorousFlowThermalConductivityBase(parameters),
+  : PorousFlowMaterialVectorBase(parameters),
     _la_s(getParam<RealTensorValue>("lambda_s")),
     _la_f(getParam<RealTensorValue>("lambda_f")),
     _porosity_qp(getMaterialProperty<Real>("PorousFlow_porosity_qp")),
-    _dporosity_qp_dvar(getMaterialProperty<std::vector<Real>>("dPorousFlow_porosity_qp_dvar"))
+    _dporosity_qp_dvar(getMaterialProperty<std::vector<Real>>("dPorousFlow_porosity_qp_dvar")),
+    _la_qp(declareProperty<RealTensorValue>("PorousFlow_thermal_conductivity_qp")),
+    _dla_qp_dvar(
+        declareProperty<std::vector<RealTensorValue>>("dPorousFlow_thermal_conductivity_qp_dvar"))
 {
   if (_num_phases != 1)
-    paramError("fluid_phase",
-               "The Dictator proclaims that the number of phases is ",
+    mooseError("The Dictator proclaims that the number of phases is ",
                _dictator.numPhases(),
-               " whereas this material can only be used for single phase "
-               "simulations.  Be aware that the Dictator has noted your mistake.");
+               " whereas PorousFlowThermalConductivityFromPorosity can only be used for 1-phase "
+               "simulations.  Be aware "
+               "that the Dictator has noted your mistake.");
+  if (_nodal_material == true)
+    mooseError("PorousFlowThermalConductivity classes are only defined for at_nodes = false");
 }
 
 void

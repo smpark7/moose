@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef BOUNDARYCONDITION_H
+#define BOUNDARYCONDITION_H
 
 // MOOSE
 #include "MooseObject.h"
@@ -22,14 +28,11 @@
 #include "GeometricSearchInterface.h"
 #include "BoundaryRestrictableRequired.h"
 #include "Restartable.h"
+#include "ZeroInterface.h"
 #include "MeshChangedInterface.h"
-#include "TaggingInterface.h"
 
 // Forward declerations
-template <typename>
-class MooseVariableFE;
-typedef MooseVariableFE<Real> MooseVariable;
-typedef MooseVariableFE<VectorValue<Real>> VectorMooseVariable;
+class MooseVariable;
 class MooseMesh;
 class Problem;
 class SubProblem;
@@ -54,8 +57,8 @@ class BoundaryCondition : public MooseObject,
                           public VectorPostprocessorInterface,
                           public GeometricSearchInterface,
                           public Restartable,
-                          public MeshChangedInterface,
-                          public TaggingInterface
+                          public ZeroInterface,
+                          public MeshChangedInterface
 {
 public:
   /**
@@ -66,16 +69,16 @@ public:
   BoundaryCondition(const InputParameters & parameters, bool nodal);
 
   /**
-   * Get a reference to the MooseVariableFE
-   * @return Reference to MooseVariableFE
+   * Gets the variable this BC is active on
+   * @return the variable
    */
-  virtual MooseVariableFEBase & variable() = 0;
+  MooseVariable & variable();
 
   /**
    * Get a reference to the subproblem
    * @return Reference to SubProblem
    */
-  SubProblem & subProblem() { return _subproblem; }
+  SubProblem & subProblem();
 
   /**
    * Hook for turning the boundary condition on and off.
@@ -88,7 +91,7 @@ public:
    * this method. However, one has to index into the values manually, i.e. not using _qp.
    * @return true if the boundary condition should be applied, otherwise false
    */
-  virtual bool shouldApply() { return true; }
+  virtual bool shouldApply();
 
 protected:
   /// Reference to SubProblem
@@ -106,6 +109,11 @@ protected:
   /// Reference to assembly
   Assembly & _assembly;
 
+  /// variable this BC works on
+  MooseVariable & _var;
+
   /// Mesh this BC is defined on
   MooseMesh & _mesh;
 };
+
+#endif /* BOUNDARYCONDITION_H */

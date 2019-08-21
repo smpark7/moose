@@ -1,18 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "CombinedCreepPlasticity.h"
 
 #include "ReturnMappingModel.h"
 #include "SymmIsotropicElasticityTensor.h"
-
-registerMooseObject("SolidMechanicsApp", CombinedCreepPlasticity);
 
 template <>
 InputParameters
@@ -24,14 +19,12 @@ validParams<CombinedCreepPlasticity>()
                                                     "List of submodel ConstitutiveModels");
 
   params.addParam<unsigned int>("max_its", 30, "Maximum number of submodel iterations");
-  params.addParam<bool>("internal_solve_full_iteration_history",
-                        false,
-                        "Set true to output submodel iteration information");
+  params.addParam<bool>(
+      "output_iteration_info", false, "Set true to output submodel iteration information");
   params.addParam<Real>(
       "relative_tolerance", 1e-5, "Relative convergence tolerance for combined submodel iteration");
   params.addParam<Real>(
       "absolute_tolerance", 1e-5, "Absolute convergence tolerance for combined submodel iteration");
-  params.addClassDescription("Models creep and instantaneous plasticity deformation");
 
   return params;
 }
@@ -40,7 +33,7 @@ CombinedCreepPlasticity::CombinedCreepPlasticity(const InputParameters & paramet
   : ConstitutiveModel(parameters),
     _submodels(),
     _max_its(parameters.get<unsigned int>("max_its")),
-    _internal_solve_full_iteration_history(getParam<bool>("internal_solve_full_iteration_history")),
+    _output_iteration_info(getParam<bool>("output_iteration_info")),
     _relative_tolerance(parameters.get<Real>("relative_tolerance")),
     _absolute_tolerance(parameters.get<Real>("absolute_tolerance")),
     _matl_timestep_limit(declareProperty<Real>("matl_timestep_limit"))
@@ -93,6 +86,7 @@ CombinedCreepPlasticity::initialSetup()
 
 void
 CombinedCreepPlasticity::computeStress(const Elem & current_elem,
+                                       unsigned qp,
                                        const SymmElasticityTensor & elasticityTensor,
                                        const SymmTensor & stress_old,
                                        SymmTensor & strain_increment,
@@ -104,16 +98,13 @@ CombinedCreepPlasticity::computeStress(const Elem & current_elem,
   // creep_strain = creep_strainOld + creep_strainIncrement
 
   if (_t_step == 0 && !_app.isRestarting())
-  {
-    _matl_timestep_limit[_qp] = std::numeric_limits<Real>::max();
     return;
-  }
 
-  if (_internal_solve_full_iteration_history == true)
+  if (_output_iteration_info == true)
   {
     _console << std::endl
              << "iteration output for CombinedCreepPlasticity solve:"
-             << " time=" << _t << " temperature=" << _temperature[_qp] << " int_pt=" << _qp
+             << " time=" << _t << " temperature=" << _temperature[qp] << " int_pt=" << qp
              << std::endl;
   }
 
@@ -133,9 +124,6 @@ CombinedCreepPlasticity::computeStress(const Elem & current_elem,
   Real first_delS(delS);
   unsigned int counter(0);
 
-  for (unsigned i_rmm(0); i_rmm < num_submodels; ++i_rmm)
-    rmm[i_rmm]->setQp(_qp);
-
   while (counter < _max_its && delS > _absolute_tolerance &&
          (delS / first_delS) > _relative_tolerance && (num_submodels != 1 || counter < 1))
   {
@@ -146,6 +134,7 @@ CombinedCreepPlasticity::computeStress(const Elem & current_elem,
     for (unsigned i_rmm(0); i_rmm < num_submodels; ++i_rmm)
     {
       rmm[i_rmm]->computeStress(current_elem,
+                                qp,
                                 elasticityTensor,
                                 stress_old,
                                 elastic_strain_increment,
@@ -162,7 +151,7 @@ CombinedCreepPlasticity::computeStress(const Elem & current_elem,
     }
     stress_new_last = stress_new;
 
-    if (_internal_solve_full_iteration_history == true)
+    if (_output_iteration_info == true)
     {
       _console << "stress_it=" << counter
                << " rel_delS=" << (0 == first_delS ? 0 : delS / first_delS)
@@ -181,22 +170,16 @@ CombinedCreepPlasticity::computeStress(const Elem & current_elem,
 
   strain_increment = elastic_strain_increment;
 
-  _matl_timestep_limit[_qp] = 0.0;
+  _matl_timestep_limit[qp] = 0.0;
   for (unsigned i_rmm(0); i_rmm < num_submodels; ++i_rmm)
-    _matl_timestep_limit[_qp] += 1.0 / rmm[i_rmm]->computeTimeStepLimit();
+    _matl_timestep_limit[qp] += 1.0 / rmm[i_rmm]->computeTimeStepLimit(qp);
 
-  if (MooseUtils::absoluteFuzzyEqual(_matl_timestep_limit[_qp], 0.0))
-  {
-    _matl_timestep_limit[_qp] = std::numeric_limits<Real>::max();
-  }
-  else
-  {
-    _matl_timestep_limit[_qp] = 1.0 / _matl_timestep_limit[_qp];
-  }
+  _matl_timestep_limit[qp] = 1.0 / _matl_timestep_limit[qp];
 }
 
 bool
 CombinedCreepPlasticity::modifyStrainIncrement(const Elem & current_elem,
+                                               unsigned qp,
                                                SymmTensor & strain_increment,
                                                SymmTensor & d_strain_dT)
 {
@@ -207,8 +190,7 @@ CombinedCreepPlasticity::modifyStrainIncrement(const Elem & current_elem,
 
   for (unsigned i_rmm(0); i_rmm < num_submodels; ++i_rmm)
   {
-    rmm[i_rmm]->setQp(_qp);
-    modified |= rmm[i_rmm]->modifyStrainIncrement(current_elem, strain_increment, d_strain_dT);
+    modified |= rmm[i_rmm]->modifyStrainIncrement(current_elem, qp, strain_increment, d_strain_dT);
   }
   return modified;
 }

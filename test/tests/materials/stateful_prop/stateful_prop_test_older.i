@@ -19,7 +19,7 @@
 
 [Kernels]
   [./heat]
-    type = MatDiffusionTest
+    type = MatDiffusion
     variable = u
     prop_name = thermal_conductivity
     prop_state = 'older'                  # Use the "Older" value to compute conductivity
@@ -81,6 +81,7 @@
 [Executioner]
   type = Transient
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   l_max_its = 10

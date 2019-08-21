@@ -106,6 +106,7 @@
   type                 = Steady
   nl_rel_tol               = 1.e-10
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname  = '-pc_type -pc_factor_levels -pc_factor_mat_ordering_type'
@@ -113,5 +114,6 @@
 []
 
 [Outputs]
+  file_base = out
   exodus = true
 []

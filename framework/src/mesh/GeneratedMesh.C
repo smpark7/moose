@@ -1,26 +1,28 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "GeneratedMesh.h"
 
+// libMesh includes
+#include "libmesh/getpot.h"
 #include "libmesh/mesh_generation.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/periodic_boundaries.h"
 #include "libmesh/periodic_boundary_base.h"
-#include "libmesh/unstructured_mesh.h"
-#include "libmesh/node.h"
 
 // C++ includes
 #include <cmath> // provides round, not std::round (see http://www.cplusplus.com/reference/cmath/round/)
-#include <array>
-
-registerMooseObject("MooseApp", GeneratedMesh);
 
 template <>
 InputParameters
@@ -92,32 +94,18 @@ GeneratedMesh::GeneratedMesh(const InputParameters & parameters)
     _gauss_lobatto_grid(getParam<bool>("gauss_lobatto_grid")),
     _bias_x(getParam<Real>("bias_x")),
     _bias_y(getParam<Real>("bias_y")),
-    _bias_z(getParam<Real>("bias_z")),
-    _dims_may_have_changed(false)
+    _bias_z(getParam<Real>("bias_z"))
 {
   if (_gauss_lobatto_grid && (_bias_x != 1.0 || _bias_y != 1.0 || _bias_z != 1.0))
     mooseError("Cannot apply both Gauss-Lobatto mesh grading and biasing at the same time.");
 
-  // All generated meshes are regular orthogonal meshes - until they get modified ;)
+  // All generated meshes are regular orthogonal meshes
   _regular_orthogonal_mesh = true;
-}
-
-void
-GeneratedMesh::prepared(bool state)
-{
-  MooseMesh::prepared(state);
-
-  // Fall back on scanning the mesh for coordinates instead of using input parameters for queries
-  if (!state)
-    _dims_may_have_changed = true;
 }
 
 Real
 GeneratedMesh::getMinInDimension(unsigned int component) const
 {
-  if (_dims_may_have_changed)
-    return MooseMesh::getMinInDimension(component);
-
   switch (component)
   {
     case 0:
@@ -134,9 +122,6 @@ GeneratedMesh::getMinInDimension(unsigned int component) const
 Real
 GeneratedMesh::getMaxInDimension(unsigned int component) const
 {
-  if (_dims_may_have_changed)
-    return MooseMesh::getMaxInDimension(component);
-
   switch (component)
   {
     case 0:
@@ -150,10 +135,10 @@ GeneratedMesh::getMaxInDimension(unsigned int component) const
   }
 }
 
-std::unique_ptr<MooseMesh>
-GeneratedMesh::safeClone() const
+MooseMesh &
+GeneratedMesh::clone() const
 {
-  return libmesh_make_unique<GeneratedMesh>(*this);
+  return *(new GeneratedMesh(*this));
 }
 
 void
@@ -227,23 +212,20 @@ GeneratedMesh::buildMesh()
     MeshBase & mesh = getMesh();
 
     // Biases
-    std::array<Real, LIBMESH_DIM> bias = {
-        {_bias_x, _dim > 1 ? _bias_y : 1.0, _dim > 2 ? _bias_z : 1.0}};
+    Real bias[3] = {_bias_x, _bias_y, _bias_z};
 
     // "width" of the mesh in each direction
-    std::array<Real, LIBMESH_DIM> width = {
-        {_xmax - _xmin, _dim > 1 ? _ymax - _ymin : 0, _dim > 2 ? _zmax - _zmin : 0}};
+    Real width[3] = {_xmax - _xmin, _ymax - _ymin, _zmax - _zmin};
 
     // Min mesh extent in each direction.
-    std::array<Real, LIBMESH_DIM> mins = {
-        {getMinInDimension(0), getMinInDimension(1), getMinInDimension(2)}};
+    Real mins[3] = {_xmin, _ymin, _zmin};
 
     // Number of elements in each direction.
-    std::array<unsigned int, LIBMESH_DIM> nelem = {{_nx, _dim > 1 ? _ny : 1, _dim > 2 ? _nz : 1}};
+    unsigned int nelem[3] = {_nx, _ny, _nz};
 
     // We will need the biases raised to integer powers in each
     // direction, so let's pre-compute those...
-    std::array<std::vector<Real>, LIBMESH_DIM> pows;
+    std::vector<std::vector<Real>> pows(LIBMESH_DIM);
     for (unsigned int dir = 0; dir < LIBMESH_DIM; ++dir)
     {
       pows[dir].resize(nelem[dir] + 1);
@@ -252,9 +234,12 @@ GeneratedMesh::buildMesh()
     }
 
     // Loop over the nodes and move them to the desired location
-    for (auto & node_ptr : mesh.node_ptr_range())
+    MeshBase::node_iterator node_it = mesh.nodes_begin();
+    const MeshBase::node_iterator node_end = mesh.nodes_end();
+
+    for (; node_it != node_end; ++node_it)
     {
-      Node & node = *node_ptr;
+      Node & node = **node_it;
 
       for (unsigned int dir = 0; dir < LIBMESH_DIM; ++dir)
       {
@@ -279,9 +264,6 @@ GeneratedMesh::buildMesh()
             // of using "integer_part", since that could be off by a
             // lot (e.g. we want 3.9999 to map to 4.0 instead of 3.0).
             int index = round(float_index);
-
-            mooseAssert(index >= static_cast<int>(0) && index < static_cast<int>(pows[dir].size()),
-                        "Scaled \"index\" out of range");
 
             // Move node to biased location.
             node(dir) =

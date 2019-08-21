@@ -1,3 +1,8 @@
+Nu = 4
+k = 1
+half_channel_length = 0.5
+h = ${/ ${* ${Nu} ${k}} ${half_channel_length}}
+
 
 [Mesh]
   type = GeneratedMesh
@@ -26,7 +31,7 @@
     variable = u
   [../]
   [./src]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = ffn
   [../]
@@ -75,12 +80,7 @@
   [./mat]
     type = GenericConstantMaterial
     prop_names = 'h'
-
-    #Nu = 4
-    #k = 1
-    #half_channel_length = 0.5
-    #h=Nu*k/half_channel_length
-    prop_values = '8'
+    prop_values = '${h}'
   [../]
 []
 

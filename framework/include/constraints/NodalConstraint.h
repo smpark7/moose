@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef NODALCONSTRAINT_H
+#define NODALCONSTRAINT_H
 
 // MOOSE includes
 #include "Constraint.h"
@@ -20,8 +26,7 @@ template <>
 InputParameters validParams<NodalConstraint>();
 
 class NodalConstraint : public Constraint,
-                        public NeighborCoupleableMooseVariableDependencyIntermediateInterface,
-                        public NeighborMooseVariableInterface<Real>
+                        public NeighborCoupleableMooseVariableDependencyIntermediateInterface
 {
 public:
   NodalConstraint(const InputParameters & parameters);
@@ -53,11 +58,6 @@ public:
    */
   virtual void computeJacobian(SparseMatrix<Number> & jacobian);
 
-  /**
-   * The variable number that this object operates on.
-   */
-  MooseVariable & variable() { return _var; }
-
 protected:
   /**
    * This is the virtual that derived classes should override for computing the residual on
@@ -70,8 +70,6 @@ protected:
    * neighboring element.
    */
   virtual Real computeQpJacobian(Moose::ConstraintJacobianType type) = 0;
-
-  MooseVariable & _var;
 
   /// Value of the unknown variable this BC is action on
   const VariableValue & _u_slave;
@@ -93,3 +91,4 @@ protected:
   unsigned int _j;
 };
 
+#endif

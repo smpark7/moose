@@ -1,21 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "MooseUtils.h"
 #include "MooseError.h"
 #include "MaterialProperty.h"
-#include "MultiMooseEnum.h"
-#include "InputParameters.h"
-#include "ExecFlagEnum.h"
-#include "InfixIterator.h"
 
+// libMesh includes
 #include "libmesh/elem.h"
 
 // External includes
@@ -27,69 +29,12 @@
 #include <fstream>
 #include <istream>
 #include <iterator>
-#include <ctime>
 
 // System includes
 #include <sys/stat.h>
-#include <numeric>
-#include <unistd.h>
-
-std::string getLatestCheckpointFileHelper(const std::list<std::string> & checkpoint_files,
-                                          const std::vector<std::string> extensions,
-                                          bool keep_extension);
 
 namespace MooseUtils
 {
-
-std::string
-convertLatestCheckpoint(std::string orig, bool base_only)
-{
-  auto slash_pos = orig.find_last_of("/");
-  auto path = orig.substr(0, slash_pos);
-  auto file = orig.substr(slash_pos + 1);
-  if (file != "LATEST")
-    return orig;
-
-  auto converted = MooseUtils::getLatestAppCheckpointFileBase(MooseUtils::listDir(path));
-  if (!base_only)
-    converted = MooseUtils::getLatestMeshCheckpointFile(MooseUtils::listDir(path));
-  else if (converted.empty())
-    mooseError("Unable to find suitable recovery file!");
-  return converted;
-}
-
-// this implementation is copied from
-// https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C.2B.2B
-int
-levenshteinDist(const std::string & s1, const std::string & s2)
-{
-  // To change the type this function manipulates and returns, change
-  // the return type and the types of the two variables below.
-  auto s1len = s1.size();
-  auto s2len = s2.size();
-
-  auto column_start = (decltype(s1len))1;
-
-  auto column = new decltype(s1len)[s1len + 1];
-  std::iota(column + column_start, column + s1len + 1, column_start);
-
-  for (auto x = column_start; x <= s2len; x++)
-  {
-    column[0] = x;
-    auto last_diagonal = x - column_start;
-    for (auto y = column_start; y <= s1len; y++)
-    {
-      auto old_diagonal = column[y];
-      auto possibilities = {
-          column[y] + 1, column[y - 1] + 1, last_diagonal + (s1[y - 1] == s2[x - 1] ? 0 : 1)};
-      column[y] = std::min(possibilities);
-      last_diagonal = old_diagonal;
-    }
-  }
-  auto result = column[s1len];
-  delete[] column;
-  return result;
-}
 
 void
 escape(std::string & str)
@@ -110,13 +55,10 @@ escape(std::string & str)
 }
 
 std::string
-trim(const std::string & str, const std::string & white_space)
+trim(std::string str, const std::string & white_space)
 {
-  const auto begin = str.find_first_not_of(white_space);
-  if (begin == std::string::npos)
-    return ""; // no content
-  const auto end = str.find_last_not_of(white_space);
-  return str.substr(begin, end - begin + 1);
+  std::string r = str.erase(str.find_last_not_of(white_space) + 1);
+  return r.erase(0, r.find_first_not_of(white_space));
 }
 
 bool
@@ -133,13 +75,6 @@ pathContains(const std::string & expression,
     return true;
   else
     return false;
-}
-
-bool
-pathExists(const std::string & path)
-{
-  struct stat buffer;
-  return (stat(path.c_str(), &buffer) == 0);
 }
 
 bool
@@ -193,24 +128,20 @@ checkFileWriteable(const std::string & filename, bool throw_on_unwritable)
 }
 
 void
-parallelBarrierNotify(const Parallel::Communicator & comm, bool messaging)
+parallelBarrierNotify(const Parallel::Communicator & comm)
 {
   processor_id_type slave_processor_id;
 
-  if (messaging)
-    Moose::out << "Waiting For Other Processors To Finish" << std::endl;
   if (comm.rank() == 0)
   {
     // The master process is already through, so report it
-    if (messaging)
-      Moose::out << "Jobs complete: 1/" << comm.size() << (1 == comm.size() ? "\n" : "\r")
-                 << std::flush;
+    Moose::out << "Jobs complete: 1/" << comm.size() << (1 == comm.size() ? "\n" : "\r")
+               << std::flush;
     for (unsigned int i = 2; i <= comm.size(); ++i)
     {
       comm.receive(MPI_ANY_SOURCE, slave_processor_id);
-      if (messaging)
-        Moose::out << "Jobs complete: " << i << "/" << comm.size()
-                   << (i == comm.size() ? "\n" : "\r") << std::flush;
+      Moose::out << "Jobs complete: " << i << "/" << comm.size() << (i == comm.size() ? "\n" : "\r")
+                 << std::flush;
     }
   }
   else
@@ -223,7 +154,7 @@ parallelBarrierNotify(const Parallel::Communicator & comm, bool messaging)
 }
 
 void
-serialBegin(const libMesh::Parallel::Communicator & comm, bool warn)
+serialBegin(const libMesh::Parallel::Communicator & comm)
 {
   // unless we are the first processor...
   if (comm.rank() > 0)
@@ -232,12 +163,12 @@ serialBegin(const libMesh::Parallel::Communicator & comm, bool warn)
     int dummy = 0;
     comm.receive(comm.rank() - 1, dummy);
   }
-  else if (warn)
+  else
     mooseWarning("Entering serial execution block (use only for debugging)");
 }
 
 void
-serialEnd(const libMesh::Parallel::Communicator & comm, bool warn)
+serialEnd(const libMesh::Parallel::Communicator & comm)
 {
   // unless we are the last processor...
   if (comm.rank() + 1 < comm.size())
@@ -248,7 +179,7 @@ serialEnd(const libMesh::Parallel::Communicator & comm, bool warn)
   }
 
   comm.barrier();
-  if (comm.rank() == 0 && warn)
+  if (comm.rank() == 0)
     mooseWarning("Leaving serial execution block (use only for debugging)");
 }
 
@@ -274,15 +205,6 @@ hasExtension(const std::string & filename, std::string ext, bool strip_exodus_ex
     return true;
   else
     return false;
-}
-
-std::string
-stripExtension(const std::string & s)
-{
-  auto pos = s.rfind(".");
-  if (pos != std::string::npos)
-    return s.substr(0, pos);
-  return s;
 }
 
 std::pair<std::string, std::string>
@@ -318,9 +240,9 @@ splitFileName(std::string full_file)
 std::string
 camelCaseToUnderscore(const std::string & camel_case_name)
 {
-  std::string replaced = camel_case_name;
+  string replaced = camel_case_name;
   // Put underscores in front of each contiguous set of capital letters
-  pcrecpp::RE("(?!^)(?<![A-Z_])([A-Z]+)").GlobalReplace("_\\1", &replaced);
+  pcrecpp::RE("(?!^)([A-Z]+)").GlobalReplace("_\\1", &replaced);
 
   // Convert all capital letters to lower case
   std::transform(replaced.begin(), replaced.end(), replaced.begin(), ::tolower);
@@ -371,19 +293,64 @@ baseName(const std::string & name)
   return name.substr(0, name.find_last_of('/') != std::string::npos ? name.find_last_of('/') : 0);
 }
 
-std::string
-hostname()
+bool
+absoluteFuzzyEqual(const Real & var1, const Real & var2, const Real & tol)
 {
-  // This is from: https://stackoverflow.com/a/505546
-  char hostname[1024];
-  hostname[1023] = '\0';
+  return (std::abs(var1 - var2) <= tol);
+}
 
-  auto failure = gethostname(hostname, 1023);
+bool
+absoluteFuzzyGreaterEqual(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (var1 >= (var2 - tol));
+}
 
-  if (failure)
-    mooseError("Failed to retrieve hostname!");
+bool
+absoluteFuzzyGreaterThan(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (var1 > (var2 + tol));
+}
 
-  return hostname;
+bool
+absoluteFuzzyLessEqual(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (var1 <= (var2 + tol));
+}
+
+bool
+absoluteFuzzyLessThan(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (var1 < (var2 - tol));
+}
+
+bool
+relativeFuzzyEqual(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (absoluteFuzzyEqual(var1, var2, tol * (std::abs(var1) + std::abs(var2))));
+}
+
+bool
+relativeFuzzyGreaterEqual(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (absoluteFuzzyGreaterEqual(var1, var2, tol * (std::abs(var1) + std::abs(var2))));
+}
+
+bool
+relativeFuzzyGreaterThan(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (absoluteFuzzyGreaterThan(var1, var2, tol * (std::abs(var1) + std::abs(var2))));
+}
+
+bool
+relativeFuzzyLessEqual(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (absoluteFuzzyLessEqual(var1, var2, tol * (std::abs(var1) + std::abs(var2))));
+}
+
+bool
+relativeFuzzyLessThan(const Real & var1, const Real & var2, const Real & tol)
+{
+  return (absoluteFuzzyLessThan(var1, var2, tol * (std::abs(var1) + std::abs(var2))));
 }
 
 void
@@ -441,19 +408,13 @@ indentMessage(const std::string & prefix,
   std::string curr_color = COLOR_DEFAULT; // tracks last color code before newline
   std::string line, color_code;
 
-  bool ends_in_newline = message.empty() ? true : message.back() == '\n';
-
   std::istringstream iss(message);
   for (std::string line; std::getline(iss, line);) // loop over each line
   {
     const static pcrecpp::RE match_color(".*(\\33\\[3\\dm)((?!\\33\\[3\\d)[^\n])*");
     pcrecpp::StringPiece line_piece(line);
     match_color.FindAndConsume(&line_piece, &color_code);
-    colored_message += color + prefix + ": " + curr_color + line;
-
-    // Only add a newline to the last line if it had one to begin with!
-    if (!iss.eof() || ends_in_newline)
-      colored_message += "\n";
+    colored_message += color + prefix + ": " + curr_color + line + "\n";
 
     if (!color_code.empty())
       curr_color = color_code; // remember last color of this line
@@ -462,56 +423,90 @@ indentMessage(const std::string & prefix,
 }
 
 std::list<std::string>
-listDir(const std::string path, bool files_only)
-{
-  std::list<std::string> files;
-
-  tinydir_dir dir;
-  dir.has_next = 0; // Avoid a garbage value in has_next (clang StaticAnalysis)
-  tinydir_open(&dir, path.c_str());
-
-  while (dir.has_next)
-  {
-    tinydir_file file;
-    file.is_dir = 0; // Avoid a garbage value in is_dir (clang StaticAnalysis)
-    tinydir_readfile(&dir, &file);
-
-    if (!files_only || !file.is_dir)
-      files.push_back(path + "/" + file.name);
-
-    tinydir_next(&dir);
-  }
-
-  tinydir_close(&dir);
-
-  return files;
-}
-
-std::list<std::string>
 getFilesInDirs(const std::list<std::string> & directory_list)
 {
   std::list<std::string> files;
 
   for (const auto & dir_name : directory_list)
-    files.splice(files.end(), listDir(dir_name, true));
+  {
+    tinydir_dir dir;
+    dir.has_next = 0; // Avoid a garbage value in has_next (clang StaticAnalysis)
+    tinydir_open(&dir, dir_name.c_str());
+
+    while (dir.has_next)
+    {
+      tinydir_file file;
+      file.is_dir = 0; // Avoid a garbage value in is_dir (clang StaticAnalysis)
+      tinydir_readfile(&dir, &file);
+
+      if (!file.is_dir)
+        files.push_back(dir_name + "/" + file.name);
+
+      tinydir_next(&dir);
+    }
+
+    tinydir_close(&dir);
+  }
 
   return files;
 }
 
 std::string
-getLatestMeshCheckpointFile(const std::list<std::string> & checkpoint_files)
+getRecoveryFileBase(const std::list<std::string> & checkpoint_files)
 {
-  const static std::vector<std::string> extensions{"cpr"};
+  // Create storage for newest restart files
+  // Note that these might have the same modification time if the simulation was fast.
+  // In that case we're going to save all of the "newest" files and sort it out momentarily
+  time_t newest_time = 0;
+  std::list<std::string> newest_restart_files;
 
-  return getLatestCheckpointFileHelper(checkpoint_files, extensions, true);
-}
+  // Loop through all possible files and store the newest
+  for (const auto & cp_file : checkpoint_files)
+  {
+    // Only look at the main checkpoint file, not the mesh, or restartable data files
+    if (hasExtension(cp_file, "xdr"))
+    {
+      struct stat stats;
+      stat(cp_file.c_str(), &stats);
 
-std::string
-getLatestAppCheckpointFileBase(const std::list<std::string> & checkpoint_files)
-{
-  const static std::vector<std::string> extensions{"xda", "xdr"};
+      time_t mod_time = stats.st_mtime;
+      if (mod_time > newest_time)
+      {
+        newest_restart_files.clear(); // If the modification time is greater, clear the list
+        newest_time = mod_time;
+      }
 
-  return getLatestCheckpointFileHelper(checkpoint_files, extensions, false);
+      if (mod_time == newest_time)
+        newest_restart_files.push_back(cp_file);
+    }
+  }
+
+  // Loop through all of the newest files according the number in the file name
+  int max_file_num = -1;
+  std::string max_base;
+  pcrecpp::RE re_base_and_file_num(
+      "(.*?(\\d+))\\..*"); // Will pull out the full base and the file number simultaneously
+
+  // Now, out of the newest files find the one with the largest number in it
+  for (const auto & res_file : newest_restart_files)
+  {
+    std::string the_base;
+    int file_num = 0;
+
+    re_base_and_file_num.FullMatch(res_file, &the_base, &file_num);
+
+    if (file_num > max_file_num)
+    {
+      max_file_num = file_num;
+      max_base = the_base;
+    }
+  }
+
+  // Error if nothing was located
+  if (max_file_num == -1)
+    max_base.clear();
+
+  return max_base;
 }
 
 bool
@@ -558,321 +553,4 @@ wildCardMatch(std::string name, std::string search_string)
     return false;
 }
 
-template <typename T>
-T
-convertStringToInt(const std::string & str, bool throw_on_failure)
-{
-  T val;
-
-  // Let's try to read a double and see if we can cast it to an int
-  // This would be the case for scientific notation
-  long double double_val;
-  std::stringstream double_ss(str);
-
-  if ((double_ss >> double_val).fail() || !double_ss.eof())
-  {
-    std::string msg =
-        std::string("Unable to convert '") + str + "' to type " + demangle(typeid(T).name());
-
-    if (throw_on_failure)
-      throw std::invalid_argument(msg);
-    else
-      mooseError(msg);
-  }
-
-  // Check to see if it's an integer (and within range of an integer
-  if (double_val == static_cast<T>(double_val))
-    val = double_val;
-  else // Still failure
-  {
-    std::string msg =
-        std::string("Unable to convert '") + str + "' to type " + demangle(typeid(T).name());
-
-    if (throw_on_failure)
-      throw std::invalid_argument(msg);
-    else
-      mooseError(msg);
-  }
-
-  return val;
-}
-
-template <>
-short int
-convert<short int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<short int>(str, throw_on_failure);
-}
-
-template <>
-unsigned short int
-convert<unsigned short int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<unsigned short int>(str, throw_on_failure);
-}
-
-template <>
-int
-convert<int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<int>(str, throw_on_failure);
-}
-
-template <>
-unsigned int
-convert<unsigned int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<unsigned int>(str, throw_on_failure);
-}
-
-template <>
-long int
-convert<long int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<long int>(str, throw_on_failure);
-}
-
-template <>
-unsigned long int
-convert<unsigned long int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<unsigned long int>(str, throw_on_failure);
-}
-
-template <>
-long long int
-convert<long long int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<long long int>(str, throw_on_failure);
-}
-
-template <>
-unsigned long long int
-convert<unsigned long long int>(const std::string & str, bool throw_on_failure)
-{
-  return convertStringToInt<unsigned long long int>(str, throw_on_failure);
-}
-
-std::string
-toUpper(const std::string & name)
-{
-  std::string upper(name);
-  std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
-  return upper;
-}
-
-std::string
-toLower(const std::string & name)
-{
-  std::string lower(name);
-  std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-  return lower;
-}
-
-ExecFlagEnum
-getDefaultExecFlagEnum()
-{
-  ExecFlagEnum exec_enum = ExecFlagEnum();
-  exec_enum.addAvailableFlags(EXEC_NONE,
-                              EXEC_INITIAL,
-                              EXEC_LINEAR,
-                              EXEC_NONLINEAR,
-                              EXEC_TIMESTEP_END,
-                              EXEC_TIMESTEP_BEGIN,
-                              EXEC_FINAL,
-                              EXEC_CUSTOM);
-  return exec_enum;
-}
-
-int
-stringToInteger(const std::string & input, bool throw_on_failure)
-{
-  return convert<int>(input, throw_on_failure);
-}
-
-void
-
-linearPartitionItems(dof_id_type num_items,
-                     dof_id_type num_chunks,
-                     dof_id_type chunk_id,
-                     dof_id_type & num_local_items,
-                     dof_id_type & local_items_begin,
-                     dof_id_type & local_items_end)
-{
-  auto global_num_local_items = num_items / num_chunks;
-
-  num_local_items = global_num_local_items;
-
-  auto leftovers = num_items % num_chunks;
-
-  if (chunk_id < leftovers)
-  {
-    num_local_items++;
-    local_items_begin = num_local_items * chunk_id;
-  }
-  else
-    local_items_begin =
-        (global_num_local_items + 1) * leftovers + global_num_local_items * (chunk_id - leftovers);
-
-  local_items_end = local_items_begin + num_local_items;
-}
-
-processor_id_type
-linearPartitionChunk(dof_id_type num_items, dof_id_type num_chunks, dof_id_type item_id)
-{
-  auto global_num_local_items = num_items / num_chunks;
-
-  auto leftovers = num_items % num_chunks;
-
-  auto first_item_past_first_part = leftovers * (global_num_local_items + 1);
-
-  // Is it in the first section (that gets an extra item)
-  if (item_id < first_item_past_first_part)
-    return item_id / (global_num_local_items + 1);
-  else
-  {
-    auto new_item_id = item_id - first_item_past_first_part;
-
-    // First chunk after the first section + the number of chunks after that
-    return leftovers + (new_item_id / global_num_local_items);
-  }
-}
-
-std::vector<std::string>
-split(const std::string & str, const std::string & delimiter)
-{
-  std::vector<std::string> output;
-  size_t prev = 0, pos = 0;
-  do
-  {
-    pos = str.find(delimiter, prev);
-    output.push_back(str.substr(prev, pos - prev));
-    prev = pos + delimiter.length();
-  } while (pos != std::string::npos);
-  return output;
-}
-
-template <typename T>
-std::string
-join(const T & strings, const std::string & delimiter)
-{
-  std::ostringstream oss;
-  std::copy(
-      strings.begin(), strings.end(), infix_ostream_iterator<std::string>(oss, delimiter.c_str()));
-  return oss.str();
-}
-template std::string join<std::vector<std::string>>(const std::vector<std::string> &,
-                                                    const std::string &);
-template std::string join<std::set<std::string>>(const std::set<std::string> &,
-                                                 const std::string &);
-template std::string join<std::vector<MooseEnumItem>>(const std::vector<MooseEnumItem> &,
-                                                      const std::string &);
-template std::string join<std::set<MooseEnumItem>>(const std::set<MooseEnumItem> &,
-                                                   const std::string &);
-
-void
-createSymlink(const std::string & target, const std::string & link)
-{
-  clearSymlink(link);
-  int err = symlink(target.c_str(), link.c_str());
-  if (err != 0)
-    mooseError("Failed to create symbolic link (via 'symlink') from ", target, " to ", link);
-}
-
-void
-clearSymlink(const std::string & link)
-{
-  struct stat sbuf;
-  if (lstat(link.c_str(), &sbuf) == 0)
-  {
-    int err = unlink(link.c_str());
-    if (err != 0)
-      mooseError("Failed to remove symbolic link (via 'unlink') to ", link);
-  }
-}
-
-std::size_t
-fileSize(const std::string & filename)
-{
-  struct stat buffer;
-  if (stat(filename.c_str(), &buffer))
-    return 0;
-
-  return buffer.st_size;
-}
 } // MooseUtils namespace
-
-std::string
-getLatestCheckpointFileHelper(const std::list<std::string> & checkpoint_files,
-                              const std::vector<std::string> extensions,
-                              bool keep_extension)
-{
-  // Create storage for newest restart files
-  // Note that these might have the same modification time if the simulation was fast.
-  // In that case we're going to save all of the "newest" files and sort it out momentarily
-  std::time_t newest_time = 0;
-  std::list<std::string> newest_restart_files;
-
-  // Loop through all possible files and store the newest
-  for (const auto & cp_file : checkpoint_files)
-  {
-    if (find_if(extensions.begin(), extensions.end(), [cp_file](const std::string & ext) {
-          return MooseUtils::hasExtension(cp_file, ext);
-        }) != extensions.end())
-    {
-      struct stat stats;
-      stat(cp_file.c_str(), &stats);
-
-      std::time_t mod_time = stats.st_mtime;
-      if (mod_time > newest_time)
-      {
-        newest_restart_files.clear(); // If the modification time is greater, clear the list
-        newest_time = mod_time;
-      }
-
-      if (mod_time == newest_time)
-        newest_restart_files.push_back(cp_file);
-    }
-  }
-
-  // Loop through all of the newest files according the number in the file name
-  int max_file_num = -1;
-  std::string max_base;
-  std::string max_file;
-
-  pcrecpp::RE re_file_num(".*?(\\d+)(?:_mesh)?$"); // Pull out the embedded number from the file
-
-  // Now, out of the newest files find the one with the largest number in it
-  for (const auto & res_file : newest_restart_files)
-  {
-    auto dot_pos = res_file.find_last_of(".");
-    auto the_base = res_file.substr(0, dot_pos);
-    int file_num = 0;
-
-    re_file_num.FullMatch(the_base, &file_num);
-
-    if (file_num > max_file_num)
-    {
-      max_file_num = file_num;
-      max_base = the_base;
-      max_file = res_file;
-    }
-  }
-
-  // Error if nothing was located
-  if (max_file_num == -1)
-  {
-    max_base.clear();
-    max_file.clear();
-  }
-
-  return keep_extension ? max_file : max_base;
-}
-
-void
-removeSubstring(std::string & main, const std::string & sub)
-{
-  std::string::size_type n = sub.length();
-  for (std::string::size_type i = main.find(sub); i != std::string::npos; i = main.find(sub))
-    main.erase(i, n);
-}

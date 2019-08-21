@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef ISOTROPICELASTICITYTENSOR_H
+#define ISOTROPICELASTICITYTENSOR_H
 
 #include "ElasticityTensor.h"
 
@@ -92,3 +90,4 @@ protected:
   Real isotropicEntry(const unsigned int i, const unsigned j, const unsigned k, const unsigned l);
 };
 
+#endif // ISOTROPICELASTICITYTENSOR_H

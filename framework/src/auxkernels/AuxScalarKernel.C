@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "AuxScalarKernel.h"
 #include "Assembly.h"
@@ -48,9 +53,10 @@ AuxScalarKernel::AuxScalarKernel(const InputParameters & parameters)
     PostprocessorInterface(this),
     DependencyResolverInterface(),
     TransientInterface(this),
+    ZeroInterface(parameters),
     MeshChangedInterface(parameters),
-    _subproblem(*getCheckedPointerParam<SubProblem *>("_subproblem")),
-    _sys(*getCheckedPointerParam<SystemBase *>("_sys")),
+    _subproblem(*parameters.get<SubProblem *>("_subproblem")),
+    _sys(*parameters.get<SystemBase *>("_sys")),
     _tid(parameters.get<THREAD_ID>("_tid")),
     _assembly(_subproblem.assembly(_tid)),
     _var(_sys.getScalarVariable(_tid, parameters.get<AuxVariableName>("variable"))),
@@ -70,15 +76,6 @@ AuxScalarKernel::~AuxScalarKernel() {}
 void
 AuxScalarKernel::compute()
 {
-  // In general, we want to compute AuxScalarKernel values
-  // redundantly, on every processor, to avoid communication.
-  //
-  // However, in rare cases not all processors will have access to a
-  // particular scalar variable, in which case we skip computation
-  // there.
-  if (_var.dofIndices().empty() || !_var.dofMap().all_semilocal_indices(_var.dofIndices()))
-    return;
-
   for (_i = 0; _i < _var.order(); ++_i)
   {
     Real value = computeValue();

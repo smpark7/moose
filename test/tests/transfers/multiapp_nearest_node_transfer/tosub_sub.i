@@ -14,21 +14,11 @@
 []
 
 [AuxVariables]
-  [./nodal_source_from_master_nodal]
-    family = LAGRANGE
-    order = FIRST
+  [./from_master]
   [../]
-  [./nodal_source_from_master_elemental]
-    family = MONOMIAL
+  [./elemental_from_master]
     order = CONSTANT
-  [../]
-  [./elemental_source_from_master_nodal]
-    family = LAGRANGE
-    order = FIRST
-  [../]
-  [./elemental_source_from_master_elemental]
     family = MONOMIAL
-    order = CONSTANT
   [../]
 []
 
@@ -59,6 +49,7 @@
   num_steps = 1
   dt = 1
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'

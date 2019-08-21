@@ -11,7 +11,6 @@
 MODULE_DIR         ?= $(shell dirname `pwd`)
 MOOSE_DIR          ?= $(shell dirname $(MODULE_DIR))
 FRAMEWORK_DIR      ?= $(MOOSE_DIR)/framework
-ADDITIONAL_CPPFLAGS += -Wall -Wextra
 ###############################################################################
 
 # framework
@@ -19,9 +18,9 @@ include $(FRAMEWORK_DIR)/build.mk
 include $(FRAMEWORK_DIR)/moose.mk
 
 # dep apps
-APPLICATION_DIR    := $(MODULE_DIR)/module_loader
+APPLICATION_DIR    := $(MODULE_DIR)/phase_field
 APPLICATION_NAME   := module_loader
-GEN_REVISION       := no
+DEP_APPS           := $(shell $(FRAMEWORK_DIR)/scripts/find_dep_apps.py $(APPLICATION_NAME))
 include            $(FRAMEWORK_DIR)/app.mk
 
 ###############################################################################

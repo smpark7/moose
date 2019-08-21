@@ -89,6 +89,7 @@
 [Executioner]
   type = Transient
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   start_time = 0.0
@@ -101,11 +102,11 @@
     max_h_level = 4
     start_time = 0.2
     stop_time = 0.4
+    print_changed_info = true
   [../]
 []
 
 [Outputs]
   file_base = out_time
   exodus = true
-  print_mesh_changed_info = true
 []

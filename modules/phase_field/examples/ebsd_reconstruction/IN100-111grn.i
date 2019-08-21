@@ -212,5 +212,5 @@
 [Outputs]
   exodus = true
   checkpoint = true
-  perf_graph = true
+  print_perf_log = true
 []

@@ -1,94 +1,35 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MethaneFluidPropertiesTest.h"
-#include "SinglePhaseFluidPropertiesTestUtils.h"
 
 /**
- * Verify that critical properties are correctly returned
- */
-TEST_F(MethaneFluidPropertiesTest, criticalProperties)
-{
-  ABS_TEST(_fp->criticalPressure(), 4.5992e6, REL_TOL_SAVED_VALUE);
-  ABS_TEST(_fp->criticalTemperature(), 190.564, REL_TOL_SAVED_VALUE);
-  ABS_TEST(_fp->criticalDensity(), 162.66, REL_TOL_SAVED_VALUE);
-}
-
-/**
- * Verify that triple point properties are correctly returned
- */
-TEST_F(MethaneFluidPropertiesTest, triplePointProperties)
-{
-  ABS_TEST(_fp->triplePointPressure(), 1.169e4, REL_TOL_SAVED_VALUE);
-  ABS_TEST(_fp->triplePointTemperature(), 90.6941, REL_TOL_SAVED_VALUE);
-}
-
-/**
- * Test that the fluid name is correctly returned
- */
-TEST_F(MethaneFluidPropertiesTest, fluidName) { EXPECT_EQ(_fp->fluidName(), "methane"); }
-
-/**
- * Test that the molar mass is correctly returned
- */
-TEST_F(MethaneFluidPropertiesTest, molarMass)
-{
-  ABS_TEST(_fp->molarMass(), 16.0425e-3, REL_TOL_SAVED_VALUE);
-}
-
-/**
- * Verify that the coefficients for Henry's constant are correct using
+ * Verify calculation of Henry's constant using data from
  * Guidelines on the Henry's constant and vapour liquid distribution constant
  * for gases in H20 and D20 at high temperatures, IAPWS (2004).
  */
 TEST_F(MethaneFluidPropertiesTest, henry)
 {
-  const Real tol = REL_TOL_EXTERNAL_VALUE;
-  const std::vector<Real> hc = _fp->henryCoefficients();
-
-  REL_TEST(hc[0], -10.44708, tol);
-  REL_TEST(hc[1], 4.66491, tol);
-  REL_TEST(hc[2], 12.1298, tol);
-}
-
-/**
- * Verify calculation of vapor pressure, vapor density and saturated liquid
- * density
- */
-TEST_F(MethaneFluidPropertiesTest, vapor)
-{
-  const Real tol = REL_TOL_EXTERNAL_VALUE;
-
-  // Vapor pressure
-  REL_TEST(_fp->vaporPressure(110.0), 0.08813e6, tol);
-  REL_TEST(_fp->vaporPressure(130.0), 0.36732e6, tol);
-  REL_TEST(_fp->vaporPressure(190.0), 4.5186e6, tol);
-
-  // Saturated vapor density
-  REL_TEST(_fp->saturatedVaporDensity(110.0), 1.5982, tol);
-  REL_TEST(_fp->saturatedVaporDensity(130.0), 5.9804, tol);
-  REL_TEST(_fp->saturatedVaporDensity(190.0), 125.18, tol);
-
-  // Saturated liquid density
-  REL_TEST(_fp->saturatedLiquidDensity(110.0), 424.78, tol);
-  REL_TEST(_fp->saturatedLiquidDensity(130.0), 394.04, tol);
-  REL_TEST(_fp->saturatedLiquidDensity(190.0), 200.78, tol);
+  REL_TEST("henry", _fp->henryConstant(300.0), 4069.0e6, 1.0e-3);
+  REL_TEST("henry", _fp->henryConstant(400.0), 6017.1e6, 1.0e-3);
+  REL_TEST("henry", _fp->henryConstant(500.0), 2812.9e6, 1.0e-3);
+  REL_TEST("henry", _fp->henryConstant(600.0), 801.8e6, 1.0e-3);
 }
 
 /**
  * Verify calculation of thermophysical properties of methane using
  * verification data provided in
- * Setzmann and Wagner, A new equation of state and tables of thermodynamic
- * properties for methane covering the range from the melting line to 625 K at
- * pressures up to 100 MPa, Journal of Physical and Chemical Reference Data,
- * 20, 1061--1155 (1991)
- * and
  * Irvine Jr, T. F. and Liley, P. E. (1984) Steam and Gas Tables with
  * Computer Equations
  */
@@ -97,17 +38,16 @@ TEST_F(MethaneFluidPropertiesTest, properties)
   // Pressure = 10 MPa, temperature = 350 K
   Real p = 10.0e6;
   Real T = 350.0;
-  const Real tol = REL_TOL_EXTERNAL_VALUE;
 
-  REL_TEST(_fp->rho_from_p_T(p, T), 59.261, tol);
-  REL_TEST(_fp->h_from_p_T(p, T), 47.785e3, tol);
-  REL_TEST(_fp->e_from_p_T(p, T), -120.96e3, tol);
-  REL_TEST(_fp->s_from_p_T(p, T), -2.1735e3, tol);
-  REL_TEST(_fp->cv_from_p_T(p, T), 1.9048e3, tol);
-  REL_TEST(_fp->cp_from_p_T(p, T), 2.8021e3, tol);
-  REL_TEST(_fp->c_from_p_T(p, T), 487.29, tol);
-  REL_TEST(_fp->mu_from_p_T(p, T), 0.01276e-3, tol);
-  REL_TEST(_fp->k_from_p_T(p, T), 0.04113, tol);
+  REL_TEST("density", _fp->rho(p, T), 55.13, 1.0e-3);
+  REL_TEST("enthalpy", _fp->h(p, T), 708.5e3, 1.0e-3);
+  REL_TEST("internal energy", _fp->e(p, T), 527.131e3, 1.0e-3);
+  REL_TEST("entropy", _fp->s(p, T), 11.30e3, 1.0e-3);
+  REL_TEST("cp", _fp->cp(p, T), 2.375e3, 1.0e-3);
+  REL_TEST("cv", _fp->cv(p, T), 1.857e3, 1.0e-3);
+  REL_TEST("c", _fp->c(p, T), 481.7, 1.0e-3);
+  REL_TEST("mu", _fp->mu(0.0, T), 0.01276e-3, 1.0e-3);
+  REL_TEST("thermal conductivity", _fp->k(0.0, T), 0.04113, 1.0e-3);
 }
 
 /**
@@ -116,56 +56,62 @@ TEST_F(MethaneFluidPropertiesTest, properties)
  */
 TEST_F(MethaneFluidPropertiesTest, derivatives)
 {
-  const Real tol = REL_TOL_DERIVATIVE;
-
-  const Real p = 10.0e6;
+  Real p = 10.0e6;
   Real T = 350.0;
 
-  DERIV_TEST(_fp->rho_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->mu_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->e_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->h_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->k_from_p_T, p, T, tol);
-}
+  // Finite differencing parameters
+  Real dp = 1.0e1;
+  Real dT = 1.0e-4;
 
-/**
- * Verify that the methods that return multiple properties in one call return identical
- * values as the individual methods
- */
-TEST_F(MethaneFluidPropertiesTest, combined)
-{
-  const Real p = 1.0e6;
-  const Real T = 300.0;
-  const Real tol = REL_TOL_CONSISTENCY;
+  // Density
+  Real drho_dp_fd = (_fp->rho(p + dp, T) - _fp->rho(p - dp, T)) / (2.0 * dp);
+  Real drho_dT_fd = (_fp->rho(p, T + dT) - _fp->rho(p, T - dT)) / (2.0 * dT);
+  Real rho = 0.0, drho_dp = 0.0, drho_dT = 0.0;
+  _fp->rho_dpT(p, T, rho, drho_dp, drho_dT);
 
-  // Single property methods
-  Real rho, drho_dp, drho_dT;
-  _fp->rho_from_p_T(p, T, rho, drho_dp, drho_dT);
-  Real mu, dmu_dp, dmu_dT;
-  _fp->mu_from_p_T(p, T, mu, dmu_dp, dmu_dT);
-  Real e, de_dp, de_dT;
-  _fp->e_from_p_T(p, T, e, de_dp, de_dT);
+  ABS_TEST("rho", rho, _fp->rho(p, T), 1.0e-15);
+  REL_TEST("drho_dp", drho_dp, drho_dp_fd, 1.0e-6);
+  REL_TEST("drho_dT", drho_dT, drho_dT_fd, 1.0e-6);
 
-  // Combined property methods
-  Real rho2, drho2_dp, drho2_dT, mu2, dmu2_dp, dmu2_dT, e2, de2_dp, de2_dT;
-  _fp->rho_mu_from_p_T(p, T, rho2, mu2);
+  // Enthalpy
+  Real dh_dp_fd = (_fp->h(p + dp, T) - _fp->h(p - dp, T)) / (2.0 * dp);
+  Real dh_dT_fd = (_fp->h(p, T + dT) - _fp->h(p, T - dT)) / (2.0 * dT);
+  Real h = 0.0, dh_dp = 0.0, dh_dT = 0.0;
+  _fp->h_dpT(p, T, h, dh_dp, dh_dT);
 
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(mu, mu2, tol);
+  ABS_TEST("h", h, _fp->h(p, T), 1.0e-15);
+  ABS_TEST("dh_dp", dh_dp, dh_dp_fd, 1.0e-15);
+  REL_TEST("dh_dT", dh_dT, dh_dT_fd, 1.0e-6);
 
-  _fp->rho_mu_from_p_T(p, T, rho2, drho2_dp, drho2_dT, mu2, dmu2_dp, dmu2_dT);
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(drho_dp, drho2_dp, tol);
-  ABS_TEST(drho_dT, drho2_dT, tol);
-  ABS_TEST(mu, mu2, tol);
-  ABS_TEST(dmu_dp, dmu2_dp, tol);
-  ABS_TEST(dmu_dT, dmu2_dT, tol);
+  // Internal energy
+  Real de_dp_fd = (_fp->e(p + dp, T) - _fp->e(p - dp, T)) / (2.0 * dp);
+  Real de_dT_fd = (_fp->e(p, T + dT) - _fp->e(p, T - dT)) / (2.0 * dT);
+  Real e = 0.0, de_dp = 0.0, de_dT = 0.0;
+  _fp->e_dpT(p, T, e, de_dp, de_dT);
 
-  _fp->rho_e_from_p_T(p, T, rho2, drho2_dp, drho2_dT, e2, de2_dp, de2_dT);
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(drho_dp, drho2_dp, tol);
-  ABS_TEST(drho_dT, drho2_dT, tol);
-  ABS_TEST(e, e2, tol);
-  ABS_TEST(de_dp, de2_dp, tol);
-  ABS_TEST(de_dT, de2_dT, tol);
+  ABS_TEST("e", e, _fp->e(p, T), 1.0e-15);
+  ABS_TEST("de_dp", de_dp, de_dp_fd, 1.0e-15);
+  REL_TEST("de_dT", de_dT, de_dT_fd, 1.0e-6);
+
+  // Viscosity
+  rho = 1.0; // Not used in correlations
+  Real drho = 1.0e-4;
+
+  Real dmu_drho_fd = (_fp->mu(rho + drho, T) - _fp->mu(rho - drho, T)) / (2.0 * drho);
+  Real dmu_dT_fd = (_fp->mu(rho, T + dT) - _fp->mu(rho, T - dT)) / (2.0 * dT);
+  Real mu = 0.0, dmu_drho = 0.0, dmu_dT = 0.0;
+  _fp->mu_drhoT(rho, T, mu, dmu_drho, dmu_dT);
+
+  ABS_TEST("mu", mu, _fp->mu(rho, T), 1.0e-15);
+  ABS_TEST("dmu_dp", dmu_drho, dmu_drho_fd, 1.0e-15);
+  REL_TEST("dmu_dT", dmu_dT, dmu_dT_fd, 1.0e-6);
+
+  // Henry's constant
+  T = 300.0;
+
+  Real dKh_dT_fd = (_fp->henryConstant(T + dT) - _fp->henryConstant(T - dT)) / (2.0 * dT);
+  Real Kh = 0.0, dKh_dT = 0.0;
+  _fp->henryConstant_dT(T, Kh, dKh_dT);
+  REL_TEST("henry", Kh, _fp->henryConstant(T), 1.0e-6);
+  REL_TEST("dhenry_dT", dKh_dT_fd, dKh_dT, 1.0e-6);
 }

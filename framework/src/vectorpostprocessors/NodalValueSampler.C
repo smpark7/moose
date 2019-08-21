@@ -1,29 +1,30 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NodalValueSampler.h"
 
 // MOOSE includes
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 
 // C++ includes
 #include <numeric>
-
-registerMooseObject("MooseApp", NodalValueSampler);
 
 template <>
 InputParameters
 validParams<NodalValueSampler>()
 {
   InputParameters params = validParams<NodalVariableVectorPostprocessor>();
-
-  params.addClassDescription("Samples values of nodal variable(s).");
 
   params += validParams<SamplerBase>();
 
@@ -33,11 +34,6 @@ validParams<NodalValueSampler>()
 NodalValueSampler::NodalValueSampler(const InputParameters & parameters)
   : NodalVariableVectorPostprocessor(parameters), SamplerBase(parameters, this, _communicator)
 {
-  // ensure that variables are nodal, i.e., not scalar and and not elemental
-  for (unsigned int i = 0; i < _coupled_moose_vars.size(); i++)
-    if (_coupled_moose_vars[i]->feType().family == SCALAR || !_coupled_moose_vars[i]->isNodal())
-      paramError("variable", "The variable '", _coupled_moose_vars[i]->name(), "' is not nodal.");
-
   std::vector<std::string> var_names(_coupled_moose_vars.size());
   _values.resize(_coupled_moose_vars.size());
   _has_values.resize(_coupled_moose_vars.size());
@@ -68,9 +64,9 @@ NodalValueSampler::execute()
   //
   // If you have two different discretizations, you'll have to use two
   // separate NodalValueSampler objects to get their values.
-  for (unsigned int i = 0; i < _coupled_standard_moose_vars.size(); i++)
+  for (unsigned int i = 0; i < _coupled_moose_vars.size(); i++)
   {
-    const VariableValue & nodal_solution = _coupled_standard_moose_vars[i]->dofValues();
+    const VariableValue & nodal_solution = _coupled_moose_vars[i]->nodalSln();
 
     if (nodal_solution.size() > 0)
     {

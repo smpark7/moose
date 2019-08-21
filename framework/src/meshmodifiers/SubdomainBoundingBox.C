@@ -1,22 +1,20 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "SubdomainBoundingBox.h"
 #include "Conversion.h"
 #include "MooseMesh.h"
-
-#include "libmesh/elem.h"
-
-registerMooseObjectReplaced("MooseApp",
-                            SubdomainBoundingBox,
-                            "11/30/2019 00:00",
-                            SubdomainBoundingBoxGenerator);
 
 template <>
 InputParameters
@@ -25,8 +23,6 @@ validParams<SubdomainBoundingBox>()
   MooseEnum location("INSIDE OUTSIDE", "INSIDE");
 
   InputParameters params = validParams<MeshModifier>();
-  params.addClassDescription("Changes the subdomain ID of elements either (XOR) inside or outside "
-                             "the specified box to the specified ID.");
   params.addRequiredParam<RealVectorValue>(
       "bottom_left", "The bottom left point (in x,y,z with spaces in-between).");
   params.addRequiredParam<RealVectorValue>(
@@ -57,14 +53,19 @@ SubdomainBoundingBox::modify()
   if (!_mesh_ptr)
     mooseError("_mesh_ptr must be initialized before calling SubdomainBoundingBox::modify()");
 
+  // Reference the the libMesh::MeshBase
+  MeshBase & mesh = _mesh_ptr->getMesh();
+
   // Loop over the elements
-  for (const auto & elem : _mesh_ptr->getMesh().active_element_ptr_range())
+  for (MeshBase::element_iterator el = mesh.active_elements_begin();
+       el != mesh.active_elements_end();
+       ++el)
   {
-    bool contains = _bounding_box.contains_point(elem->centroid());
+    bool contains = _bounding_box.contains_point((*el)->centroid());
     if (contains && _location == "INSIDE")
-      elem->subdomain_id() = _block_id;
+      (*el)->subdomain_id() = _block_id;
     else if (!contains && _location == "OUTSIDE")
-      elem->subdomain_id() = _block_id;
+      (*el)->subdomain_id() = _block_id;
   }
 
   // Assign block name, if provided

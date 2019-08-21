@@ -1,13 +1,17 @@
 #pylint: disable=missing-docstring
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#################################################################
+#                   DO NOT MODIFY THIS HEADER                   #
+#  MOOSE - Multiphysics Object Oriented Simulation Environment  #
+#                                                               #
+#            (c) 2010 Battelle Energy Alliance, LLC             #
+#                      ALL RIGHTS RESERVED                      #
+#                                                               #
+#           Prepared by Battelle Energy Alliance, LLC           #
+#             Under Contract No. DE-AC07-05ID14517              #
+#              With the U. S. Department of Energy              #
+#                                                               #
+#              See COPYRIGHT for full restrictions              #
+#################################################################
 import os
 import glob
 import shutil
@@ -104,7 +108,7 @@ def get_min_max(*pairs):
         xmax = max(xmax, x1)
     return xmin, xmax
 
-def print_camera(camera, prefix='camera', precision=10):
+def print_camera(camera, prefix='camera', precision=4):
     """
     Prints vtkCamera object to screen.
     """
@@ -146,7 +150,7 @@ def animate(pattern, output, delay=20, restart_delay=500, loop=True):
     subprocess.call(cmd)
 
 def img2mov(pattern, output, ffmpeg='ffmpeg', duration=60, framerate=None, bitrate='10M',
-            num_threads=1, quality=1, dry_run=False, output_framerate_increase=0, overwrite=False):
+            num_threads=1, quality=1, dry_run=False, output_framerate_increase=0):
     """
     Use ffmpeg to convert a series of images to a movie.
 
@@ -161,26 +165,40 @@ def img2mov(pattern, output, ffmpeg='ffmpeg', duration=60, framerate=None, bitra
         quality[int]: The ffmpeg quality setting (ranges from 1 to 31).
         dry_run[bool]: When True the command is not executed.
         factor[float]: Output framerate adjustment to help guarantee no dropped frames, if you see
-                       dropped frames in ffmpeg output, increase this number.
+                       drooped frames in ffmpeg output, increase this number.
     """
+
+    # Check ffmpeg
+    if not os.path.exists(ffmpeg) and not dry_run:
+        msg = "The ffmpeg executable was not located: {}"
+        raise mooseutils.MooseException(msg.format(ffmpeg))
 
     # Compute framerate from the duration if framerate is not given
     if not framerate:
         n = len(glob.glob(pattern))
         framerate = n/duration
 
+    # Determine the video codec
+    _, ext = os.path.splitext(output)
+    if ext == '.mov':
+        codec = 'mpeg2video'
+    elif ext == '.mp4':
+        codec = 'mpeg4'
+    else:
+        msg = "Unsupported output format {}, please use '.mov'"
+        raise mooseutils.MooseException(msg.format(ffmpeg))
+
     # Build the command
     cmd = [ffmpeg]
     cmd += ['-pattern_type', 'glob']
     cmd += ['-framerate', str(framerate)]
     cmd += ['-i', pattern]
+    cmd += ['-c:v', codec]
     cmd += ['-b:v', bitrate]
     cmd += ['-pix_fmt', 'yuv420p']
     cmd += ['-q:v', str(quality)]
     cmd += ['-threads', str(num_threads)]
     cmd += ['-framerate', str(framerate + output_framerate_increase)]
-    if overwrite:
-        cmd += ['-y']
     cmd += [output]
 
     c = ' '.join(cmd)

@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ODETimeKernel.h"
 
@@ -19,25 +24,15 @@ InputParameters
 validParams<ODETimeKernel>()
 {
   InputParameters params = validParams<ODEKernel>();
-
-  params.set<MultiMooseEnum>("vector_tags") = "time";
-  params.set<MultiMooseEnum>("matrix_tags") = "system time";
-
   return params;
 }
 
-ODETimeKernel::ODETimeKernel(const InputParameters & parameters)
-  : ODEKernel(parameters), _u_dot(_var.uDot()), _du_dot_du(_var.duDotDu())
-{
-}
+ODETimeKernel::ODETimeKernel(const InputParameters & parameters) : ODEKernel(parameters) {}
 
 void
 ODETimeKernel::computeResidual()
 {
-  prepareVectorTag(_assembly, _var.number());
-
+  DenseVector<Number> & re = _assembly.residualBlock(_var.number(), Moose::KT_TIME);
   for (_i = 0; _i < _var.order(); _i++)
-    _local_re(_i) += computeQpResidual();
-
-  accumulateTaggedLocalResidual();
+    re(_i) += computeQpResidual();
 }

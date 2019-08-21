@@ -1,18 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef GRAINTRACKER_H
+#define GRAINTRACKER_H
 
 #include "FeatureFloodCount.h"
 #include "GrainTrackerInterface.h"
 
-#include "libmesh/bounding_box.h"
+// libMesh includes
+#include "libmesh/mesh_tools.h"
 
 class GrainTracker;
 class PolycrystalUserObjectBase;
@@ -27,7 +27,6 @@ public:
   GrainTracker(const InputParameters & parameters);
   virtual ~GrainTracker();
 
-  virtual void meshChanged() override;
   virtual void initialize() override;
   virtual void execute() override;
   virtual void finalize() override;
@@ -37,7 +36,7 @@ public:
   // Struct used to transfer minimal data to all ranks
   struct PartialFeatureData
   {
-    BoundaryIntersection boundary_intersection;
+    bool intersects_boundary;
     unsigned int id;
     Point centroid;
     Status status;
@@ -67,8 +66,6 @@ public:
   virtual std::size_t getNumberActiveGrains() const override;
   virtual Point getGrainCentroid(unsigned int grain_id) const override;
   virtual bool doesFeatureIntersectBoundary(unsigned int feature_id) const override;
-  virtual bool doesFeatureIntersectSpecifiedBoundary(unsigned int feature_id) const override;
-  virtual bool isFeaturePercolated(unsigned int feature_id) const override;
   virtual std::vector<unsigned int> getNewGrainIDs() const override;
 
 protected:
@@ -156,15 +153,15 @@ protected:
    * This method returns the minimum periodic distance between two vectors of bounding boxes. If the
    * bounding boxes overlap the result is always -1.0.
    */
-  Real boundingRegionDistance(std::vector<BoundingBox> & bboxes1,
-                              std::vector<BoundingBox> & bboxes2) const;
+  Real boundingRegionDistance(std::vector<MeshTools::BoundingBox> & bboxes1,
+                              std::vector<MeshTools::BoundingBox> & bboxes2) const;
 
   /**
    * This method returns the minimum periodic distance between the centroids of two vectors of
    * bounding boxes.
    */
-  Real centroidRegionDistance(std::vector<BoundingBox> & bboxes1,
-                              std::vector<BoundingBox> & bboxes2) const;
+  Real centroidRegionDistance(std::vector<MeshTools::BoundingBox> & bboxes1,
+                              std::vector<MeshTools::BoundingBox> & bboxes2) const;
 
   /**
    * Retrieve the next unique grain number if a new grain is detected during trackGrains. This
@@ -181,10 +178,10 @@ protected:
   const int _tracking_step;
 
   /// The thickness of the halo surrounding each grain
-  const unsigned short _halo_level;
+  const unsigned int _halo_level;
 
   /// Depth of renumbering recursion (a depth of zero means no recursion)
-  const unsigned short _max_remap_recursion_depth;
+  static const unsigned int _max_renumbering_recursion = 4;
 
   /// The number of reserved order parameters
   const unsigned short _n_reserve_ops;
@@ -199,9 +196,6 @@ protected:
   /// Inidicates whether remapping should be done or not (remapping is independent of tracking)
   const bool _remap;
 
-  /// Indicates whether we should continue after a remap failure (will result in non-physical results)
-  const bool _tolerate_failure;
-
   /// A reference to the nonlinear system (used for retrieving solution vectors)
   NonlinearSystemBase & _nl;
 
@@ -209,28 +203,23 @@ protected:
    * This data structure holds the map of unique grains from the previous time step.
    * The information is updated each timestep to track grains over time.
    */
-  std::vector<FeatureData> _feature_sets_old;
+  std::vector<FeatureData> & _feature_sets_old;
 
   /// An optional IC UserObject which can provide initial data structures to this object.
   const PolycrystalUserObjectBase * _poly_ic_uo;
 
   /**
-   * Verbosity level controlling the amount of information printed to the console.
-   */
-  const short _verbosity_level;
-
-  /**
    * Boolean to indicate the first time this object executes.
    * Note: _tracking_step isn't enough if people skip initial or execute more than once per step.
    */
-  bool & _first_time;
+  bool _first_time;
 
   /**
    * Boolean to terminate with an error if a new grain is created during the simulation.
    * This is for simulations where new grains are not expected. Note, this does not impact
    * the initial callback to newGrainCreated() nor does it get triggered for splitting grains.
    */
-  const bool _error_on_grain_creation;
+  bool _error_on_grain_creation;
 
 private:
   /// Holds the first unique grain index when using _reserve_op (all the remaining indices are sequential)
@@ -240,20 +229,10 @@ private:
   unsigned int _old_max_grain_id;
 
   /// Holds the next "regular" grain ID (a grain found or remapped to the standard op vars)
-  unsigned int & _max_curr_grain_id;
+  unsigned int _max_curr_grain_id;
 
   /// Boolean to indicate whether this is a Steady or Transient solve
   const bool _is_transient;
-
-  /// Data structure to hold element ID ranges when using Distributed Mesh (populated on rank 0 only)
-  std::vector<std::pair<dof_id_type, dof_id_type>> _all_ranges;
-
-  /// Timers
-  const PerfID _finalize_timer;
-  const PerfID _remap_timer;
-  const PerfID _track_grains;
-  const PerfID _broadcast_update;
-  const PerfID _update_field_info;
 };
 
 /**
@@ -289,3 +268,5 @@ template <>
 void dataStore(std::ostream & stream, GrainTracker::PartialFeatureData & feature, void * context);
 template <>
 void dataLoad(std::istream & stream, GrainTracker::PartialFeatureData & feature, void * context);
+
+#endif

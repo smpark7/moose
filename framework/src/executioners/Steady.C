@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "Steady.h"
@@ -14,31 +19,26 @@
 #include "MooseApp.h"
 #include "NonlinearSystem.h"
 
+// libMesh includes
 #include "libmesh/equation_systems.h"
-
-registerMooseObject("MooseApp", Steady);
 
 template <>
 InputParameters
 validParams<Steady>()
 {
-  InputParameters params = validParams<Executioner>();
-  params.addClassDescription("Executioner for steady-state simulations.");
-  params.addParam<Real>("time", 0.0, "System time");
-  return params;
+  return validParams<Executioner>();
 }
 
 Steady::Steady(const InputParameters & parameters)
   : Executioner(parameters),
     _problem(_fe_problem),
-    _system_time(getParam<Real>("time")),
     _time_step(_problem.timeStep()),
-    _time(_problem.time()),
-    _final_timer(registerTimedSection("final", 1))
+    _time(_problem.time())
 {
-  _picard_solve.setInnerSolve(_feproblem_solve);
+  _problem.getNonlinearSystemBase().setDecomposition(_splitting);
 
-  _time = _system_time;
+  if (!_restart_file_base.empty())
+    _problem.setRestartFile(_restart_file_base);
 }
 
 void
@@ -51,8 +51,9 @@ Steady::init()
   }
 
   checkIntegrity();
-  _problem.execute(EXEC_PRE_MULTIAPP_SETUP);
   _problem.initialSetup();
+
+  _problem.outputStep(EXEC_INITIAL);
 }
 
 void
@@ -61,17 +62,13 @@ Steady::execute()
   if (_app.isRecovering())
     return;
 
-  _time_step = 0;
-  _time = _time_step;
-  _problem.outputStep(EXEC_INITIAL);
-  _time = _system_time;
-
   preExecute();
 
   _problem.advanceState();
 
   // first step in any steady state solve is always 1 (preserving backwards compatibility)
   _time_step = 1;
+  _time = _time_step; // need to keep _time in sync with _time_step to get correct output
 
 #ifdef LIBMESH_ENABLE_AMR
 
@@ -80,9 +77,16 @@ Steady::execute()
   for (unsigned int r_step = 0; r_step <= steps; r_step++)
   {
 #endif // LIBMESH_ENABLE_AMR
+    preSolve();
     _problem.timestepSetup();
+    _problem.execute(EXEC_TIMESTEP_BEGIN);
+    _problem.outputStep(EXEC_TIMESTEP_BEGIN);
 
-    _last_solve_converged = _picard_solve.solve();
+    // Update warehouse active objects
+    _problem.updateActiveObjects();
+
+    _problem.solve();
+    postSolve();
 
     if (!lastSolveConverged())
     {
@@ -90,13 +94,13 @@ Steady::execute()
       break;
     }
 
+    _problem.onTimestepEnd();
+    _problem.execute(EXEC_TIMESTEP_END);
+
     _problem.computeIndicators();
     _problem.computeMarkers();
 
-    // need to keep _time in sync with _time_step to get correct output
-    _time = _time_step;
     _problem.outputStep(EXEC_TIMESTEP_END);
-    _time = _system_time;
 
 #ifdef LIBMESH_ENABLE_AMR
     if (r_step != steps)
@@ -105,16 +109,9 @@ Steady::execute()
     }
 
     _time_step++;
+    _time = _time_step; // need to keep _time in sync with _time_step to get correct output
   }
 #endif
-
-  {
-    TIME_SECTION(_final_timer)
-    _problem.execute(EXEC_FINAL);
-    _time = _time_step;
-    _problem.outputStep(EXEC_FINAL);
-    _time = _system_time;
-  }
 
   postExecute();
 }

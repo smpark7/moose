@@ -1,179 +1,124 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "IdealGasFluidPropertiesTest.h"
-#include "SinglePhaseFluidPropertiesTestUtils.h"
-
-/**
- * Verify that the fluid name is correctly returned
- */
-TEST_F(IdealGasFluidPropertiesTest, fluidName) { EXPECT_EQ(_fp->fluidName(), "ideal_gas"); }
 
 TEST_F(IdealGasFluidPropertiesTest, testAll)
 {
-  // Test when R and gamma are provided
   Real T = 120. + 273.15; // K
   Real p = 101325;        // Pa
 
-  const Real rho = _fp->rho_from_p_T(p, T);
-  const Real v = 1.0 / rho;
-  const Real e = _fp->e_from_p_rho(p, rho);
-  const Real s = _fp->s_from_v_e(v, e);
-  const Real h = _fp->h_from_p_T(p, T);
+  Real rho = _fp->rho(p, T);
+  Real v = 1 / rho;
+  Real e;
 
-  Real e_inv = _fp->e_from_T_v(T, v);
-  REL_TEST(e_inv, e, 10.0 * REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->e_from_T_v, T, v, 10.0 * REL_TOL_DERIVATIVE);
-  Real p_inv = _fp->p_from_T_v(T, v);
-  REL_TEST(p_inv, p, 10.0 * REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->p_from_T_v, T, v, 10.0 * REL_TOL_DERIVATIVE);
-  REL_TEST(_fp->h_from_T_v(T, v), h, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->h_from_T_v, T, v, 10.0 * REL_TOL_DERIVATIVE);
-  REL_TEST(_fp->s_from_T_v(T, v), s, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->s_from_T_v, T, v, 10.0 * REL_TOL_DERIVATIVE);
-  REL_TEST(_fp->cv_from_T_v(T, v), _fp->cv_from_v_e(v, e), REL_TOL_CONSISTENCY);
+  REL_TEST("rho", _fp->rho(p, T), 0.897875065343506, 1e-15);
+  REL_TEST("e", _fp->e(p, rho), 275243.356097561, 1e-15);
 
-  REL_TEST(_fp->p_from_h_s(h, s), p, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->p_from_h_s, h, s, REL_TOL_DERIVATIVE);
+  _fp->rho_e(p, T, rho, e);
+  REL_TEST("rho", rho, 0.897875065343506, 1e-15);
+  REL_TEST("e", e, 275243.356097561, 1e-15);
 
-  REL_TEST(_fp->rho_from_p_s(p, s), rho, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->rho_from_p_s, p, s, REL_TOL_DERIVATIVE);
+  REL_TEST("p", _fp->pressure(v, e), p, 1e-15);
+  REL_TEST("T", _fp->temperature(v, e), T, 1e-15);
+  REL_TEST("c", _fp->c(v, e), 398.896207251962, 1e-15);
+  REL_TEST("cp", _fp->cp(v, e), 987.13756097561, 1e-15);
+  REL_TEST("cv", _fp->cv(v, e), 700.09756097561, 1e-15);
 
-  REL_TEST(_fp->p_from_v_e(v, e), p, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->p_from_v_e, v, e, REL_TOL_DERIVATIVE);
+  REL_TEST("h", _fp->h(p, T), 388093, 4e-7);
 
-  REL_TEST(_fp->T_from_v_e(v, e), T, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->T_from_v_e, v, e, REL_TOL_DERIVATIVE);
+  // derivatives
+  p = 1e6;
+  T = 500;
 
-  REL_TEST(_fp->c_from_v_e(v, e), 398.896207251962, REL_TOL_SAVED_VALUE);
-  REL_TEST(_fp->cp_from_v_e(v, e), 987.13756097561, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->cp_from_v_e, v, e, REL_TOL_DERIVATIVE);
-  REL_TEST(_fp->cv_from_v_e(v, e), 700.09756097561, REL_TOL_SAVED_VALUE);
-  REL_TEST(_fp->mu_from_v_e(v, e), 18.23e-6, 1e-15);
-  REL_TEST(_fp->k_from_v_e(v, e), 25.68e-3, 1e-15);
+  Real de = 1e-3;
+  Real dv = 1e-6;
+  {
+    Real dp_dv_fd = (_fp->pressure(v + dv, e) - _fp->pressure(v - dv, e)) / (2 * dv);
+    Real dp_de_fd = (_fp->pressure(v, e + de) - _fp->pressure(v, e - de)) / (2 * de);
 
-  REL_TEST(_fp->beta_from_p_T(p, T), 2.54355843825512e-3, REL_TOL_SAVED_VALUE);
+    Real dT_dv_fd = (_fp->temperature(v + dv, e) - _fp->temperature(v - dv, e)) / (2 * dv);
+    Real dT_de_fd = (_fp->temperature(v, e + de) - _fp->temperature(v, e - de)) / (2 * de);
 
-  REL_TEST(_fp->s_from_v_e(v, e), 2.58890011905277e3, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->s_from_v_e, v, e, REL_TOL_DERIVATIVE);
+    Real dp_dv, dp_de, dT_dv, dT_de;
+    _fp->dp_duv(v, e, dp_dv, dp_de, dT_dv, dT_de);
 
-  ABS_TEST(_fp->rho_from_p_T(p, T), 0.897875065343506, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->rho_from_p_T, p, T, REL_TOL_DERIVATIVE);
+    ABS_TEST("dp_dv", dp_dv, dp_dv_fd, 4e-6);
+    ABS_TEST("dp_de", dp_de, dp_de_fd, 1e-8);
+    ABS_TEST("dT_dv", dT_dv, dT_dv_fd, 1e-15);
+    ABS_TEST("dT_de", dT_de, dT_de_fd, 1e-11);
+  }
 
-  ABS_TEST(_fp->v_from_p_T(p, T), 1.0 / 0.897875065343506, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->v_from_p_T, p, T, REL_TOL_DERIVATIVE);
+  Real dp = 1e1;
+  Real dT = 1e-4;
 
-  REL_TEST(_fp->e_from_p_rho(p, rho), 2.75243356098e5, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->e_from_p_rho, p, rho, REL_TOL_DERIVATIVE);
+  {
+    // density
+    Real drho_dp_fd = (_fp->rho(p + dp, T) - _fp->rho(p - dp, T)) / (2 * dp);
+    Real drho_dT_fd = (_fp->rho(p, T + dT) - _fp->rho(p, T - dT)) / (2 * dT);
+    Real rho = 0, drho_dp = 0, drho_dT = 0;
+    _fp->rho_dpT(p, T, rho, drho_dp, drho_dT);
 
-  ABS_TEST(_fp->h_from_p_T(p, T), 3.88093132097561e5, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->h_from_p_T, p, T, REL_TOL_DERIVATIVE);
+    ABS_TEST("rho", rho, _fp->rho(p, T), 1e-15);
+    ABS_TEST("drho_dp", drho_dp, drho_dp_fd, 1e-15);
+    ABS_TEST("drho_dT", drho_dT, drho_dT_fd, 1e-11);
+  }
 
-  ABS_TEST(_fp->s_from_p_T(p, T), 2.588900119052767e3, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->s_from_p_T, p, T, REL_TOL_DERIVATIVE);
-  ABS_TEST(_fp->s_from_h_p(h, p), 2.588900119052767e3, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->s_from_h_p, h, p, REL_TOL_DERIVATIVE);
+  rho = _fp->rho(p, T);
+  Real drho = 1e-4;
 
-  ABS_TEST(_fp->e_from_p_T(p, T), 2.75243356097561e5, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->e_from_p_T, p, T, REL_TOL_DERIVATIVE);
+  {
+    // internal energy
+    Real de_dp_fd = (_fp->e(p + dp, rho) - _fp->e(p - dp, rho)) / (2 * dp);
+    Real de_drho_fd = (_fp->e(p, rho + drho) - _fp->e(p, rho - drho)) / (2 * drho);
+    Real de_dp = 0, de_drho = 0;
+    _fp->e_dprho(p, rho, e, de_dp, de_drho);
 
-  REL_TEST(_fp->e_from_v_h(v, h), e, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->e_from_v_h, v, h, REL_TOL_DERIVATIVE);
+    ABS_TEST("e", e, _fp->e(p, rho), 1e-16);
+    ABS_TEST("de_dp", de_dp, de_dp_fd, 5e-11);
+    ABS_TEST("de_drho", de_drho, de_drho_fd, 5e-5);
+  }
 
-  ABS_TEST(_fp->molarMass(), 0.0289662061037, REL_TOL_SAVED_VALUE);
+  {
+    Real de_dp, de_dT;
+    _fp->e_dpT(p, T, e, de_dp, de_dT);
 
-  ABS_TEST(_fp->T_from_p_h(p, h), T, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->T_from_p_h, p, h, REL_TOL_DERIVATIVE);
+    Real rho1, rho2;
+    Real e1, e2;
 
-  REL_TEST(_fp->mu_from_p_T(p, T), 18.23e-6, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->mu_from_p_T, p, T, REL_TOL_DERIVATIVE);
+    _fp->rho_e(p + dp, T, rho1, e1);
+    _fp->rho_e(p - dp, T, rho2, e2);
+    Real de_dp_fd = (e1 - e2) / (2 * dp);
 
-  REL_TEST(_fp->k_from_p_T(p, T), 25.68e-3, REL_TOL_CONSISTENCY);
-  DERIV_TEST(_fp->k_from_p_T, p, T, REL_TOL_DERIVATIVE);
+    _fp->rho_e(p, T + dT, rho1, e1);
+    _fp->rho_e(p, T - dT, rho2, e2);
+    Real de_dT_fd = (e1 - e2) / (2 * dT);
 
-  REL_TEST(_fp->cv_from_p_T(p, T), 700.09756097561, REL_TOL_SAVED_VALUE);
-  REL_TEST(_fp->cp_from_p_T(p, T), 987.13756097561, REL_TOL_SAVED_VALUE);
-  DERIV_TEST(_fp->cp_from_p_T, p, T, REL_TOL_DERIVATIVE);
+    ABS_TEST("de_dp", de_dp, de_dp_fd, 1e-15);
+    ABS_TEST("de_dT", de_dT, de_dT_fd, 5e-7);
+  }
 
-  // Test when R and gamma are not provided
-  const Real molar_mass = 0.029;
-  const Real cv = 718.0;
-  const Real cp = 1005.0;
-  const Real thermal_conductivity = 0.02568;
-  const Real entropy = 1767.24985689;
-  const Real viscosity = 18.23e-6;
-  const Real R = 8.3144598;
+  {
+    // enthalpy
+    Real dh_dp_fd = (_fp->h(p + dp, T) - _fp->h(p - dp, T)) / (2 * dp);
+    Real dh_dT_fd = (_fp->h(p, T + dT) - _fp->h(p, T - dT)) / (2 * dT);
 
-  const Real tol = REL_TOL_CONSISTENCY;
+    Real h = 0, dh_dp = 0, dh_dT = 0;
+    _fp->h_dpT(p, T, h, dh_dp, dh_dT);
 
-  p = 1.0e6;
-  T = 300.0;
-
-  REL_TEST(_fp_pT->beta_from_p_T(p, T), 1.0 / T, tol);
-  REL_TEST(_fp_pT->cp_from_p_T(p, T), cp, tol);
-  REL_TEST(_fp_pT->cv_from_p_T(p, T), cv, tol);
-  REL_TEST(_fp_pT->c_from_p_T(p, T), std::sqrt(cp * R * T / (cv * molar_mass)), tol);
-  REL_TEST(_fp_pT->k_from_p_T(p, T), thermal_conductivity, tol);
-  REL_TEST(_fp_pT->k_from_p_T(p, T), thermal_conductivity, tol);
-  REL_TEST(_fp_pT->s_from_p_T(p, T), entropy, tol);
-
-  REL_TEST(_fp_pT->rho_from_p_T(p, T), p * molar_mass / (R * T), tol);
-  REL_TEST(_fp_pT->e_from_p_T(p, T), cv * T, tol);
-  REL_TEST(_fp_pT->mu_from_p_T(p, T), viscosity, tol);
-  REL_TEST(_fp_pT->mu_from_p_T(p, T), viscosity, tol);
-  REL_TEST(_fp_pT->h_from_p_T(p, T), cp * T, tol);
-
-  DERIV_TEST(_fp_pT->rho_from_p_T, p, T, REL_TOL_DERIVATIVE);
-  DERIV_TEST(_fp_pT->mu_from_p_T, p, T, REL_TOL_DERIVATIVE);
-  DERIV_TEST(_fp_pT->e_from_p_T, p, T, REL_TOL_DERIVATIVE);
-  DERIV_TEST(_fp_pT->h_from_p_T, p, T, REL_TOL_DERIVATIVE);
-  DERIV_TEST(_fp_pT->k_from_p_T, p, T, REL_TOL_DERIVATIVE);
-}
-
-/**
- * Verify that the methods that return multiple properties in one call return identical
- * values as the individual methods
- */
-TEST_F(IdealGasFluidPropertiesTest, combined)
-{
-  const Real p = 1.0e6;
-  const Real T = 300.0;
-  const Real tol = REL_TOL_CONSISTENCY;
-
-  // Single property methods
-  Real rho, drho_dp, drho_dT;
-  _fp_pT->rho_from_p_T(p, T, rho, drho_dp, drho_dT);
-  Real mu, dmu_dp, dmu_dT;
-  _fp_pT->mu_from_p_T(p, T, mu, dmu_dp, dmu_dT);
-  Real e, de_dp, de_dT;
-  _fp_pT->e_from_p_T(p, T, e, de_dp, de_dT);
-
-  // Combined property methods
-  Real rho2, drho2_dp, drho2_dT, mu2, dmu2_dp, dmu2_dT, e2, de2_dp, de2_dT;
-  _fp_pT->rho_mu_from_p_T(p, T, rho2, mu2);
-
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(mu, mu2, tol);
-
-  _fp_pT->rho_mu_from_p_T(p, T, rho2, drho2_dp, drho2_dT, mu2, dmu2_dp, dmu2_dT);
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(drho_dp, drho2_dp, tol);
-  ABS_TEST(drho_dT, drho2_dT, tol);
-  ABS_TEST(mu, mu2, tol);
-  ABS_TEST(dmu_dp, dmu2_dp, tol);
-  ABS_TEST(dmu_dT, dmu2_dT, tol);
-
-  _fp_pT->rho_e_from_p_T(p, T, rho2, drho2_dp, drho2_dT, e2, de2_dp, de2_dT);
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(drho_dp, drho2_dp, tol);
-  ABS_TEST(drho_dT, drho2_dT, tol);
-  ABS_TEST(e, e2, tol);
-  ABS_TEST(de_dp, de2_dp, tol);
-  ABS_TEST(de_dT, de2_dT, tol);
+    ABS_TEST("h", h, _fp->h(p, T), 1e-16);
+    ABS_TEST("dh_dp", dh_dp, dh_dp_fd, 1e-12);
+    ABS_TEST("dh_dT", dh_dT, dh_dT_fd, 6e-7);
+  }
 }

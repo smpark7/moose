@@ -38,6 +38,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   num_steps = 4 # Gold file only has 4 steps
   dt = 0.1
@@ -48,5 +49,5 @@
 
 [Outputs]
   csv = true
-  perf_graph = true
+  print_perf_log = true
 []

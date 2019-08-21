@@ -1,35 +1,40 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "LevelSetTimeDerivativeSUPG.h"
 
-registerADMooseObject("LevelSetApp", LevelSetTimeDerivativeSUPG);
+template <>
+InputParameters
+validParams<LevelSetTimeDerivativeSUPG>()
+{
+  InputParameters params = validParams<TimeDerivative>();
+  params.addClassDescription(
+      "SUPG stablization terms for the time derivative of the level set equation.");
+  params += validParams<LevelSetVelocityInterface<>>();
+  return params;
+}
 
-defineADValidParams(
-    LevelSetTimeDerivativeSUPG,
-    ADTimeKernelGrad,
-    params.addClassDescription(
-        "SUPG stablization terms for the time derivative of the level set equation.");
-    params += validParams<LevelSetVelocityInterface<>>(););
-
-template <ComputeStage compute_stage>
-LevelSetTimeDerivativeSUPG<compute_stage>::LevelSetTimeDerivativeSUPG(
-    const InputParameters & parameters)
-  : LevelSetVelocityInterface<ADTimeKernelGrad<compute_stage>>(parameters)
+LevelSetTimeDerivativeSUPG::LevelSetTimeDerivativeSUPG(const InputParameters & parameters)
+  : LevelSetVelocityInterface<TimeDerivative>(parameters)
 {
 }
 
-template <ComputeStage compute_stage>
-ADRealVectorValue
-LevelSetTimeDerivativeSUPG<compute_stage>::precomputeQpResidual()
+Real
+LevelSetTimeDerivativeSUPG::computeQpResidual()
 {
   computeQpVelocity();
   Real tau = _current_elem->hmin() / (2 * _velocity.norm());
-  return tau * _velocity * _u_dot[_qp];
+  return tau * _velocity * _grad_test[_i][_qp] * _u_dot[_qp];
+}
+
+Real
+LevelSetTimeDerivativeSUPG::computeQpJacobian()
+{
+  computeQpVelocity();
+  Real tau = _current_elem->hmin() / (2 * _velocity.norm());
+  return tau * _velocity * _grad_test[_i][_qp] * _phi[_j][_qp] * _du_dot_du[_qp];
 }

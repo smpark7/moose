@@ -38,7 +38,6 @@
     solution = xda_soln
     execute_on = initial
     variable = u_aux
-    direct = false
   [../]
 []
 

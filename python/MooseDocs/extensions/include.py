@@ -1,82 +1,113 @@
 #pylint: disable=missing-docstring
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
+####################################################################################################
+#                                    DO NOT MODIFY THIS HEADER                                     #
+#                   MOOSE - Multiphysics Object Oriented Simulation Environment                    #
+#                                                                                                  #
+#                              (c) 2010 Battelle Energy Alliance, LLC                              #
+#                                       ALL RIGHTS RESERVED                                        #
+#                                                                                                  #
+#                            Prepared by Battelle Energy Alliance, LLC                             #
+#                               Under Contract No. DE-AC07-05ID14517                               #
+#                               With the U. S. Department of Energy                                #
+#                                                                                                  #
+#                               See COPYRIGHT for full restrictions                                #
+####################################################################################################
+#pylint: enable=missing-docstring
+import re
+import os
 
-from MooseDocs import common
-from MooseDocs.extensions import command
-from MooseDocs.base import RevealRenderer
+from markdown.preprocessors import Preprocessor
+from markdown.util import etree
 
-def make_extension(**kwargs):
-    return IncludeExtension(**kwargs)
+import MooseDocs
+from MooseMarkdownExtension import MooseMarkdownExtension
+from MooseMarkdownCommon import MooseMarkdownCommon
+from listings import ListingPattern
 
-class IncludeExtension(command.CommandExtension):
-    """Enables the !include command for including files in other files."""
+class IncludeExtension(MooseMarkdownExtension):
+    """
+    Extension for recursive including of partial or complete markdown files.
+    """
+    @staticmethod
+    def defaultConfig():
+        """Default IncludeExtension configuration options."""
+        config = MooseMarkdownExtension.defaultConfig()
+        return config
+
+    def extendMarkdown(self, md, md_globals):
+        """
+        Adds include support for MOOSE flavored markdown.
+        """
+        md.registerExtension(self)
+        config = self.getConfigs()
+        md.preprocessors.add('moose-markdown-include',
+                             MarkdownPreprocessor(markdown_instance=md, **config), '_begin')
+
+def makeExtension(*args, **kwargs): #pylint: disable=invalid-name
+    """Create IncludeExtension"""
+    return IncludeExtension(*args, **kwargs)
+
+class MarkdownPreprocessor(MooseMarkdownCommon, Preprocessor):
+    """
+    An recursive include command for including a markdown file from within another. This adds the
+    ability to specify start/end string to include only portions for the markdown.
+    """
+    REGEX = r'^!include\s+(.*?)(?:$|\s+)(.*)'
+
+    @staticmethod
+    def defaultSettings():
+        """Settigns for MarkdownPreprocessor"""
+        settings = MooseMarkdownCommon.defaultSettings()
+        l_settings = ListingPattern.defaultSettings()
+        settings['re'] = (None, "Python regular expression to use for removing text, with flags " \
+                                "set to MULTILINE|DOTALL.")
+        settings['start'] = l_settings['start']
+        settings['end'] = l_settings['end']
+        settings['include-end'] = l_settings['include-end']
+        return settings
 
     def __init__(self, *args, **kwargs):
-        super(IncludeExtension, self).__init__(*args, **kwargs)
-        self.__dependencies = set()
+        super(MarkdownPreprocessor, self).__init__(*args, **kwargs)
+        self._found = False
 
-    def extend(self, reader, renderer):
-        self.requires(command)
+    def replace(self, match):
+        """
+        Substitution function for the re.sub function.
+        """
+        filename = MooseDocs.abspath(match.group(1))
+        settings = self.getSettings(match.group(2))
+        if not os.path.exists(filename):
+            msg = "Failed to located filename in following command.\n{}"
+            el = self.createErrorElement(msg.format(match.group(0)), title="Unknown Markdown File")
+            return etree.tostring(el)
 
-        if isinstance(renderer, RevealRenderer):
-            self.addCommand(reader, IncludeSlides())
+        if settings['start'] or settings['end']:
+            content = ListingPattern.extractLineRange(filename, settings['start'],
+                                                      settings['end'], settings['include-end'])
         else:
-            self.addCommand(reader, IncludeCommand())
+            with open(filename, 'r') as fid:
+                content = fid.read()
 
-    def initMetaData(self, page, meta):
-        meta.initData('dependencies', set())
+        if settings['re']:
+            match = re.search(settings['re'], content, flags=re.MULTILINE|re.DOTALL)
+            if not match:
+                msg = "Failed to located regex in following command.\n{}"
+                el = self.createErrorElement(msg.format(settings['re']), title="Failed Regex")
+                return etree.tostring(el)
+            content = match.group(0)
 
-    def postTokenize(self, ast, page, meta, reader):
-        meta.getData('dependencies').update(self.__dependencies)
-        self.__dependencies.clear()
+        self._found = True
+        return content
 
-    def addDependency(self, page):
-        self.__dependencies.add(page.uid)
-
-class IncludeCommand(command.CommandComponent):
-    COMMAND = 'include'
-    SUBCOMMAND = 'md' #TODO: get this from the reader inside the __init__ method.
-
-    @staticmethod
-    def defaultSettings():
-        settings = command.CommandComponent.defaultSettings()
-        settings.update(common.extractContentSettings())
-        return settings
-
-    def createToken(self, parent, info, page):
+    def run(self, lines):
         """
-        Tokenize the included content and create dependency between pages.
+        Recursive markdown replacement.
         """
-        include_page = self.translator.findPage(info['subcommand'])
-        content, line = common.extractContent(self.reader.read(include_page), self.settings)
-
-        self.reader.tokenize(parent, content, page, line=line)
-        self.extension.addDependency(include_page)
-
-        return parent
-
-class IncludeSlides(IncludeCommand):
-
-    @staticmethod
-    def defaultSettings():
-        settings = IncludeCommand.defaultSettings()
-        settings['vertical'] = (True, "Included content will be included as vertical slides.")
-        return settings
-
-    def createToken(self, parent, info, page):
-        idx = len(parent.children)
-        IncludeCommand.createToken(self, parent, info, page)
-
-        if self.settings['vertical']:
-            for child in parent.children[idx:]:
-                if child.name == 'Section':
-                    child.name = 'SubSection'
-
-        return parent
+        content = '\n'.join(lines)
+        match = True
+        while match:
+            self._found = False
+            content = re.sub(self.REGEX, self.replace, content, flags=re.MULTILINE)
+            if not self._found:
+                break
+        return content.splitlines()

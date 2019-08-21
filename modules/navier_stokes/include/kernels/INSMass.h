@@ -1,15 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef INSMASS_H
+#define INSMASS_H
 
-#pragma once
-
-#include "INSBase.h"
+#include "Kernel.h"
 
 // Forward Declarations
 class INSMass;
@@ -22,7 +20,7 @@ InputParameters validParams<INSMass>();
  * contributions for the incompressible Navier-Stokes momentum
  * equation.
  */
-class INSMass : public INSBase
+class INSMass : public Kernel
 {
 public:
   INSMass(const InputParameters & parameters);
@@ -34,12 +32,16 @@ protected:
   virtual Real computeQpJacobian();
   virtual Real computeQpOffDiagJacobian(unsigned jvar);
 
-  virtual Real computeQpPGResidual();
-  virtual Real computeQpPGJacobian();
-  virtual Real computeQpPGOffDiagJacobian(unsigned comp);
+  // Coupled Gradients
+  const VariableGradient & _grad_u_vel;
+  const VariableGradient & _grad_v_vel;
+  const VariableGradient & _grad_w_vel;
 
-  bool _pspg;
-  const Function & _x_ffn;
-  const Function & _y_ffn;
-  const Function & _z_ffn;
+  // Variable numberings
+  unsigned _u_vel_var_number;
+  unsigned _v_vel_var_number;
+  unsigned _w_vel_var_number;
+  unsigned _p_var_number;
 };
+
+#endif // INSMASS_H

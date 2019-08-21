@@ -69,7 +69,6 @@
   type = Transient
   dt = 1
   num_steps = 20
-  nl_rel_tol = 1e-12
 []
 
 [Outputs]

@@ -53,10 +53,10 @@
 [Problem]
   type = FEProblem
   solve = false
-  restart_file_base = restartable_types_out_cp/LATEST
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Steady
   solve_type = PJFNK
   petsc_options_iname = '-pc_type -pc_hypre_type'
@@ -67,3 +67,6 @@
   exodus = true
 []
 
+[Problem]
+  restart_file_base = restartable_types_out_cp/LATEST
+[]

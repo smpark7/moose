@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "FunctionParserUtils.h"
 
@@ -18,15 +23,13 @@ validParams<FunctionParserUtils>()
 {
   InputParameters params = emptyInputParameters();
 
+#ifdef LIBMESH_HAVE_FPARSER_JIT
   params.addParam<bool>(
       "enable_jit",
-#ifdef LIBMESH_HAVE_FPARSER_JIT
       true,
-#else
-      false,
-#endif
       "Enable just-in-time compilation of function expressions for faster evaluation");
   params.addParamNamesToGroup("enable_jit", "Advanced");
+#endif
   params.addParam<bool>(
       "enable_ad_cache", true, "Enable cacheing of function derivatives for faster startup time");
   params.addParam<bool>(
@@ -61,13 +64,6 @@ FunctionParserUtils::FunctionParserUtils(const InputParameters & parameters)
     _fail_on_evalerror(parameters.get<bool>("fail_on_evalerror")),
     _nan(std::numeric_limits<Real>::quiet_NaN())
 {
-#ifndef LIBMESH_HAVE_FPARSER_JIT
-  if (_enable_jit)
-  {
-    mooseWarning("Tried to enable FParser JIT but libmesh does not have it compiled in.");
-    _enable_jit = false;
-  }
-#endif
 }
 
 void
@@ -85,7 +81,7 @@ FunctionParserUtils::evaluate(ADFunctionPtr & parser)
     return 0.0;
 
   // evaluate expression
-  Real result = parser->Eval(_func_params.data());
+  Real result = parser->Eval(&_func_params[0]);
 
   // fetch fparser evaluation error
   int error_code = parser->EvalError();
@@ -109,7 +105,7 @@ FunctionParserUtils::addFParserConstants(ADFunctionPtr & parser,
 {
   // check constant vectors
   unsigned int nconst = constant_expressions.size();
-  if (nconst != constant_names.size())
+  if (nconst != constant_expressions.size())
     mooseError("The parameter vectors constant_names and constant_values must have equal length.");
 
   // previously evaluated constant_expressions may be used in following constant_expressions

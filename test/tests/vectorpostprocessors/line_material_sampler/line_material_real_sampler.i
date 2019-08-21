@@ -26,7 +26,7 @@
 
 [Kernels]
   [./diff]
-    type = MatDiffusionTest
+    type = MatDiffusion
     variable = u
     prop_name = matp
   [../]
@@ -78,6 +78,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

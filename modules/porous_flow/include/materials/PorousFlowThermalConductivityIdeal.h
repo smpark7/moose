@@ -1,15 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWTHERMALCONDUCTIVITYIDEAL_H
+#define POROUSFLOWTHERMALCONDUCTIVITYIDEAL_H
 
-#include "PorousFlowThermalConductivityBase.h"
+#include "PorousFlowMaterialVectorBase.h"
 
 class PorousFlowThermalConductivityIdeal;
 
@@ -23,7 +22,7 @@ InputParameters validParams<PorousFlowThermalConductivityIdeal>();
  * dry_thermal_conductivity),
  * where S is the aqueous saturation.
  */
-class PorousFlowThermalConductivityIdeal : public PorousFlowThermalConductivityBase
+class PorousFlowThermalConductivityIdeal : public PorousFlowMaterialVectorBase
 {
 public:
   PorousFlowThermalConductivityIdeal(const InputParameters & parameters);
@@ -40,10 +39,10 @@ protected:
   /// Wet thermal conductivity of rock
   const RealTensorValue _la_wet;
 
-  /// Exponent for saturation
+  /// exponent for saturation
   const Real _exponent;
 
-  /// Whether this is a fluid simulation
+  /// whether this is a fluid simulation
   const bool _aqueous_phase;
 
   /// Phase number of the aqueous phase
@@ -54,5 +53,12 @@ protected:
 
   /// d(Saturation)/d(PorousFlow variable)
   const MaterialProperty<std::vector<std::vector<Real>>> * const _dsaturation_qp_dvar;
+
+  /// Thermal conducitivity at the qps
+  MaterialProperty<RealTensorValue> & _la_qp;
+
+  /// d(thermal conductivity at the qps)/d(PorousFlow variable)
+  MaterialProperty<std::vector<RealTensorValue>> & _dla_qp_dvar;
 };
 
+#endif // POROUSFLOWTHERMALCONDUCTIVITYIDEAL_H

@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef EXTERNALFORCEDENSITYMATERIAL_H
+#define EXTERNALFORCEDENSITYMATERIAL_H
 
 #include "Material.h"
 #include "DerivativeMaterialInterface.h"
@@ -32,9 +30,9 @@ protected:
   virtual void computeQpProperties();
 
 private:
-  const Function & _force_x;
-  const Function & _force_y;
-  const Function & _force_z;
+  Function & _force_x;
+  Function & _force_y;
+  Function & _force_z;
 
   /// concentration field considered to be the density of particles
   const VariableValue & _c;
@@ -53,3 +51,5 @@ private:
 
   std::vector<MaterialProperty<std::vector<RealGradient>> *> _dFdeta;
 };
+
+#endif // EXTERNALFORCEDENSITYMATERIAL_H

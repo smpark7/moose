@@ -1,16 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowCapillaryPressureVG.h"
 #include "PorousFlowVanGenuchten.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowCapillaryPressureVG);
 
 template <>
 InputParameters
@@ -23,15 +19,11 @@ validParams<PorousFlowCapillaryPressureVG>()
       "van Genuchten exponent m. Must be between 0 and 1, and optimally should be set to >0.5");
   params.addRequiredRangeCheckedParam<Real>(
       "alpha", "alpha > 0", "van Genuchten parameter alpha. Must be positive");
-  params.addRangeCheckedParam<Real>("s_scale",
-                                    1.0,
-                                    "s_scale > 0.0 & s_scale <= 1.0",
-                                    "CapillaryPressure = f(Seff * s_scale) - "
-                                    "f(s_scale), where f is the van Genuchten "
-                                    "expression.  Setting s_scale<1 is unusual "
-                                    "but sometimes helps fully saturated, "
-                                    "2-phase PP simulations converge as the "
-                                    "zero derivative (1/f'(S=1)=0) is removed");
+  params.addRangeCheckedParam<Real>("pc_max",
+                                    -std::numeric_limits<Real>::max(),
+                                    "pc_max <= 0",
+                                    "Maximum capillary pressure (Pa). Must be <= 0. Default is "
+                                    "-std::numeric_limits<Real>::max()");
   params.addClassDescription("van Genuchten capillary pressure");
   return params;
 }
@@ -40,51 +32,47 @@ PorousFlowCapillaryPressureVG::PorousFlowCapillaryPressureVG(const InputParamete
   : PorousFlowCapillaryPressure(parameters),
     _m(getParam<Real>("m")),
     _alpha(getParam<Real>("alpha")),
-    _s_scale(getParam<Real>("s_scale")),
-    _pc_sscale(PorousFlowVanGenuchten::capillaryPressure(_s_scale, _alpha, _m, _pc_max))
+    _p0(1.0 / _alpha),
+    _pc_max(getParam<Real>("pc_max"))
 {
 }
 
 Real
-PorousFlowCapillaryPressureVG::capillaryPressureCurve(Real saturation, unsigned /*qp*/) const
+PorousFlowCapillaryPressureVG::capillaryPressure(Real saturation) const
 {
-  const Real seff = effectiveSaturationFromSaturation(saturation) * _s_scale;
-  return PorousFlowVanGenuchten::capillaryPressure(seff, _alpha, _m, _pc_max) - _pc_sscale;
+  Real seff = effectiveSaturationFromSaturation(saturation);
+  return PorousFlowVanGenuchten::capillaryPressure(seff, _m, _p0, _pc_max);
 }
 
 Real
-PorousFlowCapillaryPressureVG::dCapillaryPressureCurve(Real saturation, unsigned /*qp*/) const
+PorousFlowCapillaryPressureVG::dCapillaryPressure(Real saturation) const
 {
-  const Real seff = effectiveSaturationFromSaturation(saturation) * _s_scale;
-  return PorousFlowVanGenuchten::dCapillaryPressure(seff, _alpha, _m, _pc_max) * _dseff_ds *
-         _s_scale;
+  Real seff = effectiveSaturationFromSaturation(saturation);
+  return PorousFlowVanGenuchten::dCapillaryPressure(seff, _m, _p0, _pc_max) * _dseff_ds;
 }
 
 Real
-PorousFlowCapillaryPressureVG::d2CapillaryPressureCurve(Real saturation, unsigned /*qp*/) const
+PorousFlowCapillaryPressureVG::d2CapillaryPressure(Real saturation) const
 {
-  const Real seff = effectiveSaturationFromSaturation(saturation) * _s_scale;
-  return PorousFlowVanGenuchten::d2CapillaryPressure(seff, _alpha, _m, _pc_max) * _dseff_ds *
-         _dseff_ds * _s_scale * _s_scale;
+  Real seff = effectiveSaturationFromSaturation(saturation);
+  return PorousFlowVanGenuchten::d2CapillaryPressure(seff, _m, _p0, _pc_max) * _dseff_ds *
+         _dseff_ds;
 }
 
 Real
-PorousFlowCapillaryPressureVG::effectiveSaturation(Real pc, unsigned /*qp*/) const
+PorousFlowCapillaryPressureVG::effectiveSaturation(Real pc) const
 {
-  return (1.0 / _s_scale) *
-         PorousFlowVanGenuchten::effectiveSaturation(pc - _pc_sscale, _alpha, _m);
+  return PorousFlowVanGenuchten::effectiveSaturation(pc, _alpha, _m);
 }
 
 Real
-PorousFlowCapillaryPressureVG::dEffectiveSaturation(Real pc, unsigned /*qp*/) const
+PorousFlowCapillaryPressureVG::dEffectiveSaturation(Real pc) const
 {
-  return (1.0 / _s_scale) *
-         PorousFlowVanGenuchten::dEffectiveSaturation(pc - _pc_sscale, _alpha, _m);
+  return PorousFlowVanGenuchten::dEffectiveSaturation(pc, _alpha, _m);
 }
 
 Real
-PorousFlowCapillaryPressureVG::d2EffectiveSaturation(Real pc, unsigned /*qp*/) const
+PorousFlowCapillaryPressureVG::d2EffectiveSaturation(Real pc) const
 {
-  return (1.0 / _s_scale) *
-         PorousFlowVanGenuchten::d2EffectiveSaturation(pc - _pc_sscale, _alpha, _m);
+  return PorousFlowVanGenuchten::d2EffectiveSaturation(pc, _alpha, _m);
 }

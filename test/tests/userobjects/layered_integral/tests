@@ -17,5 +17,4 @@
     input = 'average_sample.i'
     exodiff = 'average_sample_out.e'
   [../]
-
 []

@@ -1,17 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "CappedWeakPlaneCosseratStressUpdate.h"
 
 #include "libmesh/utility.h"
-
-registerMooseObject("TensorMechanicsApp", CappedWeakPlaneCosseratStressUpdate);
 
 template <>
 InputParameters
@@ -34,7 +29,7 @@ CappedWeakPlaneCosseratStressUpdate::setStressAfterReturn(const RankTwoTensor & 
                                                           Real q_ok,
                                                           Real gaE,
                                                           const std::vector<Real> & /*intnl*/,
-                                                          const yieldAndFlow & smoothed_q,
+                                                          const f_and_derivs & smoothed_q,
                                                           const RankFourTensor & Eijkl,
                                                           RankTwoTensor & stress) const
 {
@@ -62,11 +57,14 @@ CappedWeakPlaneCosseratStressUpdate::consistentTangentOperator(
     Real /*p*/,
     Real q,
     Real gaE,
-    const yieldAndFlow & smoothed_q,
+    const f_and_derivs & smoothed_q,
     const RankFourTensor & Eijkl,
     bool compute_full_tangent_operator,
     RankFourTensor & cto) const
 {
+  if (!_fe_problem.currentlyComputingJacobian())
+    return;
+
   cto = Eijkl;
   if (!compute_full_tangent_operator)
     return;

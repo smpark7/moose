@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef EFAELEMENT3D_H
+#define EFAELEMENT3D_H
 
 #include "EFAElement.h"
 #include "EFAPoint.h"
@@ -30,7 +29,6 @@ private:
   std::vector<EFAFace *> _faces;
   std::vector<EFAVolumeNode *> _interior_nodes;
   std::vector<std::vector<EFAElement3D *>> _face_neighbors;
-  std::vector<std::vector<std::vector<EFAElement3D *>>> _face_edge_neighbors;
   std::vector<EFAFragment3D *> _fragments;
   std::vector<std::vector<EFAFace *>> _faces_adjacent_to_faces;
   unsigned int _num_vertices;
@@ -45,7 +43,6 @@ public:
 
   virtual void switchNode(EFANode * new_node, EFANode * old_node, bool descend_to_parent);
   virtual void switchEmbeddedNode(EFANode * new_node, EFANode * old_node);
-  virtual void updateFragmentNode();
   virtual void getMasterInfo(EFANode * node,
                              std::vector<EFANode *> & master_nodes,
                              std::vector<double> & master_weights) const;
@@ -53,11 +50,6 @@ public:
 
   bool overlaysElement(const EFAElement3D * other_elem) const;
   virtual unsigned int getNeighborIndex(const EFAElement * neighbor_elem) const;
-  virtual void getNeighborEdgeIndex(const EFAElement3D * neighbor_elem,
-                                    unsigned int face_id,
-                                    unsigned int edge_id,
-                                    unsigned int & neigh_face_id,
-                                    unsigned int & neigh_edge_id) const;
   virtual void clearNeighbors();
   virtual void setupNeighbors(std::map<EFANode *, std::set<EFAElement *>> & InverseConnectivityMap);
   virtual void neighborSanityCheck() const;
@@ -104,9 +96,6 @@ public:
   EFAFace * getFace(unsigned int face_id) const;
   unsigned int getFaceID(EFAFace * face) const;
   std::vector<unsigned int> getCommonFaceID(const EFAElement3D * other_elem) const;
-  bool getCommonEdgeID(const EFAElement3D * other_elem,
-                       std::vector<unsigned int> & face_id,
-                       std::vector<unsigned int> & edge_id) const;
   unsigned int getNeighborFaceNodeID(unsigned int face_id,
                                      unsigned int node_id,
                                      EFAElement3D * neighbor_elem) const;
@@ -130,10 +119,7 @@ public:
   isPhysicalEdgeCut(unsigned int ElemFaceID, unsigned int ElemFaceEdgeID, double position) const;
   bool isFacePhantom(unsigned int face_id) const;
   unsigned int numFaceNeighbors(unsigned int face_id) const;
-  unsigned int numEdgeNeighbors(unsigned int face_id, unsigned int edge_id) const;
   EFAElement3D * getFaceNeighbor(unsigned int face_id, unsigned int neighbor_id) const;
-  EFAElement3D *
-  getEdgeNeighbor(unsigned int face_id, unsigned int edge_id, unsigned int neighbor_id) const;
 
   bool fragmentHasTipFaces() const;
   std::vector<unsigned int> getTipFaceIDs() const;
@@ -171,3 +157,4 @@ private:
   void setLocalCoordinates();
 };
 
+#endif

@@ -1,33 +1,42 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "UserForcingFunction.h"
 #include "Function.h"
-
-registerMooseObjectRenamed("MooseApp", UserForcingFunction, "04/01/2018 00:00", BodyForce);
 
 template <>
 InputParameters
 validParams<UserForcingFunction>()
 {
-  return validParams<BodyForce>();
+  InputParameters params = validParams<Kernel>();
+  params.addRequiredParam<FunctionName>("function", "The forcing function");
+  return params;
 }
 
-UserForcingFunction::UserForcingFunction(const InputParameters & parameters) : BodyForce(parameters)
+UserForcingFunction::UserForcingFunction(const InputParameters & parameters)
+  : Kernel(parameters), _func(getFunction("function"))
 {
-  mooseDeprecated("UserForcingFunction has been replaced by BodyForce.");
 }
 
 Real
 UserForcingFunction::f()
 {
-  mooseDeprecated("This method is a legacy method from UserForcingFunction, please update your "
-                  "code to use the BodyForce object and the _function member variable instead.");
-  return _function.value(_t, _q_point[_qp]);
+  return _func.value(_t, _q_point[_qp]);
+}
+
+Real
+UserForcingFunction::computeQpResidual()
+{
+  return -_test[_i][_qp] * f();
 }

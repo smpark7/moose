@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "KKSACBulkBase.h"
 
 template <>
@@ -47,7 +44,7 @@ KKSACBulkBase::KKSACBulkBase(const InputParameters & parameters)
   // Iterate over all coupled variables
   for (unsigned int i = 0; i < _nvar; ++i)
   {
-    MooseVariable * cvar = _coupled_standard_moose_vars[i];
+    MooseVariable * cvar = _coupled_moose_vars[i];
 
     // get the first derivatives of Fa and Fb material property
     _derivatives_Fa[i] = &getMaterialPropertyDerivative<Real>("fa_name", cvar->name());

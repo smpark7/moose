@@ -54,7 +54,6 @@
     grad_x = 3*x*x
     grad_y = 3*y*y
     grad_z = 3*z*z
-  [../]
 []
 
 [Variables]
@@ -77,7 +76,7 @@
   [../]
 
   [./forcing]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -129,6 +128,7 @@
 
   [./h]
     type = AverageElementSize
+    variable = u
   [../]
 
   [./L2error]

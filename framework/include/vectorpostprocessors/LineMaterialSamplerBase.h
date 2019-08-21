@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef LINEMATERIALSAMPLERBASE_H
+#define LINEMATERIALSAMPLERBASE_H
 
 // MOOSE includes
 #include "GeneralVectorPostprocessor.h"
@@ -20,6 +26,7 @@
 #include "SwapBackSentinel.h"
 #include "FEProblem.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h" // _qrule->n_points()
 
 // Forward Declarations
@@ -91,7 +98,7 @@ protected:
   MooseMesh & _mesh;
 
   /// The quadrature rule
-  const QBase * const & _qrule;
+  QBase *& _qrule;
 
   /// The quadrature points
   const MooseArray<Point> & _q_point;
@@ -101,7 +108,7 @@ template <typename T>
 LineMaterialSamplerBase<T>::LineMaterialSamplerBase(const InputParameters & parameters)
   : GeneralVectorPostprocessor(parameters),
     SamplerBase(parameters, this, _communicator),
-    BlockRestrictable(this),
+    BlockRestrictable(parameters),
     _start(getParam<Point>("start")),
     _end(getParam<Point>("end")),
     _mesh(_subproblem.mesh()),
@@ -189,3 +196,4 @@ LineMaterialSamplerBase<T>::finalize()
   SamplerBase::finalize();
 }
 
+#endif

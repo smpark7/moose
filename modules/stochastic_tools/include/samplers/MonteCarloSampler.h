@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MONTECARLOSAMPLER_H
+#define MONTECARLOSAMPLER_H
 
 #include "Sampler.h"
 
@@ -22,13 +28,11 @@ class MonteCarloSampler : public Sampler
 {
 public:
   MonteCarloSampler(const InputParameters & parameters);
+  virtual ~MonteCarloSampler();
 
 protected:
-  virtual std::vector<DenseMatrix<Real>> sample() override;
-
-  /// Number of matrices
-  const dof_id_type _num_matrices;
-
-  /// Number of monte carlo samples to create for each distribution
-  const dof_id_type _num_samples;
+  virtual void generateSamples() override;
+  unsigned int _num_samples;
 };
+
+#endif /* MONTECARLOSAMPLER_H */

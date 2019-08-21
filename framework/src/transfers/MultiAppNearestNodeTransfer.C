@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MultiAppNearestNodeTransfer.h"
 
@@ -14,30 +19,35 @@
 #include "FEProblem.h"
 #include "MooseMesh.h"
 #include "MooseTypes.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 
+// libMesh includes
 #include "libmesh/system.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/id_types.h"
 #include "libmesh/parallel_algebra.h"
-#include "libmesh/dof_object.h"
-
-registerMooseObject("MooseApp", MultiAppNearestNodeTransfer);
 
 template <>
 InputParameters
 validParams<MultiAppNearestNodeTransfer>()
 {
-  InputParameters params = validParams<MultiAppFieldTransfer>();
-  params.addClassDescription(
-      "Transfer the value to the target domain from the nearest node in the source domain.");
+  InputParameters params = validParams<MultiAppTransfer>();
 
+  params.addRequiredParam<AuxVariableName>(
+      "variable", "The auxiliary variable to store the transferred values in.");
+  params.addRequiredParam<VariableName>("source_variable", "The variable to transfer from.");
   params.addParam<BoundaryName>(
       "source_boundary",
       "The boundary we are transferring from (if not specified, whole domain is used).");
   params.addParam<BoundaryName>(
       "target_boundary",
       "The boundary we are transferring to (if not specified, whole domain is used).");
+  params.addParam<bool>("displaced_source_mesh",
+                        false,
+                        "Whether or not to use the displaced mesh for the source mesh.");
+  params.addParam<bool>("displaced_target_mesh",
+                        false,
+                        "Whether or not to use the displaced mesh for the target mesh.");
   params.addParam<bool>("fixed_meshes",
                         false,
                         "Set to true when the meshes are not changing (ie, "
@@ -49,7 +59,9 @@ validParams<MultiAppNearestNodeTransfer>()
 }
 
 MultiAppNearestNodeTransfer::MultiAppNearestNodeTransfer(const InputParameters & parameters)
-  : MultiAppFieldTransfer(parameters),
+  : MultiAppTransfer(parameters),
+    _to_var_name(getParam<AuxVariableName>("variable")),
+    _from_var_name(getParam<VariableName>("source_variable")),
     _fixed_meshes(getParam<bool>("fixed_meshes")),
     _node_map(declareRestartableData<std::map<dof_id_type, Node *>>("node_map")),
     _distance_map(declareRestartableData<std::map<dof_id_type, Real>>("distance_map")),
@@ -61,11 +73,18 @@ MultiAppNearestNodeTransfer::MultiAppNearestNodeTransfer(const InputParameters &
         declareRestartableData<std::map<dof_id_type, unsigned int>>("cached_from_ids")),
     _cached_qp_inds(declareRestartableData<std::map<dof_id_type, unsigned int>>("cached_qp_inds"))
 {
-  if (_to_var_names.size() != 1)
-    paramError("variable", " Support single to-variable only");
+  // This transfer does not work with DistributedMesh
+  _displaced_source_mesh = getParam<bool>("displaced_source_mesh");
+  _displaced_target_mesh = getParam<bool>("displaced_target_mesh");
+}
 
-  if (_from_var_names.size() != 1)
-    paramError("source_variable", " Support single from-variable only");
+void
+MultiAppNearestNodeTransfer::initialSetup()
+{
+  if (_direction == TO_MULTIAPP)
+    variableIntegrityCheck(_to_var_name);
+  else
+    variableIntegrityCheck(_from_var_name);
 }
 
 void
@@ -76,12 +95,7 @@ MultiAppNearestNodeTransfer::execute()
   getAppInfo();
 
   // Get the bounding boxes for the "from" domains.
-  std::vector<BoundingBox> bboxes;
-  if (isParamValid("source_boundary"))
-    bboxes = getFromBoundingBoxes(
-        _from_meshes[0]->getBoundaryID(getParam<BoundaryName>("source_boundary")));
-  else
-    bboxes = getFromBoundingBoxes();
+  std::vector<MeshTools::BoundingBox> bboxes = getFromBoundingBoxes();
 
   // Figure out how many "from" domains each processor owns.
   std::vector<unsigned int> froms_per_proc = getFromsPerProc();
@@ -103,7 +117,7 @@ MultiAppNearestNodeTransfer::execute()
   std::vector<std::vector<Point>> outgoing_qps(n_processors());
   // When we get results back, node_index_map will tell us which results go with
   // which points
-  std::vector<std::map<std::pair<unsigned int, dof_id_type>, dof_id_type>> node_index_map(
+  std::vector<std::map<std::pair<unsigned int, unsigned int>, unsigned int>> node_index_map(
       n_processors());
 
   if (!_neighbors_cached)
@@ -114,15 +128,9 @@ MultiAppNearestNodeTransfer::execute()
       unsigned int sys_num = to_sys->number();
       unsigned int var_num = to_sys->variable_number(_to_var_name);
       MeshBase * to_mesh = &_to_meshes[i_to]->getMesh();
-      auto & fe_type = to_sys->variable_type(var_num);
-      bool is_constant = fe_type.order == CONSTANT;
-      bool is_to_nodal = fe_type.family == LAGRANGE;
+      bool is_nodal = to_sys->variable_type(var_num).family == LAGRANGE;
 
-      // We support L2_LAGRANGE elemental variable with the first order
-      if (fe_type.order > FIRST && !is_to_nodal)
-        mooseError("We don't currently support second order or higher elemental variable ");
-
-      if (is_to_nodal)
+      if (is_nodal)
       {
         std::vector<Node *> target_local_nodes;
 
@@ -139,15 +147,14 @@ MultiAppNearestNodeTransfer::execute()
         else
         {
           target_local_nodes.resize(to_mesh->n_local_nodes());
-          unsigned int i = 0;
-          for (auto & node : to_mesh->local_node_ptr_range())
-            target_local_nodes[i++] = node;
-        }
+          MeshBase::const_node_iterator nodes_begin = to_mesh->local_nodes_begin();
+          MeshBase::const_node_iterator nodes_end = to_mesh->local_nodes_end();
 
-        // For error checking: keep track of all target_local_nodes
-        // which are successfully mapped to at least one domain where
-        // the nearest neighbor might be found.
-        std::set<Node *> local_nodes_found;
+          unsigned int i = 0;
+          for (MeshBase::const_node_iterator nodes_it = nodes_begin; nodes_it != nodes_end;
+               ++nodes_it, ++i)
+            target_local_nodes[i] = *nodes_it;
+        }
 
         for (const auto & node : target_local_nodes)
         {
@@ -169,122 +176,64 @@ MultiAppNearestNodeTransfer::execute()
                from0 += froms_per_proc[i_proc], i_proc++)
           {
             bool qp_found = false;
-
             for (unsigned int i_from = from0; i_from < from0 + froms_per_proc[i_proc] && !qp_found;
                  i_from++)
             {
-
               Real distance = bboxMinDistance(*node, bboxes[i_from]);
-
-              if (distance <= nearest_max_distance || bboxes[i_from].contains_point(*node))
+              if (distance < nearest_max_distance || bboxes[i_from].contains_point(*node))
               {
-                std::pair<unsigned int, dof_id_type> key(i_to, node->id());
+                std::pair<unsigned int, unsigned int> key(i_to, node->id());
                 node_index_map[i_proc][key] = outgoing_qps[i_proc].size();
                 outgoing_qps[i_proc].push_back(*node + _to_positions[i_to]);
                 qp_found = true;
-                local_nodes_found.insert(node);
               }
             }
           }
         }
-
-        // By the time we get to here, we should have found at least
-        // one candidate BoundingBox for every node in the
-        // target_local_nodes array that has dofs for the current
-        // variable in the current System.
-        for (const auto & node : target_local_nodes)
-          if (node->n_dofs(sys_num, var_num) && !local_nodes_found.count(node))
-            mooseError("In ",
-                       name(),
-                       ": No candidate BoundingBoxes found for node ",
-                       node->id(),
-                       " at position ",
-                       *node);
       }
       else // Elemental
       {
-        // For error checking: keep track of all local elements
-        // which are successfully mapped to at least one domain where
-        // the nearest neighbor might be found.
-        std::set<Elem *> local_elems_found;
-        std::vector<Point> points;
-        std::vector<dof_id_type> point_ids;
-        for (auto & elem : as_range(to_mesh->local_elements_begin(), to_mesh->local_elements_end()))
+        MeshBase::const_element_iterator elem_it = to_mesh->local_elements_begin();
+        MeshBase::const_element_iterator elem_end = to_mesh->local_elements_end();
+
+        for (; elem_it != elem_end; ++elem_it)
         {
+          Elem * elem = *elem_it;
+
+          Point centroid = elem->centroid();
+
           // Skip this element if the variable has no dofs at it.
           if (elem->n_dofs(sys_num, var_num) < 1)
             continue;
 
-          points.clear();
-          point_ids.clear();
-          // For constant monomial, we take the centroid of element
-          if (is_constant)
+          // Find which bboxes might have the nearest node to this point.
+          Real nearest_max_distance = std::numeric_limits<Real>::max();
+          for (const auto & bbox : bboxes)
           {
-            points.push_back(elem->centroid());
-            point_ids.push_back(elem->id());
+            Real distance = bboxMaxDistance(centroid, bbox);
+            if (distance < nearest_max_distance)
+              nearest_max_distance = distance;
           }
 
-          // For L2_LAGRANGE, we take all the nodes of element
-          else
-            for (auto & node : elem->node_ref_range())
-            {
-              points.push_back(node);
-              point_ids.push_back(node.id());
-            }
-
-          unsigned int offset = 0;
-          for (auto & point : points)
+          unsigned int from0 = 0;
+          for (processor_id_type i_proc = 0; i_proc < n_processors();
+               from0 += froms_per_proc[i_proc], i_proc++)
           {
-            // Find which bboxes might have the nearest node to this point.
-            Real nearest_max_distance = std::numeric_limits<Real>::max();
-            for (const auto & bbox : bboxes)
+            bool qp_found = false;
+            for (unsigned int i_from = from0; i_from < from0 + froms_per_proc[i_proc] && !qp_found;
+                 i_from++)
             {
-              Real distance = bboxMaxDistance(point, bbox);
-              if (distance < nearest_max_distance)
-                nearest_max_distance = distance;
-            }
-
-            unsigned int from0 = 0;
-            for (processor_id_type i_proc = 0; i_proc < n_processors();
-                 from0 += froms_per_proc[i_proc], i_proc++)
-            {
-              bool qp_found = false;
-              for (unsigned int i_from = from0;
-                   i_from < from0 + froms_per_proc[i_proc] && !qp_found;
-                   i_from++)
+              Real distance = bboxMinDistance(centroid, bboxes[i_from]);
+              if (distance < nearest_max_distance || bboxes[i_from].contains_point(centroid))
               {
-                Real distance = bboxMinDistance(point, bboxes[i_from]);
-                if (distance <= nearest_max_distance || bboxes[i_from].contains_point(point))
-                {
-                  std::pair<unsigned int, dof_id_type> key(
-                      i_to,
-                      point_ids[offset]); // Create an unique ID
-                  // If this point already exist, we skip it
-                  if (node_index_map[i_proc].find(key) != node_index_map[i_proc].end())
-                    continue;
-
-                  node_index_map[i_proc][key] = outgoing_qps[i_proc].size();
-                  outgoing_qps[i_proc].push_back(point + _to_positions[i_to]);
-                  qp_found = true;
-                  local_elems_found.insert(elem);
-                } // if distance
-              }   // for i_from
-            }     // for i_proc
-            offset++;
-          } // point
-        }   // for elem
-
-        // Verify that we found at least one candidate bounding
-        // box for each local element with dofs for the current
-        // variable in the current System.
-        for (auto & elem : as_range(to_mesh->local_elements_begin(), to_mesh->local_elements_end()))
-          if (elem->n_dofs(sys_num, var_num) && !local_elems_found.count(elem))
-            mooseError("In ",
-                       name(),
-                       ": No candidate BoundingBoxes found for Elem ",
-                       elem->id(),
-                       ", centroid = ",
-                       elem->centroid());
+                std::pair<unsigned int, unsigned int> key(i_to, elem->id());
+                node_index_map[i_proc][key] = outgoing_qps[i_proc].size();
+                outgoing_qps[i_proc].push_back(centroid + _to_positions[i_to]);
+                qp_found = true;
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -315,33 +264,14 @@ MultiAppNearestNodeTransfer::execute()
       _communicator.send(i_proc, outgoing_qps[i_proc], send_qps[i_proc]);
     }
 
-    // Build an array of pointers to all of this processor's local entities (nodes or
-    // elements).  We need to do this to avoid the expense of using LibMesh iterators.
-    // This step also takes care of limiting the search to boundary nodes, if
+    // Build an array of pointers to all of this processor's local nodes.  We
+    // need to do this to avoid the expense of using LibMesh iterators.  This
+    // step also takes care of limiting the search to boundary nodes, if
     // applicable.
-    std::vector<std::vector<std::pair<Point, DofObject *>>> local_entities(
-        froms_per_proc[processor_id()]);
-
-    std::vector<std::vector<unsigned int>> local_comps(froms_per_proc[processor_id()]);
-
-    // Local array of all from Variable references
-    std::vector<std::reference_wrapper<MooseVariableFEBase>> _from_vars;
-
+    std::vector<std::vector<Node *>> local_nodes(froms_per_proc[processor_id()]);
     for (unsigned int i = 0; i < froms_per_proc[processor_id()]; i++)
     {
-      MooseVariableFEBase & from_var = _from_problems[i]->getVariable(
-          0, _from_var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_STANDARD);
-      auto & from_fe_type = from_var.feType();
-      bool is_constant = from_fe_type.order == CONSTANT;
-      bool is_to_nodal = from_fe_type.family == LAGRANGE;
-
-      // We support L2_LAGRANGE elemental variable with the first order
-      if (from_fe_type.order > FIRST && !is_to_nodal)
-        mooseError("We don't currently support second order or higher elemental variable ");
-
-      _from_vars.emplace_back(from_var);
-      getLocalEntitiesAndComponents(
-          _from_meshes[i], local_entities[i], local_comps[i], is_to_nodal, is_constant);
+      getLocalNodes(_from_meshes[i], local_nodes[i]);
     }
 
     if (_fixed_meshes)
@@ -352,8 +282,6 @@ MultiAppNearestNodeTransfer::execute()
 
     for (processor_id_type i_proc = 0; i_proc < n_processors(); i_proc++)
     {
-      // We either use our own outgoing_qps or receive them from
-      // another processor.
       std::vector<Point> incoming_qps;
       if (i_proc == processor_id())
         incoming_qps = outgoing_qps[i_proc];
@@ -367,53 +295,32 @@ MultiAppNearestNodeTransfer::execute()
       }
 
       std::vector<Real> & outgoing_evals = processor_outgoing_evals[i_proc];
-      // Resize this vector to two times the size of the incoming_qps
-      // vector because we are going to store both the value from the nearest
-      // local node *and* the distance between the incoming_qp and that node
-      // for later comparison purposes.
       outgoing_evals.resize(2 * incoming_qps.size());
 
       for (unsigned int qp = 0; qp < incoming_qps.size(); qp++)
       {
-        const Point & qpt = incoming_qps[qp];
+        Point qpt = incoming_qps[qp];
         outgoing_evals[2 * qp] = std::numeric_limits<Real>::max();
         for (unsigned int i_local_from = 0; i_local_from < froms_per_proc[processor_id()];
              i_local_from++)
         {
-          MooseVariableFEBase & from_var = _from_vars[i_local_from];
+          MooseVariable & from_var = _from_problems[i_local_from]->getVariable(0, _from_var_name);
           System & from_sys = from_var.sys().system();
           unsigned int from_sys_num = from_sys.number();
           unsigned int from_var_num = from_sys.variable_number(from_var.name());
 
-          for (unsigned int i_node = 0; i_node < local_entities[i_local_from].size(); i_node++)
+          for (unsigned int i_node = 0; i_node < local_nodes[i_local_from].size(); i_node++)
           {
-            // Compute distance between the current incoming_qp to local node i_node.
             Real current_distance =
-                (qpt - local_entities[i_local_from][i_node].first - _from_positions[i_local_from])
-                    .norm();
-
-            // If an incoming_qp is equally close to two or more local nodes, then
-            // the first one we test will "win", even though any of the others could
-            // also potentially be chosen instead... there's no way to decide among
-            // the set of all equidistant points.
-            //
-            // outgoing_evals[2 * qp] is the current closest distance between a local point and
-            // the incoming_qp.
+                (qpt - *(local_nodes[i_local_from][i_node]) - _from_positions[i_local_from]).norm();
             if (current_distance < outgoing_evals[2 * qp])
             {
               // Assuming LAGRANGE!
-              if (local_entities[i_local_from][i_node].second->n_dofs(from_sys_num, from_var_num) >
-                  0)
+              if (local_nodes[i_local_from][i_node]->n_dofs(from_sys_num, from_var_num) > 0)
               {
-                dof_id_type from_dof = local_entities[i_local_from][i_node].second->dof_number(
-                    from_sys_num, from_var_num, local_comps[i_local_from][i_node]);
+                dof_id_type from_dof =
+                    local_nodes[i_local_from][i_node]->dof_number(from_sys_num, from_var_num, 0);
 
-                // The indexing of the outgoing_evals vector looks
-                // like [(distance, value), (distance, value), ...]
-                // for each incoming_qp. We only keep the value from
-                // the node with the smallest distance to the
-                // incoming_qp, and then we compare across all
-                // processors later and pick the closest one.
                 outgoing_evals[2 * qp] = current_distance;
                 outgoing_evals[2 * qp + 1] = (*from_sys.solution)(from_dof);
 
@@ -445,11 +352,8 @@ MultiAppNearestNodeTransfer::execute()
 
       for (unsigned int qp = 0; qp < outgoing_evals.size(); qp++)
       {
-        MooseVariableFEBase & from_var = _from_problems[_cached_froms[i_proc][qp]]->getVariable(
-            0,
-            _from_var_name,
-            Moose::VarKindType::VAR_ANY,
-            Moose::VarFieldType::VAR_FIELD_STANDARD);
+        MooseVariable & from_var =
+            _from_problems[_cached_froms[i_proc][qp]]->getVariable(0, _from_var_name);
         System & from_sys = from_var.sys().system();
         dof_id_type from_dof = _cached_dof_ids[i_proc][qp];
         // outgoing_evals[qp] = (*from_sys.solution)(_cached_dof_ids[i_proc][qp]);
@@ -493,21 +397,13 @@ MultiAppNearestNodeTransfer::execute()
       case FROM_MULTIAPP:
         solution = to_sys->solution.get();
         break;
-      default:
-        mooseError("Unknown direction");
     }
 
-    const MeshBase & to_mesh = _to_meshes[i_to]->getMesh();
+    MeshBase * to_mesh = &_to_meshes[i_to]->getMesh();
 
-    auto & fe_type = to_sys->variable_type(var_num);
-    bool is_constant = fe_type.order == CONSTANT;
-    bool is_to_nodal = fe_type.family == LAGRANGE;
+    bool is_nodal = to_sys->variable_type(var_num).family == LAGRANGE;
 
-    // We support L2_LAGRANGE elemental variable with the first order
-    if (fe_type.order > FIRST && !is_to_nodal)
-      mooseError("We don't currently support second order or higher elemental variable ");
-
-    if (is_to_nodal)
+    if (is_nodal)
     {
       std::vector<Node *> target_local_nodes;
 
@@ -523,10 +419,14 @@ MultiAppNearestNodeTransfer::execute()
       }
       else
       {
-        target_local_nodes.resize(to_mesh.n_local_nodes());
+        target_local_nodes.resize(to_mesh->n_local_nodes());
+        MeshBase::const_node_iterator nodes_begin = to_mesh->local_nodes_begin();
+        MeshBase::const_node_iterator nodes_end = to_mesh->local_nodes_end();
+
         unsigned int i = 0;
-        for (auto & node : to_mesh.local_node_ptr_range())
-          target_local_nodes[i++] = node;
+        for (MeshBase::const_node_iterator nodes_it = nodes_begin; nodes_it != nodes_end;
+             ++nodes_it, ++i)
+          target_local_nodes[i] = *nodes_it;
       }
 
       for (const auto & node : target_local_nodes)
@@ -535,27 +435,18 @@ MultiAppNearestNodeTransfer::execute()
         if (node->n_dofs(sys_num, var_num) < 1)
           continue;
 
-        // If nothing is in the node_index_map for a given local node,
-        // it will get the value 0.
         Real best_val = 0;
         if (!_neighbors_cached)
         {
-          // Search through all the incoming evaluation points from
-          // different processors for the one with the closest
-          // point. If there are multiple values from other processors
-          // which are equidistant, the first one we check will "win".
           Real min_dist = std::numeric_limits<Real>::max();
           for (unsigned int i_from = 0; i_from < incoming_evals.size(); i_from++)
           {
-            std::pair<unsigned int, dof_id_type> key(i_to, node->id());
+            std::pair<unsigned int, unsigned int> key(i_to, node->id());
             if (node_index_map[i_from].find(key) == node_index_map[i_from].end())
               continue;
             unsigned int qp_ind = node_index_map[i_from][key];
             if (incoming_evals[i_from][2 * qp_ind] >= min_dist)
               continue;
-
-            // If we made it here, we are going set a new value and
-            // distance because we found one that was closer.
             min_dist = incoming_evals[i_from][2 * qp_ind];
             best_val = incoming_evals[i_from][2 * qp_ind + 1];
 
@@ -579,76 +470,48 @@ MultiAppNearestNodeTransfer::execute()
     }
     else // Elemental
     {
-      std::vector<Point> points;
-      std::vector<dof_id_type> point_ids;
-      for (auto & elem : to_mesh.active_local_element_ptr_range())
+      MeshBase::const_element_iterator elem_it = to_mesh->local_elements_begin();
+      MeshBase::const_element_iterator elem_end = to_mesh->local_elements_end();
+
+      for (; elem_it != elem_end; ++elem_it)
       {
+        Elem * elem = *elem_it;
+
         // Skip this element if the variable has no dofs at it.
         if (elem->n_dofs(sys_num, var_num) < 1)
           continue;
 
-        points.clear();
-        point_ids.clear();
-        // grap sample points
-        // for constant shape function, we take the element centroid
-        if (is_constant)
+        Real best_val = 0;
+        if (!_neighbors_cached)
         {
-          points.push_back(elem->centroid());
-          point_ids.push_back(elem->id());
-        }
-        // for higher order method, we take all nodes of element
-        // this works for the first order L2 Lagrange. Might not work
-        // with something higher than the first order
-        else
-          for (auto & node : elem->node_ref_range())
+          Real min_dist = std::numeric_limits<Real>::max();
+          for (unsigned int i_from = 0; i_from < incoming_evals.size(); i_from++)
           {
-            points.push_back(node);
-            point_ids.push_back(node.id());
-          }
+            std::pair<unsigned int, unsigned int> key(i_to, elem->id());
+            if (node_index_map[i_from].find(key) == node_index_map[i_from].end())
+              continue;
+            unsigned int qp_ind = node_index_map[i_from][key];
+            if (incoming_evals[i_from][2 * qp_ind] >= min_dist)
+              continue;
+            min_dist = incoming_evals[i_from][2 * qp_ind];
+            best_val = incoming_evals[i_from][2 * qp_ind + 1];
 
-        unsigned int n_comp = elem->n_comp(sys_num, var_num);
-        // We assume each point corresponds to one component of elemental variable
-        if (points.size() != n_comp)
-          mooseError(" Number of points ",
-                     points.size(),
-                     " does not equal to number of variable components ",
-                     n_comp);
-
-        for (MooseIndex(points) offset = 0; offset < points.size(); offset++)
-        {
-          dof_id_type point_id = point_ids[offset];
-          Real best_val = 0;
-          if (!_neighbors_cached)
-          {
-            Real min_dist = std::numeric_limits<Real>::max();
-            for (MooseIndex(incoming_evals) i_from = 0; i_from < incoming_evals.size(); i_from++)
+            if (_fixed_meshes)
             {
-              std::pair<unsigned int, dof_id_type> key(i_to, point_id);
-              if (node_index_map[i_from].find(key) == node_index_map[i_from].end())
-                continue;
-
-              unsigned int qp_ind = node_index_map[i_from][key];
-              if (incoming_evals[i_from][2 * qp_ind] >= min_dist)
-                continue;
-
-              min_dist = incoming_evals[i_from][2 * qp_ind];
-              best_val = incoming_evals[i_from][2 * qp_ind + 1];
-
-              if (_fixed_meshes)
-              {
-                // Cache these indices.
-                _cached_from_inds[point_id] = i_from;
-                _cached_qp_inds[point_id] = qp_ind;
-              } // if _fixed_meshes
-            }   // i_from
-          }     //
-          else
-          {
-            best_val = incoming_evals[_cached_from_inds[point_id]][_cached_qp_inds[point_id]];
+              // Cache these indices.
+              _cached_from_inds[elem->id()] = i_from;
+              _cached_qp_inds[elem->id()] = qp_ind;
+            }
           }
-          dof_id_type dof = elem->dof_number(sys_num, var_num, offset);
-          solution->set(dof, best_val);
-        } // for offset
+        }
+
+        else
+        {
+          best_val = incoming_evals[_cached_from_inds[elem->id()]][_cached_qp_inds[elem->id()]];
+        }
+
+        dof_id_type dof = elem->dof_number(sys_num, var_num, 0);
+        solution->set(dof, best_val);
       }
     }
     solution->close();
@@ -668,8 +531,6 @@ MultiAppNearestNodeTransfer::execute()
   }
 
   _console << "Finished NearestNodeTransfer " << name() << std::endl;
-
-  postExecute();
 }
 
 Node *
@@ -679,13 +540,13 @@ MultiAppNearestNodeTransfer::getNearestNode(const Point & p,
                                             bool local)
 {
   distance = std::numeric_limits<Real>::max();
-  Node * nearest = nullptr;
+  Node * nearest = NULL;
 
   if (isParamValid("source_boundary"))
   {
     BoundaryID src_bnd_id = mesh->getBoundaryID(getParam<BoundaryName>("source_boundary"));
 
-    const ConstBndNodeRange & bnd_nodes = *mesh->getBoundaryNodeRange();
+    ConstBndNodeRange & bnd_nodes = *mesh->getBoundaryNodeRange();
     for (const auto & bnode : bnd_nodes)
     {
       if (bnode->_bnd_id == src_bnd_id)
@@ -703,15 +564,19 @@ MultiAppNearestNodeTransfer::getNearestNode(const Point & p,
   }
   else
   {
-    for (auto & node : as_range(local ? mesh->localNodesBegin() : mesh->getMesh().nodes_begin(),
-                                local ? mesh->localNodesEnd() : mesh->getMesh().nodes_end()))
+    MeshBase::const_node_iterator nodes_begin =
+        local ? mesh->localNodesBegin() : mesh->getMesh().nodes_begin();
+    MeshBase::const_node_iterator nodes_end =
+        local ? mesh->localNodesEnd() : mesh->getMesh().nodes_end();
+
+    for (MeshBase::const_node_iterator node_it = nodes_begin; node_it != nodes_end; ++node_it)
     {
-      Real current_distance = (p - *node).norm();
+      Real current_distance = (p - *(*node_it)).norm();
 
       if (current_distance < distance)
       {
         distance = current_distance;
-        nearest = node;
+        nearest = *node_it;
       }
     }
   }
@@ -720,11 +585,11 @@ MultiAppNearestNodeTransfer::getNearestNode(const Point & p,
 }
 
 Real
-MultiAppNearestNodeTransfer::bboxMaxDistance(const Point & p, const BoundingBox & bbox)
+MultiAppNearestNodeTransfer::bboxMaxDistance(Point p, MeshTools::BoundingBox bbox)
 {
-  std::array<Point, 2> source_points = {{bbox.first, bbox.second}};
+  std::vector<Point> source_points = {bbox.first, bbox.second};
 
-  std::array<Point, 8> all_points;
+  std::vector<Point> all_points(8);
   for (unsigned int x = 0; x < 2; x++)
     for (unsigned int y = 0; y < 2; y++)
       for (unsigned int z = 0; z < 2; z++)
@@ -739,23 +604,22 @@ MultiAppNearestNodeTransfer::bboxMaxDistance(const Point & p, const BoundingBox 
     if (distance > max_distance)
       max_distance = distance;
   }
-
   return max_distance;
 }
 
 Real
-MultiAppNearestNodeTransfer::bboxMinDistance(const Point & p, const BoundingBox & bbox)
+MultiAppNearestNodeTransfer::bboxMinDistance(Point p, MeshTools::BoundingBox bbox)
 {
-  std::array<Point, 2> source_points = {{bbox.first, bbox.second}};
+  std::vector<Point> source_points = {bbox.first, bbox.second};
 
-  std::array<Point, 8> all_points;
+  std::vector<Point> all_points(8);
   for (unsigned int x = 0; x < 2; x++)
     for (unsigned int y = 0; y < 2; y++)
       for (unsigned int z = 0; z < 2; z++)
         all_points[x + 2 * y + 4 * z] =
             Point(source_points[x](0), source_points[y](1), source_points[z](2));
 
-  Real min_distance = std::numeric_limits<Real>::max();
+  Real min_distance = 0.;
 
   for (unsigned int i = 0; i < 8; i++)
   {
@@ -763,143 +627,30 @@ MultiAppNearestNodeTransfer::bboxMinDistance(const Point & p, const BoundingBox 
     if (distance < min_distance)
       min_distance = distance;
   }
-
   return min_distance;
 }
 
 void
-MultiAppNearestNodeTransfer::getLocalEntitiesAndComponents(
-    MooseMesh * mesh,
-    std::vector<std::pair<Point, DofObject *>> & local_entities,
-    std::vector<unsigned int> & local_comps,
-    bool is_nodal,
-    bool is_constant)
+MultiAppNearestNodeTransfer::getLocalNodes(MooseMesh * mesh, std::vector<Node *> & local_nodes)
 {
-  mooseAssert(mesh, "mesh should not be a nullptr");
-  mooseAssert(local_entities.empty(), "local_entities should be empty");
-  const MeshBase & mesh_base = mesh->getMesh();
-
   if (isParamValid("source_boundary"))
   {
     BoundaryID src_bnd_id = mesh->getBoundaryID(getParam<BoundaryName>("source_boundary"));
-    auto proc_id = processor_id();
-    if (is_nodal)
-    {
-      const ConstBndNodeRange & bnd_nodes = *mesh->getBoundaryNodeRange();
-      for (const auto & bnode : bnd_nodes)
-      {
-        unsigned int comp = 0;
-        if (bnode->_bnd_id == src_bnd_id && bnode->_node->processor_id() == proc_id)
-        {
-          local_entities.emplace_back(*bnode->_node, bnode->_node);
-          local_comps.push_back(comp++);
-        }
-      }
-    }
-    else
-    {
-      const ConstBndElemRange & bnd_elems = *mesh->getBoundaryElementRange();
-      for (const auto & belem : bnd_elems)
-      {
-        unsigned int comp = 0;
-        if (belem->_bnd_id == src_bnd_id && belem->_elem->processor_id() == proc_id)
-        {
-          // CONSTANT Monomial
-          if (is_constant)
-          {
-            local_entities.emplace_back(belem->_elem->centroid(), belem->_elem);
-            local_comps.push_back(comp++);
-          }
-          // L2_LAGRANGE
-          else
-          {
-            for (auto & node : belem->_elem->node_ref_range())
-            {
-              local_entities.emplace_back(node, belem->_elem);
-              local_comps.push_back(comp++);
-            }
-          }
-        }
-      }
-    }
+
+    ConstBndNodeRange & bnd_nodes = *mesh->getBoundaryNodeRange();
+    for (const auto & bnode : bnd_nodes)
+      if (bnode->_bnd_id == src_bnd_id && bnode->_node->processor_id() == processor_id())
+        local_nodes.push_back(bnode->_node);
   }
   else
   {
-    if (is_nodal)
-    {
-      local_entities.reserve(mesh_base.n_local_nodes());
-      for (auto & node : mesh_base.local_node_ptr_range())
-      {
-        unsigned int comp = 0;
-        local_entities.emplace_back(*node, node);
-        local_comps.push_back(comp++);
-      }
-    }
-    else
-    {
-      local_entities.reserve(mesh_base.n_local_elem());
-      for (auto & elem : mesh_base.active_local_element_ptr_range())
-      {
-        unsigned int comp = 0;
-        // CONSTANT Monomial
-        if (is_constant)
-        {
-          local_entities.emplace_back(elem->centroid(), elem);
-          local_comps.push_back(comp++);
-        }
-        // L2_LAGRANGE
-        else
-        {
-          for (auto & node : elem->node_ref_range())
-          {
-            local_entities.emplace_back(node, elem);
-            local_comps.push_back(comp++);
-          }
-        }
-      }
-    }
-  }
-}
+    local_nodes.resize(mesh->getMesh().n_local_nodes());
 
-void
-MultiAppNearestNodeTransfer::getLocalEntities(
-    MooseMesh * mesh, std::vector<std::pair<Point, DofObject *>> & local_entities, bool is_nodal)
-{
-  mooseAssert(local_entities.empty(), "local_entities should be empty");
-  const MeshBase & mesh_base = mesh->getMesh();
+    MeshBase::const_node_iterator nodes_begin = mesh->localNodesBegin();
+    MeshBase::const_node_iterator nodes_end = mesh->localNodesEnd();
 
-  if (isParamValid("source_boundary"))
-  {
-    BoundaryID src_bnd_id = mesh->getBoundaryID(getParam<BoundaryName>("source_boundary"));
-    auto proc_id = processor_id();
-    if (is_nodal)
-    {
-      const ConstBndNodeRange & bnd_nodes = *mesh->getBoundaryNodeRange();
-      for (const auto & bnode : bnd_nodes)
-        if (bnode->_bnd_id == src_bnd_id && bnode->_node->processor_id() == proc_id)
-          local_entities.emplace_back(*bnode->_node, bnode->_node);
-    }
-    else
-    {
-      const ConstBndElemRange & bnd_elems = *mesh->getBoundaryElementRange();
-      for (const auto & belem : bnd_elems)
-        if (belem->_bnd_id == src_bnd_id && belem->_elem->processor_id() == proc_id)
-          local_entities.emplace_back(belem->_elem->centroid(), belem->_elem);
-    }
-  }
-  else
-  {
-    if (is_nodal)
-    {
-      local_entities.reserve(mesh_base.n_local_nodes());
-      for (auto & node : mesh_base.local_node_ptr_range())
-        local_entities.emplace_back(*node, node);
-    }
-    else
-    {
-      local_entities.reserve(mesh_base.n_local_elem());
-      for (auto & elem : mesh_base.active_local_element_ptr_range())
-        local_entities.emplace_back(elem->centroid(), elem);
-    }
+    unsigned int i = 0;
+    for (MeshBase::const_node_iterator node_it = nodes_begin; node_it != nodes_end; ++node_it, ++i)
+      local_nodes[i] = *node_it;
   }
 }

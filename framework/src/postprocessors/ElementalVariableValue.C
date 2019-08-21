@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ElementalVariableValue.h"
 
@@ -14,8 +19,6 @@
 #include "MooseVariable.h"
 #include "SubProblem.h"
 
-registerMooseObject("MooseApp", ElementalVariableValue);
-
 template <>
 InputParameters
 validParams<ElementalVariableValue>()
@@ -23,7 +26,6 @@ validParams<ElementalVariableValue>()
   InputParameters params = validParams<GeneralPostprocessor>();
   params.addRequiredParam<VariableName>("variable", "The variable to be monitored");
   params.addRequiredParam<unsigned int>("elementid", "The ID of the element where we monitor");
-  params.addClassDescription("Outputs an elemental variable value at a particular location");
   return params;
 }
 
@@ -33,11 +35,9 @@ ElementalVariableValue::ElementalVariableValue(const InputParameters & parameter
     _var_name(parameters.get<VariableName>("variable")),
     _element(_mesh.getMesh().query_elem_ptr(parameters.get<unsigned int>("elementid")))
 {
-  // This class may be too dangerous to use if renumbering is enabled,
-  // as the nodeid parameter obviously depends on a particular
-  // numbering.
-  if (_mesh.getMesh().allow_renumbering())
-    mooseError("ElementalVariableValue should only be used when node renumbering is disabled.");
+  // This class only works with ReplicatedMesh, since it relies on a
+  // specific element numbering that we can't guarantee with DistributedMesh
+  _mesh.errorIfDistributedMesh("ElementalVariableValue");
 }
 
 Real
@@ -47,11 +47,10 @@ ElementalVariableValue::getValue()
 
   if (_element && (_element->processor_id() == processor_id()))
   {
-    _fe_problem.setCurrentSubdomainID(_element, 0);
     _subproblem.prepare(_element, _tid);
     _subproblem.reinitElem(_element, _tid);
 
-    MooseVariable & var = _subproblem.getStandardVariable(_tid, _var_name);
+    MooseVariable & var = _subproblem.getVariable(_tid, _var_name);
     const VariableValue & u = var.sln();
     unsigned int n = u.size();
     for (unsigned int i = 0; i < n; i++)

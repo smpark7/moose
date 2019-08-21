@@ -1,16 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeVolumetricEigenstrain.h"
 #include "RankTwoTensor.h"
-
-registerMooseObject("TensorMechanicsApp", ComputeVolumetricEigenstrain);
 
 template <>
 InputParameters
@@ -86,8 +81,7 @@ ComputeVolumetricEigenstrain::initialSetup()
   for (unsigned int i = 0; i < _num_args; ++i)
   {
     const VariableName & iname = getVar("args", i)->name();
-    if (_fe_problem.isMatPropRequested(
-            derivativePropertyNameFirst(_base_name + "elastic_strain", iname)))
+    if (_fe_problem.isMatPropRequested(propertyNameFirst(_base_name + "elastic_strain", iname)))
       mooseError("Derivative of elastic_strain requested, but not yet implemented");
     else
       _delastic_strain[i] = nullptr;
@@ -95,7 +89,7 @@ ComputeVolumetricEigenstrain::initialSetup()
     {
       const VariableName & jname = getVar("args", j)->name();
       if (_fe_problem.isMatPropRequested(
-              derivativePropertyNameSecond(_base_name + "elastic_strain", iname, jname)))
+              propertyNameSecond(_base_name + "elastic_strain", iname, jname)))
         mooseError("Second Derivative of elastic_strain requested, but not yet implemented");
       else
         _d2elastic_strain[i][j] = nullptr;

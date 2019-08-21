@@ -1,22 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPOSITEEIGENSTRAIN_H
+#define COMPOSITEEIGENSTRAIN_H
 
 #include "ComputeEigenstrainBase.h"
 #include "CompositeTensorBase.h"
 #include "RankTwoTensor.h"
-
-class CompositeEigenstrain;
-
-template <>
-InputParameters validParams<CompositeEigenstrain>();
 
 /**
  * CompositeEigenstrain provides a simple RankTwoTensor type
@@ -37,3 +30,7 @@ protected:
   const std::string _M_name;
 };
 
+template <>
+InputParameters validParams<CompositeEigenstrain>();
+
+#endif // COMPOSITEEIGENSTRAIN_H

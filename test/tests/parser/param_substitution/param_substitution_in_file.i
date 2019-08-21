@@ -38,6 +38,7 @@ FILENAME = 'special_string'
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
 

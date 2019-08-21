@@ -23,7 +23,7 @@
 
 [Kernels]
   [./diff]
-    type = MatDiffusionTest
+    type = MatDiffusion
     variable = u
     prop_name = 'p'
   [../]
@@ -73,5 +73,5 @@
 [Outputs]
   exodus = true
   print_linear_residuals = true
-  perf_graph = true
+  print_perf_log = true
 []

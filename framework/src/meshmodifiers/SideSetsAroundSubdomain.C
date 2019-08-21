@@ -1,35 +1,34 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "SideSetsAroundSubdomain.h"
 #include "InputParameters.h"
 #include "MooseTypes.h"
 #include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/mesh.h"
 #include "libmesh/remote_elem.h"
-#include "libmesh/fe_base.h"
-
-registerMooseObjectReplaced("MooseApp",
-                            SideSetsAroundSubdomain,
-                            "11/30/2019 00:00",
-                            SideSetsAroundSubdomainGenerator);
 
 template <>
 InputParameters
 validParams<SideSetsAroundSubdomain>()
 {
   InputParameters params = validParams<AddSideSetsBase>();
+  params += validParams<BlockRestrictable>();
   params.addRequiredParam<std::vector<BoundaryName>>(
       "new_boundary", "The list of boundary IDs to create on the supplied subdomain");
-  params.addRequiredParam<std::vector<SubdomainName>>("block",
-                                                      "The blocks around which to create sidesets");
   params.addParam<Point>("normal",
                          "If supplied, only faces with normal equal to this, up to "
                          "normal_tol, will be added to the sidesets specified");
@@ -41,6 +40,9 @@ validParams<SideSetsAroundSubdomain>()
                                     "1 - normal_tol, where normal_hat = "
                                     "normal/|normal|");
 
+  // We can't perform block/boundary restrictable checks on construction for MeshModifiers
+  params.set<bool>("delay_initialization") = true;
+
   params.addClassDescription(
       "Adds element faces that are on the exterior of the given block to the sidesets specified");
   return params;
@@ -48,6 +50,7 @@ validParams<SideSetsAroundSubdomain>()
 
 SideSetsAroundSubdomain::SideSetsAroundSubdomain(const InputParameters & parameters)
   : AddSideSetsBase(parameters),
+    BlockRestrictable(parameters),
     _boundary_names(getParam<std::vector<BoundaryName>>("new_boundary")),
     _using_normal(isParamValid("normal")),
     _normal_tol(getParam<Real>("normal_tol")),
@@ -62,14 +65,27 @@ SideSetsAroundSubdomain::SideSetsAroundSubdomain(const InputParameters & paramet
 }
 
 void
+SideSetsAroundSubdomain::initialize()
+{
+  // Initialize the BlockRestrictable parent
+  initializeBlockRestrictable(_pars);
+}
+
+void
 SideSetsAroundSubdomain::modify()
 {
   // Reference the the libMesh::MeshBase
   MeshBase & mesh = _mesh_ptr->getMesh();
 
-  // Extract the block ID
-  auto blocks = _mesh_ptr->getSubdomainIDs(getParam<std::vector<SubdomainName>>("block"));
-  std::set<SubdomainID> block_ids(blocks.begin(), blocks.end());
+  // Extract the 'first' block ID
+  SubdomainID block_id = *blockIDs().begin();
+
+  // Extract the SubdomainID
+  if (numBlocks() > 1)
+    mooseWarning("SideSetsAroundSubdomain only acts on a single subdomain, but multiple were "
+                 "provided: only the ",
+                 block_id,
+                 "' subdomain is being used.");
 
   // Create the boundary IDs from the list of names provided (the true flag creates ids from unknown
   // names)
@@ -91,12 +107,16 @@ SideSetsAroundSubdomain::modify()
   std::vector<vec_type> queries(my_n_proc);
 
   // Loop over the elements
-  for (const auto & elem : mesh.active_element_ptr_range())
+  for (MeshBase::const_element_iterator el = mesh.active_elements_begin(),
+                                        end_el = mesh.active_elements_end();
+       el != end_el;
+       ++el)
   {
+    const Elem * elem = *el;
     SubdomainID curr_subdomain = elem->subdomain_id();
 
     // We only need to loop over elements in the source subdomain
-    if (block_ids.count(curr_subdomain) == 0)
+    if (curr_subdomain != block_id)
       continue;
 
     for (unsigned int side = 0; side < elem->n_sides(); ++side)
@@ -110,9 +130,9 @@ SideSetsAroundSubdomain::modify()
       {
         queries[elem->processor_id()].push_back(std::make_pair(elem->id(), side));
       }
-      else if (neighbor == nullptr || // element on boundary OR
-               block_ids.count(neighbor->subdomain_id()) ==
-                   0) // neighboring element is on a different subdomain
+      else if (neighbor == NULL || // element on boundary OR
+               neighbor->subdomain_id() !=
+                   block_id) // neighboring element is on a different subdomain
       {
         if (_using_normal)
         {
@@ -167,9 +187,8 @@ SideSetsAroundSubdomain::modify()
         const unsigned int side = q.second;
         const Elem * neighbor = elem->neighbor_ptr(side);
 
-        if (neighbor == nullptr || // element on boundary OR
-            block_ids.count(neighbor->subdomain_id()) ==
-                0) // neighboring element is on a different subdomain
+        if (neighbor == NULL ||                   // element on boundary OR
+            neighbor->subdomain_id() != block_id) // neighboring element is on a different subdomain
         {
           if (_using_normal)
           {

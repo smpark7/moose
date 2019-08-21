@@ -1,21 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ACTION_H
+#define ACTION_H
 
 #include "InputParameters.h"
 #include "ConsoleStreamInterface.h"
-#include "Registry.h"
-#include "PerfGraphInterface.h"
-#include "MemberTemplateMacros.h"
-
-#include "libmesh/parallel_object.h"
 
 #include <string>
 #include <ostream>
@@ -35,65 +36,14 @@ InputParameters validParams<Action>();
 /**
  * Base class for actions.
  */
-class Action : public ConsoleStreamInterface,
-               public PerfGraphInterface,
-               public libMesh::ParallelObject
+class Action : public ConsoleStreamInterface
 {
 public:
   Action(InputParameters parameters);
 
   virtual ~Action() {}
 
-  /**
-   * The method called externally that causes the action to act()
-   */
-  void timedAct();
-
-private:
-  /**
-   * Method for adding a single relationship manager
-   * @param input_rm_type What relationship manager type we are currently adding
-   * @param moose_object_pars The parameters of the MooseObject that requested the RM
-   * @param rm_name The class type of the RM, e.g. ElementSideNeighborLayers
-   * @param rm_type The RelationshipManagerType, e.g. geometric, algebraic, coupling
-   * @param rm_input_parameter_func The RM callback function, typically a lambda defined in the
-   *                                requesting MooseObject's validParams function
-   * @param sys_type A RMSystemType that can be used to limit the systems and consequent dof_maps
-   *                 that the RM can be attached to
-   */
-  void
-  addRelationshipManager(Moose::RelationshipManagerType input_rm_type,
-                         const InputParameters & moose_object_pars,
-                         std::string rm_name,
-                         Moose::RelationshipManagerType rm_type,
-                         Moose::RelationshipManagerInputParameterCallback rm_input_parameter_func,
-                         Moose::RMSystemType sys_type);
-
-protected:
-  /**
-   * Method to add a relationship manager for the objects being added to the system. Relationship
-   * managers have to be added relatively early. In many cases before the Action::act() method
-   * is called.
-   * @param when_type The parameter indicating the normal time for adding either Geometric or
-   *        Algebraic RelationshipManagers. It may not always be possible to add your
-   *        RelationshipManager as early as you'd like. In these cases, your DistributedMesh may
-   *        consume more memory during the problem setup.
-   * @param moose_object_pars The MooseObject to inspect for RelationshipManagers to add
-   */
-  void addRelationshipManagers(Moose::RelationshipManagerType when_type,
-                               const InputParameters & moose_object_pars);
-
-public:
-  /**
-   * Method to add a relationship manager for the objects being added to the system. Relationship
-   * managers have to be added relatively early. In many cases before the Action::act() method
-   * is called.
-   * @param when_type The parameter indicating the normal time for adding either Geometric or
-   *        Algebraic RelationshipManagers. It may not always be possible to add your
-   *        RelationshipManager as early as you'd like. In these cases, your DistributedMesh may
-   *        consume more memory during the problem setup.
-   */
-  virtual void addRelationshipManagers(Moose::RelationshipManagerType when_type);
+  virtual void act() = 0;
 
   /**
    * The name of the action
@@ -124,75 +74,14 @@ public:
    * @return The value of the parameter
    */
   template <typename T>
-  const T & getParamTempl(const std::string & name) const;
+  const T & getParam(const std::string & name) const;
   ///@}
-
-  /**
-   * Verifies that the requested parameter exists and is not NULL and returns it to the caller.
-   * The template parameter must be a pointer or an error will be thrown.
-   */
-  template <typename T>
-  T getCheckedPointerParam(const std::string & name, const std::string & error_string = "") const
-  {
-    return parameters().getCheckedPointerParam<T>(name, error_string);
-  }
 
   inline bool isParamValid(const std::string & name) const { return _pars.isParamValid(name); }
 
   void appendTask(const std::string & task) { _all_tasks.insert(task); }
 
-  /**
-   * Emits an error prefixed with the file and line number of the given param (from the input
-   * file) along with the full parameter path+name followed by the given args as the message.
-   * If this object's parameters were not created directly by the Parser, then this function falls
-   * back to the normal behavior of mooseError - only printing a message using the given args.
-   */
-  template <typename... Args>
-  [[noreturn]] void paramError(const std::string & param, Args... args)
-  {
-    auto prefix = param + ": ";
-    if (!_pars.inputLocation(param).empty())
-      prefix = _pars.inputLocation(param) + ": (" + _pars.paramFullpath(param) + "):\n";
-    mooseError(prefix, args...);
-  }
-
-  /**
-   * Emits a warning prefixed with the file and line number of the given param (from the input
-   * file) along with the full parameter path+name followed by the given args as the message.
-   * If this object's parameters were not created directly by the Parser, then this function falls
-   * back to the normal behavior of mooseWarning - only printing a message using the given args.
-   */
-  template <typename... Args>
-  void paramWarning(const std::string & param, Args... args)
-  {
-    auto prefix = param + ": ";
-    if (!_pars.inputLocation(param).empty())
-      prefix = _pars.inputLocation(param) + ": (" + _pars.paramFullpath(param) + "):\n";
-    mooseWarning(prefix, args...);
-  }
-
-  /**
-   * Emits an informational message prefixed with the file and line number of the given param
-   * (from the input file) along with the full parameter path+name followed by the given args as
-   * the message.  If this object's parameters were not created directly by the Parser, then this
-   * function falls back to the normal behavior of mooseInfo - only printing a message using
-   * the given args.
-   */
-  template <typename... Args>
-  void paramInfo(const std::string & param, Args... args)
-  {
-    auto prefix = param + ": ";
-    if (!_pars.inputLocation(param).empty())
-      prefix = _pars.inputLocation(param) + ": (" + _pars.paramFullpath(param) + "):\n";
-    mooseInfo(prefix, args...);
-  }
-
 protected:
-  /**
-   * Method to add objects to the simulation or perform other setup tasks.
-   */
-  virtual void act() = 0;
-
   /// Input parameters for the action
   InputParameters _pars;
 
@@ -241,13 +130,15 @@ protected:
   /// Convenience reference to a problem this action works on
   std::shared_ptr<FEProblemBase> & _problem;
 
-  /// Timers
-  PerfID _act_timer;
+  /// Convenience reference to an executioner
+  std::shared_ptr<Executioner> & _executioner;
 };
 
 template <typename T>
 const T &
-Action::getParamTempl(const std::string & name) const
+Action::getParam(const std::string & name) const
 {
   return InputParameters::getParamHelper(name, _pars, static_cast<T *>(0));
 }
+
+#endif // ACTION_H

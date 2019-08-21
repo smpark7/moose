@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ODEKernel.h"
 
@@ -32,24 +37,19 @@ ODEKernel::reinit()
 void
 ODEKernel::computeResidual()
 {
-  prepareVectorTag(_assembly, _var.number());
-
+  DenseVector<Number> & re = _assembly.residualBlock(_var.number());
   for (_i = 0; _i < _var.order(); _i++)
-    _local_re(_i) += computeQpResidual();
-
-  accumulateTaggedLocalResidual();
+    re(_i) += computeQpResidual();
 }
 
 void
 ODEKernel::computeJacobian()
 {
-  prepareMatrixTag(_assembly, _var.number(), _var.number());
+  DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), _var.number());
 
   for (_i = 0; _i < _var.order(); _i++)
     for (_j = 0; _j < _var.order(); _j++)
-      _local_ke(_i, _j) += computeQpJacobian();
-
-  accumulateTaggedLocalMatrix();
+      ke(_i, _j) += computeQpJacobian();
 
   // compute off-diagonal jacobians wrt scalar variables
   const std::vector<MooseVariableScalar *> & scalar_vars = _sys.getScalarVariables(_tid);
@@ -62,17 +62,14 @@ ODEKernel::computeOffDiagJacobian(unsigned int jvar)
 {
   if (_sys.isScalarVariable(jvar))
   {
-    prepareMatrixTag(_assembly, _var.number(), jvar);
-
+    DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar);
     MooseVariableScalar & var_j = _sys.getScalarVariable(_tid, jvar);
     for (_i = 0; _i < _var.order(); _i++)
       for (_j = 0; _j < var_j.order(); _j++)
       {
         if (jvar != _var.number())
-          _local_ke(_i, _j) += computeQpOffDiagJacobian(jvar);
+          ke(_i, _j) += computeQpOffDiagJacobian(jvar);
       }
-
-    accumulateTaggedLocalMatrix();
   }
 }
 

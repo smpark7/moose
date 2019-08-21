@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 from peacock.utils import ExeLauncher
 import json
 import mooseutils
@@ -18,7 +9,7 @@ class JsonData(object):
     Class that holds the json produced by an executable.
     """
 
-    def __init__(self, app_path="", extra_args=[], **kwds):
+    def __init__(self, app_path="", **kwds):
         """
         Constructor.
         Input:
@@ -28,7 +19,6 @@ class JsonData(object):
 
         self.json_data = None
         self.app_path = None
-        self.extra_args = extra_args
         if app_path:
             self.appChanged(app_path)
 
@@ -65,7 +55,7 @@ class JsonData(object):
         """
         #  "-options_left 0" is used to stop the debug version of PETSc from printing
         # out WARNING messages that sometime confuse the json parser
-        data = ExeLauncher.runExe(app_path, ["-options_left", "0", "--json"] + self.extra_args)
+        data = ExeLauncher.runExe(app_path, ["-options_left", "0", "--json"] )
         data = data.split('**START JSON DATA**\n')[1]
         data = data.split('**END JSON DATA**')[0]
         return data

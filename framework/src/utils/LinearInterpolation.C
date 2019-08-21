@@ -1,35 +1,33 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "LinearInterpolation.h"
-
-#include "metaphysicl/numberarray.h"
-#include "metaphysicl/dualnumber.h"
 
 #include <cassert>
 #include <fstream>
 #include <stdexcept>
 
-template <typename T>
-int LinearInterpolationTempl<T>::_file_number = 0;
+int LinearInterpolation::_file_number = 0;
 
-template <typename T>
-LinearInterpolationTempl<T>::LinearInterpolationTempl(const std::vector<Real> & x,
-                                                      const std::vector<Real> & y)
+LinearInterpolation::LinearInterpolation(const std::vector<Real> & x, const std::vector<Real> & y)
   : _x(x), _y(y)
 {
   errorCheck();
 }
 
-template <typename T>
 void
-LinearInterpolationTempl<T>::errorCheck()
+LinearInterpolation::errorCheck()
 {
   if (_x.size() != _y.size())
     throw std::domain_error("Vectors are not the same length");
@@ -44,11 +42,10 @@ LinearInterpolationTempl<T>::errorCheck()
     }
 }
 
-template <typename T>
-T
-LinearInterpolationTempl<T>::sample(const T & x) const
+Real
+LinearInterpolation::sample(Real x) const
 {
-  // sanity check (empty LinearInterpolationTempls get constructed in many places
+  // sanity check (empty LinearInterpolations get constructed in many places
   // so we cannot put this into the errorCheck)
   assert(_x.size() > 0);
 
@@ -66,9 +63,8 @@ LinearInterpolationTempl<T>::sample(const T & x) const
   return 0;
 }
 
-template <typename T>
-T
-LinearInterpolationTempl<T>::sampleDerivative(const T & x) const
+Real
+LinearInterpolation::sampleDerivative(Real x) const
 {
   // endpoint cases
   if (x < _x[0])
@@ -84,9 +80,8 @@ LinearInterpolationTempl<T>::sampleDerivative(const T & x) const
   return 0;
 }
 
-template <typename T>
 Real
-LinearInterpolationTempl<T>::integrate()
+LinearInterpolation::integrate()
 {
   Real answer = 0;
   for (unsigned int i = 1; i < _x.size(); ++i)
@@ -95,26 +90,85 @@ LinearInterpolationTempl<T>::integrate()
   return answer;
 }
 
-template <typename T>
 Real
-LinearInterpolationTempl<T>::domain(int i) const
+LinearInterpolation::domain(int i) const
 {
   return _x[i];
 }
 
-template <typename T>
 Real
-LinearInterpolationTempl<T>::range(int i) const
+LinearInterpolation::range(int i) const
 {
   return _y[i];
 }
 
-template <typename T>
+void
+LinearInterpolation::dumpSampleFile(std::string base_name,
+                                    std::string x_label,
+                                    std::string y_label,
+                                    Real xmin,
+                                    Real xmax,
+                                    Real ymin,
+                                    Real ymax)
+{
+  std::stringstream filename, filename_pts;
+  const unsigned char fill_character = '0';
+  const unsigned int field_width = 4;
+
+  filename.fill(fill_character);
+  filename << base_name;
+  filename.width(field_width);
+  filename << _file_number << ".plt";
+
+  filename_pts.fill(fill_character);
+  filename_pts << base_name << "_pts";
+  filename_pts.width(field_width);
+  filename_pts << _file_number << ".dat";
+
+  /* First dump the GNUPLOT file with the Piecewise Linear Equations */
+  std::ofstream out(filename.str().c_str());
+  out.precision(15);
+  out.fill(fill_character);
+
+  out << "set terminal postscript color enhanced\n"
+      << "set output \"" << base_name;
+  out.width(field_width);
+  out << _file_number << ".eps\"\n"
+      << "set xlabel \"" << x_label << "\"\n"
+      << "set ylabel \"" << y_label << "\"\n";
+  if (xmin != 0 && xmax != 0)
+    out << "set xrange [" << xmin << ":" << xmax << "]\n";
+  if (ymin != 0 && ymax != 0)
+    out << "set yrange [" << ymin << ":" << ymax << "]\n";
+  out << "set key left top\n"
+      << "f(x)=";
+
+  for (unsigned int i = 1; i < _x.size(); ++i)
+  {
+    Real m = (_y[i] - _y[i - 1]) / (_x[i] - _x[i - 1]);
+    Real b = (_y[i] - m * _x[i]);
+
+    out << _x[i - 1] << "<=x && x<" << _x[i] << " ? " << m << "*x+(" << b << ") : ";
+  }
+  out << " 1/0\n";
+
+  out << "\nplot f(x) with lines, '" << filename_pts.str() << "' using 1:2 title \"Points\"\n";
+  out.close();
+
+  assert(_x.size() == _y.size());
+
+  out.open(filename_pts.str().c_str());
+  /* Next dump the data points into a separate file */
+  for (unsigned int i = 0; i < _x.size(); ++i)
+    out << _x[i] << " " << _y[i] << "\n";
+  out << std::endl;
+
+  ++_file_number;
+  out.close();
+}
+
 unsigned int
-LinearInterpolationTempl<T>::getSampleSize() const
+LinearInterpolation::getSampleSize()
 {
   return _x.size();
 }
-
-template class LinearInterpolationTempl<Real>;
-template class LinearInterpolationTempl<DualReal>;

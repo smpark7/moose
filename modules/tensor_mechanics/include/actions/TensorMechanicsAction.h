@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef TENSORMECHANICSACTION_H
+#define TENSORMECHANICSACTION_H
 
 #include "TensorMechanicsActionBase.h"
 
@@ -32,7 +30,7 @@ protected:
   virtual InputParameters getKernelParameters(std::string type);
 
   ///@{ displacement variables
-  std::vector<VariableName> _displacements;
+  std::vector<NonlinearVariableName> _displacements;
   unsigned int _ndisp;
   std::vector<VariableName> _coupled_displacements;
   ///@}
@@ -78,21 +76,11 @@ protected:
     /* PlaneStress */
   } _planar_formulation;
 
-  enum class OutOfPlaneDirection
-  {
-    x,
-    y,
-    z
-  };
-
-  const OutOfPlaneDirection _out_of_plane_direction;
-
-  /// base name for the current master action block
-  const std::string _base_name;
-
   /// use displaced mesh (true unless _strain is SMALL)
   bool _use_displaced_mesh;
 
   /// output aux variables to generate for sclar stress/strain tensor quantities
   std::vector<std::string> _generate_output;
 };
+
+#endif // TENSORMECHANICSACTION_H

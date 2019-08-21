@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef CAPPEDWEAKPLANECOSSERATSTRESSUPDATE_H
+#define CAPPEDWEAKPLANECOSSERATSTRESSUPDATE_H
 
 #include "CappedWeakPlaneStressUpdate.h"
 
@@ -43,7 +41,7 @@ protected:
                                          Real p,
                                          Real q,
                                          Real gaE,
-                                         const yieldAndFlow & smoothed_q,
+                                         const f_and_derivs & smoothed_q,
                                          const RankFourTensor & Eijkl,
                                          bool compute_full_tangent_operator,
                                          RankFourTensor & cto) const override;
@@ -53,7 +51,7 @@ protected:
                                     Real q_ok,
                                     Real gaE,
                                     const std::vector<Real> & intnl,
-                                    const yieldAndFlow & smoothed_q,
+                                    const f_and_derivs & smoothed_q,
                                     const RankFourTensor & Eijkl,
                                     RankTwoTensor & stress) const override;
 
@@ -62,3 +60,4 @@ protected:
   virtual RankFourTensor d2qdstress2(const RankTwoTensor & stress) const override;
 };
 
+#endif // CAPPEDWEAKPLANECOSSERATSTRESSUPDATE_H

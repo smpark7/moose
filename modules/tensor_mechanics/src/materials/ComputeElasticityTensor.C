@@ -1,16 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeElasticityTensor.h"
 #include "RotationTensor.h"
-
-registerMooseObject("TensorMechanicsApp", ComputeElasticityTensor);
 
 template <>
 InputParameters
@@ -27,14 +22,10 @@ validParams<ComputeElasticityTensor>()
 ComputeElasticityTensor::ComputeElasticityTensor(const InputParameters & parameters)
   : ComputeRotatedElasticityTensorBase(parameters),
     _Cijkl(getParam<std::vector<Real>>("C_ijkl"),
-           (RankFourTensor::FillMethod)(int)getParam<MooseEnum>("fill_method"))
+           (RankFourTensor::FillMethod)(int)getParam<MooseEnum>("fill_method")),
+    _is_isotropic(_Cijkl.isIsotropic())
 {
-  if (!isParamValid("elasticity_tensor_prefactor"))
-    issueGuarantee(_elasticity_tensor_name, Guarantee::CONSTANT_IN_TIME);
-
-  if (_Cijkl.isIsotropic())
-    issueGuarantee(_elasticity_tensor_name, Guarantee::ISOTROPIC);
-  else
+  if (!_is_isotropic)
   {
     // Define a rotation according to Euler angle parameters
     RotationTensor R(_Euler_angles); // R type: RealTensorValue
@@ -49,4 +40,10 @@ ComputeElasticityTensor::computeQpElasticityTensor()
 {
   // Assign elasticity tensor at a given quad point
   _elasticity_tensor[_qp] = _Cijkl;
+}
+
+bool
+ComputeElasticityTensor::isGuaranteedIsotropic() const
+{
+  return _is_isotropic;
 }

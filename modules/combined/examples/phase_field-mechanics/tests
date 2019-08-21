@@ -3,7 +3,6 @@
     type = RunApp
     input = 'Conserved.i'
     check_input = True
-    fparser_jit = True
   [../]
   [./EBSD_reconstruction_grain_growth_mech]
     type = RunApp
@@ -24,7 +23,6 @@
     # it takes to run.
     cli_args = 'Mesh/nx=2 Mesh/ny=2'
     check_input = True
-    fparser_jit = True
   [../]
   [./grain_texture]
     type = RunApp

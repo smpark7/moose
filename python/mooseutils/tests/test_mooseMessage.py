@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 import sys
 import unittest
 from mooseutils import message
@@ -25,7 +16,6 @@ class TestMooseMessage(unittest.TestCase):
         output = sys.stdout.getvalue()
         self.assertIn("The default message with a number 1.0", output)
 
-    @unittest.skip('Breaks with current package')
     def testMooseMessageTraceback(self):
         """
         Test that the traceback argument is operational.
@@ -62,7 +52,6 @@ class TestMooseMessage(unittest.TestCase):
         output = sys.stdout.getvalue()
         self.assertIn("You should see this!", output)
 
-    @unittest.skip('Breaks with current package')
     def testMooseError(self):
         """
         Tests mooseError function.

@@ -1,5 +1,4 @@
 [Tests]
-  deprecated = True
   [./test_inside_boundingbox]
     type = 'Exodiff'
     input = 'boundingbox_nodeset_inside_test.i'

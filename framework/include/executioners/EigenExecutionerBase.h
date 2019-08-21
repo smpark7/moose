@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef EIGENEXECUTIONERBASE_H
+#define EIGENEXECUTIONERBASE_H
 
 #include "Executioner.h"
 
@@ -64,9 +70,8 @@ public:
    * @param tol_x Tolerance on the difference of the solution norm of two successive iterations.
    * @param k Eigenvalue, input as the initial guess.
    * @param initial_res The initial residual.
-   * @return true solve converges, otherwise false.
    */
-  virtual bool inversePowerIteration(unsigned int min_iter,
+  virtual void inversePowerIteration(unsigned int min_iter,
                                      unsigned int max_iter,
                                      Real pfactor,
                                      bool cheb_on,
@@ -109,9 +114,8 @@ public:
    * @param abs_tol Absolute tolerance on system residual.
    * @param pfactor The factor on reducing the residual norm of each linear iteration.
    * @param k Eigenvalue, input as the initial guess.
-   * @return true solve converges, otherwise false.
    */
-  virtual bool nonlinearSolve(Real rel_tol, Real abs_tol, Real pfactor, Real & k);
+  virtual void nonlinearSolve(Real rel_tol, Real abs_tol, Real pfactor, Real & k);
 
   /**
    * A method for returning the eigenvalue computed by the executioner
@@ -138,9 +142,7 @@ protected:
 
   /// Postprocessor for normalization
   const Real & _normalization;
-  ExecFlagEnum _norm_exec;
-
-  PerfID _final_timer;
+  ExecFlagType _norm_execflag;
 
   // Chebyshev acceleration
   class Chebyshev_Parameters
@@ -167,3 +169,4 @@ protected:
                  const PostprocessorValue * solution_diff);
 };
 
+#endif // EIGENEXECUTIONERBASE_H

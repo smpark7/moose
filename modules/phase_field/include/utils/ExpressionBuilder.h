@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef EXPRESSIONBUILDER_H
+#define EXPRESSIONBUILDER_H
 
 #include <vector>
 #include <ostream>
@@ -411,7 +409,7 @@ public:
  * Unary operators
  */
 #define UNARY_OP_IMPLEMENT(op, OP)                                                                 \
-  EBTerm operator op() const                                                                       \
+  EBTerm operator op()                                                                             \
   {                                                                                                \
     mooseAssert(_root != NULL, "Empty term provided for unary operator " #op);                     \
     return EBTerm(new EBUnaryOpTermNode(cloneRoot(), EBUnaryOpTermNode::OP));                      \
@@ -437,7 +435,7 @@ public:
  * Binary operators (including number,term operations)
  */
 #define BINARY_OP_IMPLEMENT(op, OP)                                                                \
-  EBTerm operator op(const EBTerm & term) const                                                    \
+  EBTerm operator op(const EBTerm & term)                                                          \
   {                                                                                                \
     mooseAssert(_root != NULL, "Empty term provided on left side of operator " #op);               \
     mooseAssert(term._root != NULL, "Empty term provided on right side of operator " #op);         \
@@ -700,3 +698,4 @@ ExpressionBuilder::EBSubstitutionRuleTyped<Node_T>::apply(
     return substitute(*match_node);
 }
 
+#endif // EXPRESSIONBUILDER_H

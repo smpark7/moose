@@ -13,37 +13,45 @@ validParams<StorkApp>()
 
 StorkApp::StorkApp(InputParameters parameters) : MooseApp(parameters)
 {
-  StorkApp::registerAll(_factory, _action_factory, _syntax);
+  Moose::registerObjects(_factory);
+  StorkApp::registerObjects(_factory);
+
+  Moose::associateSyntax(_syntax, _action_factory);
+  StorkApp::associateSyntax(_syntax, _action_factory);
 }
 
 StorkApp::~StorkApp() {}
 
-void
-StorkApp::registerAll(Factory & f, ActionFactory & af, Syntax & /*s*/)
+// External entry point for dynamic application loading
+extern "C" void
+StorkApp__registerApps()
 {
-  /* ModulesApp::registerAll(f, af, s); */
-  Registry::registerObjectsTo(f, {"StorkApp"});
-  Registry::registerActionsTo(af, {"StorkApp"});
-
-  /* register custom execute flags, action syntax, etc. here */
+  StorkApp::registerApps();
 }
-
 void
 StorkApp::registerApps()
 {
   registerApp(StorkApp);
 }
 
-/***************************************************************************************************
- *********************** Dynamic Library Entry Points - DO NOT MODIFY ******************************
- **************************************************************************************************/
+// External entry point for dynamic object registration
 extern "C" void
-StorkApp__registerAll(Factory & f, ActionFactory & af, Syntax & s)
+StorkApp__registerObjects(Factory & factory)
 {
-  StorkApp::registerAll(f, af, s);
+  StorkApp::registerObjects(factory);
 }
-extern "C" void
-StorkApp__registerApps()
+void
+StorkApp::registerObjects(Factory & /*factory*/)
 {
-  StorkApp::registerApps();
+}
+
+// External entry point for dynamic syntax association
+extern "C" void
+StorkApp__associateSyntax(Syntax & syntax, ActionFactory & action_factory)
+{
+  StorkApp::associateSyntax(syntax, action_factory);
+}
+void
+StorkApp::associateSyntax(Syntax & /*syntax*/, ActionFactory & /*action_factory*/)
+{
 }

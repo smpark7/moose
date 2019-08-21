@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef INTERNALSIDEINDICATOR_H
+#define INTERNALSIDEINDICATOR_H
 
 // local includes
 #include "Indicator.h"
@@ -17,10 +23,7 @@
 
 // Forward Declarations
 class InternalSideIndicator;
-template <typename>
-class MooseVariableFE;
-typedef MooseVariableFE<Real> MooseVariable;
-typedef MooseVariableFE<VectorValue<Real>> VectorMooseVariable;
+class MooseVariable;
 
 template <>
 InputParameters validParams<InternalSideIndicator>();
@@ -33,7 +36,7 @@ InputParameters validParams<InternalSideIndicator>();
 class InternalSideIndicator : public Indicator,
                               public NeighborCoupleable,
                               public ScalarCoupleable,
-                              public NeighborMooseVariableInterface<Real>
+                              public NeighborMooseVariableInterface
 {
 public:
   /**
@@ -52,20 +55,20 @@ public:
 protected:
   MooseVariable & _field_var;
 
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
   /// The neighboring element
-  const Elem * const & _neighbor_elem;
+  const Elem *& _neighbor_elem;
 
   /// Current side
-  const unsigned int & _current_side;
+  unsigned int & _current_side;
   /// Current side element
-  const Elem * const & _current_side_elem;
+  const Elem *& _current_side_elem;
 
   /// Coordinate system
   const Moose::CoordinateSystemType & _coord_sys;
   unsigned int _qp;
   const MooseArray<Point> & _q_point;
-  const QBase * const & _qrule;
+  QBase *& _qrule;
   const MooseArray<Real> & _JxW;
   const MooseArray<Real> & _coord;
 
@@ -104,3 +107,4 @@ public:
   static const BoundaryID InternalBndId;
 };
 
+#endif // INTERNALSIDEINDICATOR_H

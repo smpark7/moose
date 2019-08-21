@@ -1,18 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef SHAPEUSEROBJECT_H
+#define SHAPEUSEROBJECT_H
 
 #include "Assembly.h"
 #include "Coupleable.h"
 #include "InputParameters.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "MooseObject.h"
 
 /**
@@ -49,7 +55,7 @@ public:
   /**
    * Returns the set of variables a Jacobian has been requested for
    */
-  const std::set<MooseVariableFEBase *> & jacobianMooseVariables() const
+  const std::set<MooseVariable *> & jacobianMooseVariables() const
   {
     return _jacobian_moose_variables;
   }
@@ -92,7 +98,7 @@ protected:
 
 private:
   const bool _compute_jacobians;
-  std::set<MooseVariableFEBase *> _jacobian_moose_variables;
+  std::set<MooseVariable *> _jacobian_moose_variables;
 };
 
 template <typename T>
@@ -101,7 +107,7 @@ ShapeUserObject<T>::ShapeUserObject(const InputParameters & parameters, ShapeTyp
     _phi(type == ShapeType::Element ? this->_assembly.phi() : this->_assembly.phiFace()),
     _grad_phi(type == ShapeType::Element ? this->_assembly.gradPhi()
                                          : this->_assembly.gradPhiFace()),
-    _compute_jacobians(MooseObject::getParamTempl<bool>("compute_jacobians"))
+    _compute_jacobians(MooseObject::getParam<bool>("compute_jacobians"))
 {
   mooseWarning("Jacobian calculation in UserObjects is an experimental capability with a "
                "potentially unstable interface.");
@@ -121,7 +127,7 @@ template <typename T>
 unsigned int
 ShapeUserObject<T>::coupled(const std::string & var_name, unsigned int comp)
 {
-  MooseVariableFEBase * var = Coupleable::getVar(var_name, comp);
+  MooseVariable * var = Coupleable::getVar(var_name, comp);
 
   // add to the set of variables for which executeJacobian will be called
   if (_compute_jacobians && var->kind() == Moose::VAR_NONLINEAR)
@@ -142,3 +148,5 @@ ShapeUserObject<T>::executeJacobianWrapper(unsigned int jvar,
     executeJacobian(jvar);
   }
 }
+
+#endif // SHAPEUSEROBJECT_H

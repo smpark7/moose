@@ -42,6 +42,7 @@
 [Executioner]
   type = Foo
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

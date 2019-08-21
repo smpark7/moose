@@ -1,17 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef SOLIDMODEL_H
+#define SOLIDMODEL_H
 
 #include "DerivativeMaterialInterface.h"
 #include "SymmTensor.h"
-#include "RankTwoTensor.h"
 
 // Forward declarations
 class ConstitutiveModel;
@@ -52,7 +49,7 @@ public:
     CR_UNKNOWN
   };
 
-  const QBase * qrule() { return _qrule; }
+  QBase * qrule() { return _qrule; }
   const Point & q_point(unsigned i) const { return _q_point[i]; }
   Real JxW(unsigned i) const { return _JxW[i]; }
 
@@ -73,15 +70,15 @@ protected:
   Real _shear_modulus;
   Real _youngs_modulus;
 
-  const Function * _youngs_modulus_function;
-  const Function * _poissons_ratio_function;
+  Function * _youngs_modulus_function;
+  Function * _poissons_ratio_function;
 
   const CRACKING_RELEASE _cracking_release;
   Real _cracking_stress;
   const Real _cracking_residual_stress;
   const Real _cracking_beta;
   const std::string _compute_method;
-  const Function * const _cracking_stress_function;
+  Function * const _cracking_stress_function;
 
   Real _cracking_alpha;
   std::vector<unsigned int> _active_crack_planes;
@@ -95,7 +92,7 @@ protected:
   const VariableValue & _temperature_old;
   const VariableGradient & _temp_grad;
   const Real _alpha;
-  const Function * _alpha_function;
+  Function * _alpha_function;
   PiecewiseLinear * _piecewise_linear_alpha_function;
   bool _has_stress_free_temp;
   Real _stress_free_temp;
@@ -108,31 +105,32 @@ protected:
   MaterialProperty<SymmTensor> & _stress;
 
 private:
-  const MaterialProperty<SymmTensor> & _stress_old_prop;
+  MaterialProperty<SymmTensor> & _stress_old_prop;
 
 protected:
   SymmTensor _stress_old;
 
   MaterialProperty<SymmTensor> & _total_strain;
-  const MaterialProperty<SymmTensor> & _total_strain_old;
+  MaterialProperty<SymmTensor> & _total_strain_old;
 
   MaterialProperty<SymmTensor> & _elastic_strain;
-  const MaterialProperty<SymmTensor> & _elastic_strain_old;
+  MaterialProperty<SymmTensor> & _elastic_strain_old;
 
   MaterialProperty<RealVectorValue> * _crack_flags;
-  const MaterialProperty<RealVectorValue> * _crack_flags_old;
+  MaterialProperty<RealVectorValue> * _crack_flags_old;
   RealVectorValue _crack_flags_local;
   MaterialProperty<RealVectorValue> * _crack_count;
-  const MaterialProperty<RealVectorValue> * _crack_count_old;
+  MaterialProperty<RealVectorValue> * _crack_count_old;
   MaterialProperty<ColumnMajorMatrix> * _crack_rotation;
-  const MaterialProperty<ColumnMajorMatrix> * _crack_rotation_old;
+  MaterialProperty<ColumnMajorMatrix> * _crack_rotation_old;
   MaterialProperty<RealVectorValue> * _crack_strain;
-  const MaterialProperty<RealVectorValue> * _crack_strain_old;
+  MaterialProperty<RealVectorValue> * _crack_strain_old;
   MaterialProperty<RealVectorValue> * _crack_max_strain;
-  const MaterialProperty<RealVectorValue> * _crack_max_strain_old;
+  MaterialProperty<RealVectorValue> * _crack_max_strain_old;
   ColumnMajorMatrix _principal_strain;
 
   MaterialProperty<SymmElasticityTensor> & _elasticity_tensor;
+  MaterialProperty<SymmElasticityTensor> & _elasticity_tensor_old;
   MaterialProperty<SymmElasticityTensor> & _Jacobian_mult;
 
   // Accumulate derivatives of strain tensors with respect to Temperature into this
@@ -141,22 +139,17 @@ protected:
   // The derivative of the stress with respect to Temperature
   MaterialProperty<SymmTensor> & _d_stress_dT;
 
-  /// Total strain increment, including mechanical strains and eigenstrains
   SymmTensor _total_strain_increment;
-  /// Mechanical strain increment, which is the total strain increment minus eigenstrains
-  SymmTensor _mechanical_strain_increment;
-  /// In most models, this is the mechanical strain increment, but for
-  /// inelastic models, it has the inelastic component subtracted from it, so it
-  /// is the elastic strain increment
   SymmTensor _strain_increment;
 
   const bool _compute_JIntegral;
   const bool _compute_InteractionIntegral;
+  bool _store_stress_older;
 
   // These are used in calculation of the J integral
   MaterialProperty<Real> * _SED;
-  const MaterialProperty<Real> * _SED_old;
-  MaterialProperty<RankTwoTensor> * _Eshelby_tensor;
+  MaterialProperty<Real> * _SED_old;
+  MaterialProperty<ColumnMajorMatrix> * _Eshelby_tensor;
   MaterialProperty<RealVectorValue> * _J_thermal_term_vec;
 
   // This is used in calculation of the J Integral and Interaction Integral
@@ -235,10 +228,10 @@ protected:
   }
 
   template <typename T>
-  const MaterialProperty<T> & getPropertyOld(const std::string & prop_name)
+  MaterialProperty<T> & createPropertyOld(const std::string & prop_name)
   {
     std::string name(prop_name + _appended_property_name);
-    return getMaterialPropertyOld<T>(name);
+    return declarePropertyOld<T>(name);
   }
 
   virtual void checkElasticConstants();
@@ -271,3 +264,5 @@ private:
 
   SymmElasticityTensor * _local_elasticity_tensor;
 };
+
+#endif

@@ -12,13 +12,15 @@
   nx = 3
   ny = 3
   elem_type = QUAD4
+
+  strips = 3  # this is a required params (miss-spelled) => expect to error out
 []
 
 [Functions]
   [./forcing_fn]
     type = ParsedFunction
     value = x
-  [../]
+  [../
 []
 
 [Variables]
@@ -35,7 +37,7 @@
   [../]
 
   [./fv]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]

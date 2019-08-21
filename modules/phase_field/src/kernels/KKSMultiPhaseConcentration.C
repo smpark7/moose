@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "KKSMultiPhaseConcentration.h"
-
-registerMooseObject("PhaseFieldApp", KKSMultiPhaseConcentration);
 
 template <>
 InputParameters
@@ -46,10 +41,10 @@ KKSMultiPhaseConcentration::KKSMultiPhaseConcentration(const InputParameters & p
 {
   // Check to make sure the the number of hj's is the same as the number of cj's
   if (_num_j != _hj_names.size())
-    paramError("hj_names", "Need to pass in as many hj_names as cjs");
+    mooseError("Need to pass in as many hj_names as cjs in KKSMultiPhaseConcentration", name());
   // Check to make sure the the number of etas is the same as the number of cj's
   if (_num_j != _eta_names.size())
-    paramError("etas", "Need to pass in as many etas as cjs");
+    mooseError("Need to pass in as many etas as cjs in KKSMultiPhaseConcentration", name());
 
   if (_num_j == 0)
     mooseError("Need to supply at least 1 phase concentration cj in KKSMultiPhaseConcentration",

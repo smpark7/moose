@@ -4,6 +4,10 @@
 []
 
 [Functions]
+  active = '
+    tr_x tr_y
+    itr_x itr_y'
+
   [./tr_x]
     type = ParsedFunction
     value = -x*cos(pi/3)
@@ -26,6 +30,8 @@
 []
 
 [Variables]
+  active = 'u'
+
   [./u]
     order = FIRST
     family = LAGRANGE
@@ -33,6 +39,8 @@
 []
 
 [Kernels]
+  active = 'diff forcing dot'
+
   [./diff]
     type = Diffusion
     variable = u
@@ -54,6 +62,8 @@
 []
 
 [BCs]
+  #active = ' '
+
   [./Periodic]
     [./x]
       primary = 1
@@ -76,3 +86,4 @@
   file_base = out_trapezoid
   exodus = true
 []
+

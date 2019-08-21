@@ -1,20 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTEINTERFACESTRESS_H
+#define COMPUTEINTERFACESTRESS_H
 
 #include "Material.h"
 
 class ComputeInterfaceStress;
-template <typename>
-class RankTwoTensorTempl;
-typedef RankTwoTensorTempl<Real> RankTwoTensor;
+class RankTwoTensor;
 
 template <>
 InputParameters validParams<ComputeInterfaceStress>();
@@ -31,11 +27,10 @@ public:
 protected:
   virtual void computeQpProperties() override;
 
-  std::size_t _nvar;
-  std::vector<const VariableGradient *> _grad_v;
-  std::vector<Real> _op_range;
-  std::vector<Real> _stress;
+  const VariableGradient & _grad_v;
+  const Real _stress;
 
   MaterialProperty<RankTwoTensor> & _planar_stress;
 };
 
+#endif // COMPUTEINTERFACESTRESS_H

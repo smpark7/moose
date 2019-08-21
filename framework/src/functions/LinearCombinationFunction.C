@@ -1,15 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "LinearCombinationFunction.h"
-
-registerMooseObject("MooseApp", LinearCombinationFunction);
 
 template <>
 InputParameters
@@ -39,7 +42,7 @@ LinearCombinationFunction::LinearCombinationFunction(const InputParameters & par
   {
     if (name() == names[i])
       mooseError("A LinearCombinationFunction must not reference itself");
-    const Function * const f = &getFunctionByName(names[i]);
+    Function * const f = &getFunctionByName(names[i]);
     if (!f)
       mooseError("LinearCombinationFunction: The function ",
                  names[i],
@@ -51,28 +54,10 @@ LinearCombinationFunction::LinearCombinationFunction(const InputParameters & par
 }
 
 Real
-LinearCombinationFunction::value(Real t, const Point & p) const
+LinearCombinationFunction::value(Real t, const Point & p)
 {
   Real val = 0;
   for (unsigned i = 0; i < _f.size(); ++i)
     val += _w[i] * _f[i]->value(t, p);
   return val;
-}
-
-RealGradient
-LinearCombinationFunction::gradient(Real t, const Point & p) const
-{
-  RealGradient g;
-  for (unsigned i = 0; i < _f.size(); ++i)
-    g += _w[i] * _f[i]->gradient(t, p);
-  return g;
-}
-
-RealVectorValue
-LinearCombinationFunction::vectorValue(Real t, const Point & p) const
-{
-  RealVectorValue v;
-  for (unsigned i = 0; i < _f.size(); ++i)
-    v += _w[i] * _f[i]->vectorValue(t, p);
-  return v;
 }

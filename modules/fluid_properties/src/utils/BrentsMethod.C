@@ -1,15 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "BrentsMethod.h"
 #include "MooseError.h"
-#include "Conversion.h"
 
 namespace BrentsMethod
 {
@@ -26,7 +23,7 @@ bracket(std::function<Real(Real)> const & f, Real & x1, Real & x2)
 
   // If the initial guesses are identical
   if (x1 == x2)
-    throw MooseException("Bad initial range (0) used in BrentsMethod::bracket");
+    mooseError("Bad initial range (0) used in BrentsMethod::bracket");
 
   f1 = f(x1);
   f2 = f(x2);
@@ -51,8 +48,8 @@ bracket(std::function<Real(Real)> const & f, Real & x1, Real & x2)
       /// Increment counter
       iter++;
       if (iter >= n)
-        throw MooseException("No bracketing interval found by BrentsMethod::bracket after " +
-                             Moose::stringify(n) + " iterations");
+        mooseError(
+            "No bracketing interval found by BrentsMethod::bracket after ", n, " iterations");
     }
   }
 }
@@ -68,7 +65,7 @@ root(std::function<Real(Real)> const & f, Real x1, Real x2, Real tol)
   Real eps = 1.0e-12;
 
   if (fa * fb > 0.0)
-    throw MooseException("Root must be bracketed in BrentsMethod::root");
+    mooseError("Root must be bracketed in BrentsMethod::root");
 
   fc = fb;
   for (unsigned int i = 1; i <= iter_max; ++i)
@@ -154,7 +151,7 @@ root(std::function<Real(Real)> const & f, Real x1, Real x2, Real tol)
     fb = f(b);
   }
 
-  throw MooseException("Maximum number of iterations exceeded in BrentsMethod::root");
+  mooseError("Maximum number of iterations exceeded in BrentsMethod::root");
   return 0.0; // Should never get here
 }
 } // namespace BrentsMethod

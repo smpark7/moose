@@ -1,14 +1,6 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
 from RunApp import RunApp
-from TestHarness import util
+import util
+import os
 
 # Classes that derive from this class are expected to write
 # output files. The Tester::getOutputFiles() method should
@@ -26,11 +18,8 @@ class FileTester(RunApp):
         RunApp.__init__(self, name, params)
 
     def prepare(self, options):
-        if self.specs['delete_output_before_running']:
+        if self.specs['delete_output_before_running'] == True:
             util.deleteFilesAndFolders(self.specs['test_dir'], self.getOutputFiles(), self.specs['delete_output_folders'])
 
-    def processResults(self, moose_dir, options, output):
-        output += self.testFileOutput(moose_dir, options, output)
-        self.testExitCodes(moose_dir, options, output)
-
-        return output
+    def processResults(self, moose_dir, retcode, options, output):
+        return RunApp.processResults(self, moose_dir, retcode, options, output)

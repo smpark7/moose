@@ -1,18 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "Marker.h"
 
 #include "Assembly.h"
 #include "FEProblem.h"
 #include "MooseMesh.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "SystemBase.h"
 
 template <>
@@ -23,9 +28,14 @@ validParams<Marker>()
   params += validParams<BlockRestrictable>();
   params += validParams<OutputInterface>();
 
-  // use of displaced meshes with markers is not supported
-  params.set<bool>("use_displaced_mesh") = false;
-  params.suppressParameter<bool>("use_displaced_mesh");
+  params.addParam<bool>("use_displaced_mesh",
+                        false,
+                        "Whether or not this object should use the "
+                        "displaced mesh for computation.  Note that "
+                        "in the case this is true but no "
+                        "displacements are provided in the Mesh block "
+                        "the undisplaced mesh will still be used.");
+  params.addParamNamesToGroup("use_displaced_mesh", "Advanced");
 
   params.registerBase("Marker");
 
@@ -34,21 +44,21 @@ validParams<Marker>()
 
 Marker::Marker(const InputParameters & parameters)
   : MooseObject(parameters),
-    BlockRestrictable(this),
+    BlockRestrictable(parameters),
     SetupInterface(this),
     DependencyResolverInterface(),
     UserObjectInterface(this),
-    Restartable(this, "Markers"),
+    Restartable(parameters, "Markers"),
     PostprocessorInterface(this),
     MeshChangedInterface(parameters),
     OutputInterface(parameters),
-    _subproblem(*getCheckedPointerParam<SubProblem *>("_subproblem")),
-    _fe_problem(*getCheckedPointerParam<FEProblemBase *>("_fe_problem_base")),
+    _subproblem(*parameters.get<SubProblem *>("_subproblem")),
+    _fe_problem(*parameters.get<FEProblemBase *>("_fe_problem_base")),
     _adaptivity(_fe_problem.adaptivity()),
-    _sys(*getCheckedPointerParam<SystemBase *>("_sys")),
+    _sys(*parameters.get<SystemBase *>("_sys")),
     _tid(parameters.get<THREAD_ID>("_tid")),
     _assembly(_subproblem.assembly(_tid)),
-    _field_var(_subproblem.getStandardVariable(_tid, name())),
+    _field_var(_sys.getVariable(_tid, name())),
     _current_elem(_field_var.currentElem()),
 
     _mesh(_subproblem.mesh())
@@ -79,11 +89,11 @@ Marker::getErrorVector(std::string indicator)
   return _adaptivity.getErrorVector(indicator);
 }
 
-const MooseArray<Real> &
+const VariableValue &
 Marker::getMarkerValue(std::string name)
 {
   _depend.insert(name);
-  return _sys.getFieldVariable<Real>(_tid, name).dofValues();
+  return _sys.getVariable(_tid, name).nodalSln();
 }
 
 bool

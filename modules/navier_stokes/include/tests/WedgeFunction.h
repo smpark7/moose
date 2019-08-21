@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef WEDGEFUNCTION_H
+#define WEDGEFUNCTION_H
 
 #include "Function.h"
 #include "FunctionInterface.h"
@@ -32,7 +31,7 @@ class WedgeFunction : public Function, protected FunctionInterface
 public:
   WedgeFunction(const InputParameters & parameters);
 
-  virtual Real value(Real t, const Point & p) const override;
+  virtual Real value(Real t, const Point & p) override;
 
 protected:
   /// The half-angle of the wedge, stored in radians.
@@ -85,5 +84,7 @@ protected:
    * The pre-computed semi-analytic exact solution f(theta) as a
    * PiecewiseLinear function.
    */
-  const Function & _f;
+  Function & _f;
 };
+
+#endif

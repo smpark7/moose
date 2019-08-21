@@ -1,16 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef INTERNALSIDEFLUXBASE_H
+#define INTERNALSIDEFLUXBASE_H
 
-#include "ThreadedGeneralUserObject.h"
+#include "GeneralUserObject.h"
 
+// Forward Declarations
 class InternalSideFluxBase;
 
 template <>
@@ -29,15 +29,14 @@ InputParameters validParams<InternalSideFluxBase>();
  *   2. Derived classes need to provide computing of the fluxes and their jacobians,
  *      i.e., they need to implement `calcFlux` and `calcJacobian`.
  */
-class InternalSideFluxBase : public ThreadedGeneralUserObject
+class InternalSideFluxBase : public GeneralUserObject
 {
 public:
   InternalSideFluxBase(const InputParameters & parameters);
 
-  virtual void execute() override;
-  virtual void initialize() override;
-  virtual void finalize() override;
-  virtual void threadJoin(const UserObject &) override;
+  virtual void execute();
+  virtual void initialize();
+  virtual void finalize();
 
   /**
    * Get the flux vector
@@ -53,7 +52,8 @@ public:
                                             dof_id_type ineig,
                                             const std::vector<Real> & uvec1,
                                             const std::vector<Real> & uvec2,
-                                            const RealVectorValue & dwave) const;
+                                            const RealVectorValue & dwave,
+                                            THREAD_ID tid) const;
 
   /**
    * Solve the Riemann problem
@@ -88,7 +88,8 @@ public:
                                                 dof_id_type ineig,
                                                 const std::vector<Real> & uvec1,
                                                 const std::vector<Real> & uvec2,
-                                                const RealVectorValue & dwave) const;
+                                                const RealVectorValue & dwave,
+                                                THREAD_ID tid) const;
 
   /**
    * Compute the Jacobian matrix
@@ -111,21 +112,18 @@ public:
                             DenseMatrix<Real> & jac2) const = 0;
 
 protected:
-  /// element ID of the cached flux values
-  mutable unsigned int _cached_flux_elem_id;
-  /// neighbor element ID of the cached flux values
-  mutable unsigned int _cached_flux_neig_id;
-
-  /// element ID of the cached Jacobian values
-  mutable unsigned int _cached_jacobian_elem_id;
-  /// neighbor element ID of the cached Jacobian values
-  mutable unsigned int _cached_jacobian_neig_id;
+  mutable unsigned int _cached_elem_id;
+  mutable unsigned int _cached_neig_id;
 
   /// flux vector of this side
-  mutable std::vector<Real> _flux;
+  mutable std::vector<std::vector<Real>> _flux;
   /// Jacobian matrix contribution to the "left" cell
-  mutable DenseMatrix<Real> _jac1;
+  mutable std::vector<DenseMatrix<Real>> _jac1;
   /// Jacobian matrix contribution to the "right" cell
-  mutable DenseMatrix<Real> _jac2;
+  mutable std::vector<DenseMatrix<Real>> _jac2;
+
+private:
+  static Threads::spin_mutex _mutex;
 };
 
+#endif // INTERNALSIDEFLUXBASE_H

@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 from peacock.Input.BlockEditor import BlockEditor
 from PyQt5.QtWidgets import QMessageBox, QApplication
 from peacock.Input.ExecutableInfo import ExecutableInfo
@@ -213,8 +204,8 @@ class Tests(Testing.PeacockTester):
         self.checkAddParam("/GlobalParams", False, False)
         # Has types
         self.checkAddParam("/Mesh", True, True)
-        # Is star node, had an 'active' parameter but we get rid of it
-        self.checkAddParam("/Kernels", False, False)
+        # Is star node, has an existing 'active' parameter
+        self.checkAddParam("/Kernels", False, True)
         # Is user block
         self.checkAddParam("/Kernels/diff_u", True, True, True)
 

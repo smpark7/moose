@@ -1,18 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NodalScalarKernel.h"
 
 // MOOSE includes
 #include "Assembly.h"
 #include "MooseVariableScalar.h"
-#include "MooseMesh.h"
 #include "SystemBase.h"
 
 template <>
@@ -20,10 +24,7 @@ InputParameters
 validParams<NodalScalarKernel>()
 {
   InputParameters params = validParams<ScalarKernel>();
-  params.addParam<std::vector<dof_id_type>>("nodes", "Supply nodes using node ids");
-  params.addParam<std::vector<BoundaryName>>(
-      "boundary", "The list of boundary IDs  from the mesh where this nodal kernel applies");
-
+  params.addRequiredParam<std::vector<dof_id_type>>("nodes", "Node ids");
   return params;
 }
 
@@ -31,39 +32,12 @@ NodalScalarKernel::NodalScalarKernel(const InputParameters & parameters)
   : ScalarKernel(parameters),
     Coupleable(this, true),
     MooseVariableDependencyInterface(),
-    _node_ids(getParam<std::vector<dof_id_type>>("nodes")),
-    _boundary_names(getParam<std::vector<BoundaryName>>("boundary"))
+    _node_ids(getParam<std::vector<dof_id_type>>("nodes"))
 {
   // Fill in the MooseVariable dependencies
-  const std::vector<MooseVariableFEBase *> & coupled_vars = getCoupledMooseVars();
+  const std::vector<MooseVariable *> & coupled_vars = getCoupledMooseVars();
   for (const auto & var : coupled_vars)
     addMooseVariableDependency(var);
-
-  // Check if node_ids and/or node_bc_names given
-  if ((_node_ids.size() == 0) && (_boundary_names.size() == 0))
-    mooseError("Must provide either 'nodes' or 'boundary' parameter.");
-
-  if ((_node_ids.size() != 0) && (_boundary_names.size() != 0))
-    mooseError("Both 'nodes' and 'boundary' parameters were specified. Use the 'boundary' "
-               "parameter only.");
-
-  // nodal bc names provided, append the nodes in each bc to _node_ids
-  if ((_node_ids.size() == 0) && (_boundary_names.size() != 0))
-  {
-    std::vector<dof_id_type> nodelist;
-
-    for (auto & boundary_name : _boundary_names)
-    {
-      nodelist = _mesh.getNodeList(_mesh.getBoundaryID(boundary_name));
-      for (auto & node_id : nodelist)
-        _node_ids.push_back(node_id);
-    }
-  }
-  else
-  {
-    mooseDeprecated("Using the 'nodes' parameter is deprecated. Please update your input file to "
-                    "use the 'boundary' parameter.");
-  }
 }
 
 void

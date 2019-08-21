@@ -59,3 +59,8 @@
   type = Steady
   solve_type = 'PJFNK'
 []
+
+[Outputs]
+  file_base = out
+  exodus = true
+[]

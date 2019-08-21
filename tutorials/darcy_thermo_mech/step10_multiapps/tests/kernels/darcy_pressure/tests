@@ -1,1 +1,7 @@
-../../../../step09_mechanics/tests/kernels/darcy_pressure/tests
+[Tests]
+  [./test]
+    type = 'Exodiff'
+    input = 'darcy_pressure.i'
+    exodiff = 'darcy_pressure_out.e'
+  [../]
+[]

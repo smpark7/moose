@@ -246,9 +246,8 @@
     type = TimestepSize
   [../]
   [./run_time]
-    type = PerfGraphData
-    section_name = "Root"
-    data_type = total
+    type = PerformanceData
+    event = active
   [../]
 []
 

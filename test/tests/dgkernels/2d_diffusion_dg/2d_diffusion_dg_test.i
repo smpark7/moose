@@ -89,7 +89,7 @@
   [../]
 
   [./forcing]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -122,6 +122,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 #  petsc_options = '-snes_mf'
 #  petsc_options_iname = '-pc_type -pc_hypre_type'
@@ -146,6 +147,7 @@
 
   [./h]
     type = AverageElementSize
+    variable = u
   [../]
 
   [./dofs]

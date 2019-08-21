@@ -1,24 +1,26 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MooseError.h"
 #include "SolutionAux.h"
 #include "SolutionUserObject.h"
-
-registerMooseObject("MooseApp", SolutionAux);
 
 template <>
 InputParameters
 validParams<SolutionAux>()
 {
   InputParameters params = validParams<AuxKernel>();
-  params.addClassDescription("Creates fields by using information from a SolutionUserObject.");
   params.addRequiredParam<UserObjectName>("solution", "The name of the SolutionUserObject");
   params.addParam<std::string>("from_variable",
                                "The name of the variable to extract from the file");
@@ -62,12 +64,17 @@ SolutionAux::initialSetup()
 
     // If there are more than one, throw an error
     if (vars.size() > 1)
-      mooseError("The SolutionUserObject contains multiple variables, please specifiy the desired "
-                 "variables in the input file with 'from_variable' parameter.");
+      mooseError("The SolutionUserObject contains multiple variables, in this case the "
+                 "SolutionFunction must specifiy the desired variable in the input file with "
+                 "'from_variable'");
 
     // Define the variable
     _var_name = vars[0];
   }
+
+  // Determine if 'from_variable' is elemental, if so then use direct extraction
+  if (!_solution_object.isVariableNodal(_var_name))
+    _direct = true;
 }
 
 Real

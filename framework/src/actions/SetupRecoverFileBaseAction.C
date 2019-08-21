@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "SetupRecoverFileBaseAction.h"
@@ -13,8 +18,6 @@
 #include "OutputWarehouse.h"
 #include "Checkpoint.h"
 #include "MooseObjectAction.h"
-
-registerMooseAction("MooseApp", SetupRecoverFileBaseAction, "setup_recover_file_base");
 
 template <>
 InputParameters
@@ -34,7 +37,20 @@ SetupRecoverFileBaseAction::act()
   if (!_app.isRecovering() || !_app.isUltimateMaster())
     return;
 
-  _app.setRecoverFileBase(MooseUtils::convertLatestCheckpoint(_app.getRecoverFileBase()));
+  // Get the most current file, if it hasn't been set directly
+  if (!_app.hasRecoverFileBase())
+  {
+    // Build the list of all possible checkpoint files for recover
+    std::list<std::string> checkpoint_files = _app.getCheckpointFiles();
+
+    // Grab the most recent one
+    std::string recovery_file_base = MooseUtils::getRecoveryFileBase(checkpoint_files);
+
+    if (recovery_file_base.empty())
+      mooseError("Unable to find suitable recovery file!");
+
+    _app.setRecoverFileBase(recovery_file_base);
+  }
 
   // Set the recover file base in the App
   _console << "\nUsing " << _app.getRecoverFileBase() << " for recovery.\n\n";

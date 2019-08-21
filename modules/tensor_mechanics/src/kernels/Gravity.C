@@ -1,16 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "Gravity.h"
 #include "Function.h"
-
-registerMooseObject("TensorMechanicsApp", Gravity);
 
 template <>
 InputParameters
@@ -19,8 +14,8 @@ validParams<Gravity>()
   InputParameters params = validParams<Kernel>();
   params.addClassDescription("Apply gravity. Value is in units of acceleration.");
   params.addParam<bool>("use_displaced_mesh", true, "Displaced mesh defaults to true");
-  params.addRequiredParam<Real>(
-      "value", "Value multiplied against the residual, e.g. gravitational acceleration");
+  params.set<Real>("value") = 0.0;
+  // A ConstantFunction of "1" is supplied as the default
   params.addParam<FunctionName>(
       "function", "1", "A function that describes the gravitational force");
   params.addParam<Real>("alpha", 0.0, "alpha parameter required for HHT time integration scheme");

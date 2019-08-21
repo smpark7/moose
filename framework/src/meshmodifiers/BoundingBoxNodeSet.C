@@ -1,21 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "BoundingBoxNodeSet.h"
 #include "MooseMesh.h"
-
-#include "libmesh/node.h"
-
-registerMooseObjectReplaced("MooseApp",
-                            BoundingBoxNodeSet,
-                            "11/30/2019 00:00",
-                            BoundingBoxNodeSetGenerator);
 
 template <>
 InputParameters
@@ -24,8 +22,6 @@ validParams<BoundingBoxNodeSet>()
   MooseEnum location("INSIDE OUTSIDE", "INSIDE");
 
   InputParameters params = validParams<MeshModifier>();
-  params.addClassDescription(
-      "Assigns all of the nodes either inside or outside of a bounding box to a new nodeset.");
   params.addRequiredParam<std::vector<BoundaryName>>("new_boundary",
                                                      "The name of the nodeset to create");
   params.addRequiredParam<RealVectorValue>(
@@ -69,16 +65,14 @@ BoundingBoxNodeSet::modify()
   const bool inside = (_location == "INSIDE");
 
   // Loop over the elements and assign node set id to nodes within the bounding box
-  for (auto & node : as_range(mesh.active_nodes_begin(), mesh.active_nodes_end()))
-    if (_bounding_box.contains_point(*node) == inside)
+  for (auto node = mesh.active_nodes_begin(); node != mesh.active_nodes_end(); ++node)
+  {
+    if (_bounding_box.contains_point(**node) == inside)
     {
-      boundary_info.add_node(node, boundary_ids[0]);
+      boundary_info.add_node(*node, boundary_ids[0]);
       found_node = true;
     }
-
-  // Unless at least one processor found a node in the bounding box,
-  // the user probably specified it incorrectly.
-  this->comm().max(found_node);
+  }
 
   if (!found_node)
     mooseError("No nodes found within the bounding box");

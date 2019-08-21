@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "RichardsMultiphaseProblem.h"
 
@@ -13,8 +11,6 @@
 #include "MooseMesh.h"
 #include "MooseVariable.h"
 #include "NonlinearSystem.h"
-
-registerMooseObject("RichardsApp", RichardsMultiphaseProblem);
 
 template <>
 InputParameters
@@ -49,14 +45,8 @@ RichardsMultiphaseProblem::initialSetup()
 {
   // the first argument to getVariable is threadID - i hope the following always works
   unsigned int tid = 0;
-
-  // We are going to do more specific checks below, hence allowing
-  // more specific error messages to be printed in case something goes
-  // wrong. Therefore we just pass VAR_ANY here.
-  MooseVariableFEBase & bounded = getVariable(
-      tid, _bounded_var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_STANDARD);
-  MooseVariableFEBase & lower = getVariable(
-      tid, _lower_var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_STANDARD);
+  MooseVariable & bounded = getVariable(tid, _bounded_var_name);
+  MooseVariable & lower = getVariable(tid, _lower_var_name);
 
   // some checks
   if (!bounded.isNodal() || !lower.isNodal())
@@ -94,13 +84,18 @@ RichardsMultiphaseProblem::updateSolution(NumericVector<Number> & vec_solution,
   // For parallel procs i believe that i have to use local_nodes_begin, rather than just nodes_begin
   // _mesh comes from SystemBase (_mesh = getNonlinearSystemBase().subproblem().mesh(), and
   // subproblem is this object)
-  for (const auto & node : _mesh.getMesh().local_node_ptr_range())
+  MeshBase::node_iterator nit = _mesh.getMesh().local_nodes_begin();
+  const MeshBase::node_iterator nend = _mesh.getMesh().local_nodes_end();
+
+  for (; nit != nend; ++nit)
   {
+    const Node & node = *(*nit);
+
     // dofs[0] is the dof number of the bounded variable at this node
     // dofs[1] is the dof number of the lower variable at this node
     std::vector<dof_id_type> dofs(2);
-    dofs[0] = node->dof_number(sys_num, _bounded_var_num, 0);
-    dofs[1] = node->dof_number(sys_num, _lower_var_num, 0);
+    dofs[0] = node.dof_number(sys_num, _bounded_var_num, 0);
+    dofs[1] = node.dof_number(sys_num, _lower_var_num, 0);
 
     // soln[0] is the value of the bounded variable at this node
     // soln[1] is the value of the lower variable at this node

@@ -31,6 +31,9 @@
     type = ConstantAux
     variable = distance
   [../]
+[]
+
+[AuxKernels]
   [./distance]
     type = NearestNodeDistanceAux
     variable = distance
@@ -71,6 +74,7 @@
   num_steps = 3
   dt = 1
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'

@@ -1,16 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef DISCRETENUCLEATIONMAP_H
+#define DISCRETENUCLEATIONMAP_H
 
 #include "ElementUserObject.h"
-#include "DiscreteNucleationInserterBase.h"
+#include "DiscreteNucleationInserter.h"
 
 class DiscreteNucleationMap;
 
@@ -36,10 +34,6 @@ public:
 
   const std::vector<Real> & nuclei(const Elem *) const;
 
-  const DiscreteNucleationInserterBase & getInserter() const { return _inserter; }
-  std::pair<Real, Real> getRadiusAndWidth() const { return std::make_pair(_radius, _int_width); }
-  Real getPeriodic() const { return _periodic; }
-
 protected:
   /// Did the mesh change since the last execution of this PP?
   bool _mesh_changed;
@@ -54,7 +48,7 @@ protected:
   std::vector<Real> _zero_map;
 
   /// UserObject that manages nucleus insertin and deletion
-  const DiscreteNucleationInserterBase & _inserter;
+  const DiscreteNucleationInserter & _inserter;
 
   /// variable number to use for minPeriodicDistance calls (i.e. use the periodicity of this variable)
   int _periodic;
@@ -66,11 +60,13 @@ protected:
   const Real _int_width;
 
   /// list of nuclei maintained bu the inserter object
-  const DiscreteNucleationInserterBase::NucleusList & _nucleus_list;
+  const DiscreteNucleationInserter::NucleusList & _nucleus_list;
 
-  ///@{ Per element list with 0/1 flags indicating the presence of a nucleus
+  ///@{
+  /// Per element list with 0/1 flags indicating the presence of a nucleus
   using NucleusMap = std::unordered_map<dof_id_type, std::vector<Real>>;
   NucleusMap _nucleus_map;
   ///@}
 };
 
+#endif // DISCRETENUCLEATIONMAP_H

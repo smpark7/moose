@@ -1,18 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "MultiAuxVariablesAction.h"
 #include "FEProblem.h"
 #include "Conversion.h"
 #include "MooseMesh.h"
-
-registerMooseAction("PhaseFieldApp", MultiAuxVariablesAction, "add_aux_variable");
 
 template <>
 InputParameters
@@ -46,10 +41,11 @@ MultiAuxVariablesAction::MultiAuxVariablesAction(InputParameters params)
 void
 MultiAuxVariablesAction::act()
 {
-  init();
-
   if (_num_var != _data_size)
     mooseError("Data type not provided for all the AuxVariables in MultiAuxVariablesAction");
+
+  // Blocks from the input
+  std::set<SubdomainID> blocks = getSubdomainIDs();
 
   // mesh dimension & components required for gradient variables
   const unsigned int dim = _mesh->dimension();
@@ -66,7 +62,10 @@ MultiAuxVariablesAction::act()
         // to.
         std::string var_name = _var_name_base[val] + Moose::stringify(gr);
 
-        _problem->addAuxVariable(_type, var_name, _moose_object_pars);
+        if (blocks.empty())
+          _problem->addAuxVariable(var_name, _fe_type);
+        else
+          _problem->addAuxVariable(var_name, _fe_type, &blocks);
       }
       /// for exatrcting data from MaterialProperty<std::vector<RealGradient> >
       if (_data_type[val] == "RealGradient")
@@ -78,7 +77,10 @@ MultiAuxVariablesAction::act()
            */
           std::string var_name = _var_name_base[val] + Moose::stringify(gr) + "_" + suffix[x];
 
-          _problem->addAuxVariable(_type, var_name, _moose_object_pars);
+          if (blocks.empty())
+            _problem->addAuxVariable(var_name, _fe_type);
+          else
+            _problem->addAuxVariable(var_name, _fe_type, &blocks);
         }
     }
 }

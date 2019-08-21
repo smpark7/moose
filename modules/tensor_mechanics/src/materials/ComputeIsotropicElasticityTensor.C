@@ -1,22 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeIsotropicElasticityTensor.h"
-
-registerMooseObject("TensorMechanicsApp", ComputeIsotropicElasticityTensor);
 
 template <>
 InputParameters
 validParams<ComputeIsotropicElasticityTensor>()
 {
   InputParameters params = validParams<ComputeElasticityTensorBase>();
-  params.addClassDescription("Compute a constant isotropic elasticity tensor.");
+  params.addClassDescription("Compute an isotropic elasticity tensor.");
   params.addParam<Real>("bulk_modulus", "The bulk modulus for the material.");
   params.addParam<Real>("lambda", "Lame's first constant for the material.");
   params.addParam<Real>("poissons_ratio", "Poisson's ratio for the material.");
@@ -41,13 +36,9 @@ ComputeIsotropicElasticityTensor::ComputeIsotropicElasticityTensor(
 {
   unsigned int num_elastic_constants = _bulk_modulus_set + _lambda_set + _poissons_ratio_set +
                                        _shear_modulus_set + _youngs_modulus_set;
+
   if (num_elastic_constants != 2)
     mooseError("Exactly two elastic constants must be defined for material '" + name() + "'.");
-
-  // all tensors created by this class are always isotropic
-  issueGuarantee(_elasticity_tensor_name, Guarantee::ISOTROPIC);
-  if (!isParamValid("elasticity_tensor_prefactor"))
-    issueGuarantee(_elasticity_tensor_name, Guarantee::CONSTANT_IN_TIME);
 
   if (_bulk_modulus_set && _bulk_modulus <= 0.0)
     mooseError("Bulk modulus must be positive in material '" + name() + "'.");
@@ -63,18 +54,18 @@ ComputeIsotropicElasticityTensor::ComputeIsotropicElasticityTensor(
   if (_youngs_modulus_set && _youngs_modulus <= 0.0)
     mooseError("Youngs modulus must be positive in material '" + name() + "'.");
 
-  if (_youngs_modulus_set && _poissons_ratio_set)
-  {
-    _Cijkl.fillSymmetricIsotropicEandNu(_youngs_modulus, _poissons_ratio);
-    return;
-  }
-
   std::vector<Real> iso_const(2);
 
   if (_lambda_set && _shear_modulus_set)
   {
     iso_const[0] = _lambda;
     iso_const[1] = _shear_modulus;
+  }
+  else if (_youngs_modulus_set && _poissons_ratio_set)
+  {
+    iso_const[0] = _youngs_modulus * _poissons_ratio /
+                   ((1.0 + _poissons_ratio) * (1.0 - 2.0 * _poissons_ratio));
+    iso_const[1] = _youngs_modulus / (2.0 * (1.0 + _poissons_ratio));
   }
   else if (_shear_modulus_set && _bulk_modulus_set)
   {

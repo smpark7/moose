@@ -1,16 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef DISTRIBUTIONINTERFACE_H
+#define DISTRIBUTIONINTERFACE_H
 
-#include "InputParameters.h"
 #include "ParallelUniqueId.h"
+#include "InputParameters.h"
 #include "FEProblemBase.h"
 
 // Forward declarations
@@ -37,29 +43,19 @@ public:
    */
   DistributionInterface(const MooseObject * moose_object);
 
-  ///@{
   /**
    * Get a distribution with a given name
    * @param name The name of the parameter key of the distribution to retrieve
    * @return The distribution with name associated with the parameter 'name'
    */
-  const Distribution & getDistribution(const std::string & name) const;
+  Distribution & getDistribution(const std::string & name);
 
-  template <typename T>
-  const T & getDistribution(const std::string & name) const;
-  ///@}
-
-  ///@{
   /**
    * Get a distribution with a given name
    * @param name The name of the distribution to retrieve
    * @return The distribution with name 'name'
    */
-  const Distribution & getDistributionByName(const DistributionName & name) const;
-
-  template <typename T>
-  const T & getDistributionByName(const std::string & name) const;
-  ///@}
+  Distribution & getDistributionByName(const DistributionName & name);
 
 private:
   /// Parameters of the object with this interface
@@ -68,46 +64,8 @@ private:
   /// Reference to FEProblemBase instance
   FEProblemBase & _dni_feproblem;
 
-  /// Pointer to the MooseObject
-  const MooseObject * _dni_moose_object_ptr;
+  /// Thread ID
+  THREAD_ID _dni_tid;
 };
 
-template <typename T>
-const T &
-DistributionInterface::getDistribution(const std::string & name) const
-{
-  try
-  {
-    const T & dist = dynamic_cast<const T &>(getDistribution(name));
-    return dist;
-  }
-  catch (std::bad_cast & exception)
-  {
-    DistributionName dist_name = _dni_params.get<DistributionName>(name);
-    mooseError("The '",
-               _dni_moose_object_ptr->name(),
-               "' object failed to retrieve '",
-               dist_name,
-               "' distribution with the desired type.");
-  }
-}
-
-template <typename T>
-const T &
-DistributionInterface::getDistributionByName(const std::string & name) const
-{
-  try
-  {
-    const T & dist = dynamic_cast<const T &>(getDistribution(name));
-    return dist;
-  }
-  catch (std::bad_cast & exception)
-  {
-    mooseError("The '",
-               _dni_moose_object_ptr->name(),
-               "' object failed to retrieve '",
-               name,
-               "' distribution with the desired type.");
-  }
-}
-
+#endif /* DISTRIBUTIONINTERFACE_H */

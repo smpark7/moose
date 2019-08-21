@@ -58,7 +58,7 @@
   [../]
 
   [./forcing]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -89,13 +89,15 @@
     type = SMP
     full = true
     solve_type = 'NEWTON'
+
+    petsc_options_iname = '-snes_type'
+    petsc_options_value = 'test'
   [../]
 []
 
 [Executioner]
   type = Transient
   nl_rel_tol = 1e-10
-  num_steps = 1
 []
 
 [Outputs]

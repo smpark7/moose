@@ -1,5 +1,4 @@
 [Tests]
-  deprecated = True
   [./quad_test]
     type = 'Exodiff'
     input = 'quad_with_subdomainid_test.i'

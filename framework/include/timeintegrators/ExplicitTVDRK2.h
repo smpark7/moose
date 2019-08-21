@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef EXPLICITTVDRK2_H
+#define EXPLICITTVDRK2_H
 
 #include "TimeIntegrator.h"
 
@@ -51,43 +57,20 @@ class ExplicitTVDRK2 : public TimeIntegrator
 {
 public:
   ExplicitTVDRK2(const InputParameters & parameters);
+  virtual ~ExplicitTVDRK2();
 
-  virtual void preSolve() override;
-  virtual int order() override { return 2; }
+  virtual void preSolve();
+  virtual int order() { return 2; }
 
-  virtual void computeTimeDerivatives() override;
-  void computeADTimeDerivatives(DualReal & ad_u_dot, const dof_id_type & dof) const override;
-  virtual void solve() override;
-  virtual void postResidual(NumericVector<Number> & residual) override;
+  virtual void computeTimeDerivatives();
+  virtual void solve();
+  virtual void postStep(NumericVector<Number> & residual);
 
 protected:
-  /**
-   * Helper function that actually does the math for computing the time derivative
-   */
-  template <typename T, typename T2, typename T3>
-  void computeTimeDerivativeHelper(T & u_dot, const T2 & u_old, const T3 & u_older) const;
-
   unsigned int _stage;
 
   /// Buffer to store non-time residual from the first stage.
   NumericVector<Number> & _residual_old;
 };
 
-template <typename T, typename T2, typename T3>
-void
-ExplicitTVDRK2::computeTimeDerivativeHelper(T & u_dot, const T2 & u_old, const T3 & u_older) const
-{
-  if (_stage < 3)
-  {
-    u_dot -= u_old;
-    u_dot *= 1. / _dt;
-  }
-  else
-  {
-    u_dot *= 2.;
-    u_dot -= u_old;
-    u_dot -= u_older;
-    u_dot *= 0.5 / _dt;
-  }
-}
-
+#endif /* EXPLICITTVDRK2_H */

@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "IsotropicPowerLawHardening.h"
 
 #include "SymmIsotropicElasticityTensor.h"
@@ -18,8 +15,6 @@
 * hardening exponent and strain is the total strain.
 * Yield stress is the point of intersection of these two curves.
 **/
-
-registerMooseObject("SolidMechanicsApp", IsotropicPowerLawHardening);
 
 template <>
 InputParameters
@@ -50,13 +45,14 @@ IsotropicPowerLawHardening::IsotropicPowerLawHardening(const InputParameters & p
 }
 
 void
-IsotropicPowerLawHardening::computeYieldStress()
+IsotropicPowerLawHardening::computeYieldStress(unsigned /*qp*/)
 {
   _yield_stress = std::pow(_K / pow(_youngs_modulus, _n), 1.0 / (1.0 - _n));
 }
 
 void
-IsotropicPowerLawHardening::computeStressInitialize(Real effectiveTrialStress,
+IsotropicPowerLawHardening::computeStressInitialize(unsigned qp,
+                                                    Real effectiveTrialStress,
                                                     const SymmElasticityTensor & elasticityTensor)
 {
   _effectiveTrialStress = effectiveTrialStress;
@@ -68,14 +64,14 @@ IsotropicPowerLawHardening::computeStressInitialize(Real effectiveTrialStress,
   }
   _shear_modulus = eT->shearModulus();
   _youngs_modulus = eT->youngsModulus();
-  computeYieldStress();
-  _yield_condition = effectiveTrialStress - _hardening_variable_old[_qp] - _yield_stress;
-  _hardening_variable[_qp] = _hardening_variable_old[_qp];
-  _plastic_strain[_qp] = _plastic_strain_old[_qp];
+  computeYieldStress(qp);
+  _yield_condition = effectiveTrialStress - _hardening_variable_old[qp] - _yield_stress;
+  _hardening_variable[qp] = _hardening_variable_old[qp];
+  _plastic_strain[qp] = _plastic_strain_old[qp];
 }
 
 Real
-IsotropicPowerLawHardening::computeHardeningDerivative(Real scalar)
+IsotropicPowerLawHardening::computeHardeningDerivative(unsigned /*qp*/, Real scalar)
 {
   Real stress = _effectiveTrialStress - 3.0 * _shear_modulus * scalar;
   Real slope = std::pow(stress, 1.0 / _n - 1.0) / _n * (1.0 / std::pow(_K, 1.0 / _n)) -

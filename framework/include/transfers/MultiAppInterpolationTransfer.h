@@ -1,18 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MULTIAPPINTERPOLATIONTRANSFER_H
+#define MULTIAPPINTERPOLATIONTRANSFER_H
 
 // MOOSE includes
-#include "MultiAppFieldTransfer.h"
-
-#include "libmesh/mesh_base.h"
+#include "MultiAppTransfer.h"
 
 // Forward declarations
 class MultiAppInterpolationTransfer;
@@ -23,10 +27,12 @@ InputParameters validParams<MultiAppInterpolationTransfer>();
 /**
  * Copy the value to the target domain from the nearest node in the source domain.
  */
-class MultiAppInterpolationTransfer : public MultiAppFieldTransfer
+class MultiAppInterpolationTransfer : public MultiAppTransfer
 {
 public:
   MultiAppInterpolationTransfer(const InputParameters & parameters);
+
+  virtual void initialSetup() override;
 
   virtual void execute() override;
 
@@ -44,9 +50,13 @@ protected:
                         const MeshBase::const_node_iterator & nodes_begin,
                         const MeshBase::const_node_iterator & nodes_end);
 
+  AuxVariableName _to_var_name;
+  VariableName _from_var_name;
+
   unsigned int _num_points;
   Real _power;
   MooseEnum _interp_type;
   Real _radius;
 };
 
+#endif /* MULTIAPPINTERPOLATIONTRANSFER_H */

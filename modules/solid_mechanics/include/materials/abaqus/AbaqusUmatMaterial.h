@@ -1,15 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "SolidModel.h"
 
+#ifndef ABAQUSUMATMATERIAL_H
+#define ABAQUSUMATMATERIAL_H
 
 typedef void (*umat_t)(Real STRESS[],
                        Real STATEV[],
@@ -95,11 +93,12 @@ protected:
   const VariableGradient & _grad_disp_y_old;
   const VariableGradient & _grad_disp_z_old;
   MaterialProperty<std::vector<Real>> & _state_var;
-  const MaterialProperty<std::vector<Real>> & _state_var_old;
+  MaterialProperty<std::vector<Real>> & _state_var_old;
   MaterialProperty<ColumnMajorMatrix> & _Fbar;
-  const MaterialProperty<ColumnMajorMatrix> & _Fbar_old;
+  MaterialProperty<ColumnMajorMatrix> & _Fbar_old;
   MaterialProperty<Real> & _elastic_strain_energy;
   MaterialProperty<Real> & _plastic_dissipation;
   MaterialProperty<Real> & _creep_dissipation;
 };
 
+#endif // ABAQUSUMATMATERIAL_H

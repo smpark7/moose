@@ -1,1 +1,7 @@
-../../../../step07_adaptivity/tests/bcs/outflow/tests
+[Tests]
+  [./test]
+    type = 'Exodiff'
+    input = 'outflow.i'
+    exodiff = 'outflow_out.e'
+  [../]
+[]

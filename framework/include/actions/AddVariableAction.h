@@ -1,16 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ADDVARIABLEACTION_H
+#define ADDVARIABLEACTION_H
 
-#include "MooseObjectAction.h"
+// MOOSE includes
+#include "Action.h"
+#include "OutputInterface.h"
 
+// libMesh includes
 #include "libmesh/fe_type.h"
 
 // Forward declerations
@@ -22,7 +31,7 @@ InputParameters validParams<AddVariableAction>();
 /**
  * Adds nonlinear variable
  */
-class AddVariableAction : public MooseObjectAction
+class AddVariableAction : public Action, public OutputInterface
 {
 public:
   /**
@@ -44,28 +53,13 @@ public:
    */
   static MooseEnum getNonlinearVariableOrders();
 
-  /**
-   * determine the FEType by examining family and order in the provided parameters
-   */
-  static FEType feType(const InputParameters & params);
-
-  /**
-   * determine the variable type given an FEType and number of components
-   */
-  static std::string determineType(const FEType & fe_type, unsigned int components);
-
 protected:
-  /**
-   * Initialize the action's member variables
-   */
-  virtual void init();
-
   /**
    * Adds a nonlinear variable to the system.
    *
    * @param var_name The name of the variable.
    */
-  void addVariable(const std::string & var_name);
+  void addVariable(std::string & var_name);
 
   /**
    * Create the action to generate the InitialCondition object
@@ -87,9 +81,8 @@ protected:
   /// True if the variable being created is a scalar
   bool _scalar_var;
 
-  /// Number of components for an array variable
-  unsigned int _components;
-
-  std::function<void(FEProblemBase &, const std::string &, const std::string &, InputParameters &)>
-      _problem_add_var_method;
+  /// Absolute zero tolerance
+  static const Real _abs_zero_tol;
 };
+
+#endif // ADDVARIABLEACTION_H

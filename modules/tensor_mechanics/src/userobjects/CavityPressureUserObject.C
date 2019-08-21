@@ -1,23 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "CavityPressureUserObject.h"
-
-registerMooseObject("TensorMechanicsApp", CavityPressureUserObject);
 
 template <>
 InputParameters
 validParams<CavityPressureUserObject>()
 {
   InputParameters params = validParams<GeneralUserObject>();
-  params.addClassDescription("Uses the ideal gas law to compute internal pressure "
-                             "and an initial moles of gas quantity.");
   params.addParam<Real>(
       "initial_pressure",
       0,
@@ -29,9 +22,8 @@ validParams<CavityPressureUserObject>()
   params.addRequiredParam<PostprocessorName>(
       "temperature", "The name of the average temperature postprocessor value.");
   params.addParam<Real>("initial_temperature", "Initial temperature (optional)");
-  params.addRequiredParam<std::vector<PostprocessorName>>(
-      "volume",
-      "The name of the postprocessor(s) that holds the value of the internal volume in the cavity");
+  params.addRequiredParam<PostprocessorName>(
+      "volume", "The name of the internal volume postprocessor value.");
   params.addParam<Real>(
       "startup_time",
       0,
@@ -52,6 +44,7 @@ CavityPressureUserObject::CavityPressureUserObject(const InputParameters & param
     _temperature(getPostprocessorValue("temperature")),
     _init_temp_given(isParamValid("initial_temperature")),
     _init_temp(_init_temp_given ? getParam<Real>("initial_temperature") : 0),
+    _volume(getPostprocessorValue("volume")),
     _start_time(0),
     _startup_time(getParam<Real>("startup_time")),
     _initialized(declareRestartableData<bool>("initialized", false))
@@ -60,27 +53,19 @@ CavityPressureUserObject::CavityPressureUserObject(const InputParameters & param
   {
     std::vector<PostprocessorName> ppn =
         params.get<std::vector<PostprocessorName>>("material_input");
-    for (unsigned int i = 0; i < ppn.size(); ++i)
+    const unsigned int len = ppn.size();
+    for (unsigned int i = 0; i < len; ++i)
       _material_input.push_back(&getPostprocessorValueByName(ppn[i]));
   }
-
-  std::vector<PostprocessorName> ppn = params.get<std::vector<PostprocessorName>>("volume");
-  for (unsigned int i = 0; i < ppn.size(); ++i)
-    _volume.push_back(&getPostprocessorValueByName(ppn[i]));
 }
 
 Real
-CavityPressureUserObject::getValue(const MooseEnum & quantity) const
+CavityPressureUserObject::getValue(const std::string & quantity) const
 {
   Real value = 0;
-  if (quantity == INITIAL_MOLES)
-  {
-    if (_n0 < 0.0)
-      mooseError("Negative number of moles calculated as an input for the cavity pressure");
-
+  if ("initial_moles" == quantity)
     value = _n0;
-  }
-  else if (quantity == CAVITY_PRESSURE)
+  else if ("cavity_pressure" == quantity)
     value = _cavity_pressure;
   else
     mooseError("Unknown quantity in " + name());
@@ -93,7 +78,6 @@ CavityPressureUserObject::initialize()
 {
   if (!_initialized)
   {
-    Real volume = computeCavityVolume();
     Real init_temp = _temperature;
     if (_init_temp_given)
       init_temp = _init_temp;
@@ -102,7 +86,7 @@ CavityPressureUserObject::initialize()
       mooseError("Cannot have initial temperature of zero when initializing cavity pressure. "
                  "Does the supplied Postprocessor for temperature execute at initial?");
 
-    _n0 = _initial_pressure * volume / (_R * init_temp);
+    _n0 = _initial_pressure * _volume / (_R * init_temp);
     _start_time = _t - _dt;
     const Real factor =
         _t >= _start_time + _startup_time ? 1.0 : (_t - _start_time) / _startup_time;
@@ -114,23 +98,11 @@ CavityPressureUserObject::initialize()
 void
 CavityPressureUserObject::execute()
 {
-  Real volume = computeCavityVolume();
   Real mat = 0;
-
   for (unsigned int i = 0; i < _material_input.size(); ++i)
     mat += *_material_input[i];
 
-  const Real pressure = (_n0 + mat) * _R * _temperature / volume;
+  const Real pressure = (_n0 + mat) * _R * _temperature / _volume;
   const Real factor = _t >= _start_time + _startup_time ? 1.0 : (_t - _start_time) / _startup_time;
   _cavity_pressure = factor * pressure;
-}
-
-Real
-CavityPressureUserObject::computeCavityVolume()
-{
-  Real volume = 0;
-  for (unsigned int i = 0; i < _volume.size(); ++i)
-    volume += *_volume[i];
-
-  return volume;
 }

@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWPROPERTYAUX_H
+#define POROUSFLOWPROPERTYAUX_H
 
 #include "AuxKernel.h"
 #include "PorousFlowDictator.h"
@@ -20,8 +19,7 @@ InputParameters validParams<PorousFlowPropertyAux>();
 /**
  * Provides a simple interface to PorousFlow material properties.
  * Note that as all properties are in materials, only elemental
- * AuxVariables can be used and as such, all properties are evaluated
- * at the qps only
+ * AuxVariables can be used
  */
 class PorousFlowPropertyAux : public AuxKernel
 {
@@ -29,19 +27,19 @@ public:
   PorousFlowPropertyAux(const InputParameters & parameters);
 
 protected:
-  virtual Real computeValue() override;
+  virtual Real computeValue();
 
 private:
-  /// Pressure of each phase
+  /// Pressure of each phase (at the qps)
   const MaterialProperty<std::vector<Real>> * _pressure;
 
-  /// Saturation of each phase
+  /// Saturation of each phase (at the qps)
   const MaterialProperty<std::vector<Real>> * _saturation;
 
-  /// Temperature of the fluid
+  /// Temperature of the fluid (at the qps)
   const MaterialProperty<Real> * _temperature;
 
-  /// Fluid density of each phase
+  /// Fluid density of each phase (at the qps)
   const MaterialProperty<std::vector<Real>> * _fluid_density;
 
   /// Viscosity of each phase
@@ -59,25 +57,10 @@ private:
   /// Internal energy of each phase
   const MaterialProperty<std::vector<Real>> * _internal_energy;
 
-  /// Secondary-species concentration
-  const MaterialProperty<std::vector<Real>> * _sec_conc;
-
-  /// Mineral-species concentration
-  const MaterialProperty<std::vector<Real>> * _mineral_conc;
-
-  /// Mineral-species reacion rate
-  const MaterialProperty<std::vector<Real>> * _mineral_reaction_rate;
-
-  /// Porosity of the media
-  const MaterialProperty<Real> * _porosity;
-
-  /// Permeability of the media
-  const MaterialProperty<RealTensorValue> * _permeability;
-
-  /// PorousFlowDictator UserObject
+  /// PorousFlow Dictator UserObject
   const PorousFlowDictator & _dictator;
 
-  /// Enum of properties
+  /// enum of properties
   const enum class PropertyEnum {
     PRESSURE,
     SATURATION,
@@ -86,36 +69,15 @@ private:
     VISCOSITY,
     MASS_FRACTION,
     RELPERM,
-    CAPILLARY_PRESSURE,
     ENTHALPY,
-    INTERNAL_ENERGY,
-    SECONDARY_CONCENTRATION,
-    MINERAL_CONCENTRATION,
-    MINERAL_REACTION_RATE,
-    POROSITY,
-    PERMEABILITY
+    INTERNAL_ENERGY
   } _property_enum;
 
   /// Phase index
-  const unsigned int _phase;
+  unsigned int _phase;
 
-  /// Liquid phase index
-  const unsigned int _liquid_phase;
-
-  /// Gas phase index
-  const unsigned int _gas_phase;
-
-  /// Fluid component index
-  const unsigned int _fluid_component;
-
-  /// Secondary species number
-  const unsigned int _secondary_species;
-
-  /// Mineral species number
-  const unsigned int _mineral_species;
-
-  /// Permeability tensor row and column
-  const unsigned int _k_row;
-  const unsigned int _k_col;
+  /// Fluid omponent index
+  unsigned int _fluid_component;
 };
 
+#endif // POROUSFLOWPROPERTYAUX_H

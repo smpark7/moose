@@ -1,20 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTE1DSMALLSTRAIN_H
+#define COMPUTE1DSMALLSTRAIN_H
 
 #include "ComputeSmallStrain.h"
-
-class Compute1DSmallStrain;
-
-template <>
-InputParameters validParams<Compute1DSmallStrain>();
 
 /**
  * Compute1DSmallStrain defines a strain tensor, assuming small strains,
@@ -27,17 +20,16 @@ class Compute1DSmallStrain : public ComputeSmallStrain
 public:
   Compute1DSmallStrain(const InputParameters & parameters);
 
+protected:
   void computeProperties() override;
 
-protected:
-  /** Computes the strain_yy; as a virtual function, this function is
-   * overwritten for the specific geometries defined by inheriting classes
-   */
+  /// Computes the strain_yy; as a virtual function, this function is
+  /// overwritten for the specific geometries defined by inheriting classes
   virtual Real computeStrainYY() = 0;
 
-  /** Computes the strain_zz; as a virtual function, this function is
-   * overwritten for the specific geometries defined by inheriting classes
-   */
+  /// Computes the strain_zz; as a virtual function, this function is
+  /// overwritten for the specific geometries defined by inheriting classes
   virtual Real computeStrainZZ() = 0;
 };
 
+#endif // COMPUTE1DSMALLSTRAIN_H

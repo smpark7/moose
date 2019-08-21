@@ -70,9 +70,10 @@
     variable = u
   [../]
   [./test1]
-    type = CoupledConvection
+    type = CoupledKernelGradTest
     variable = u
-    velocity_vector = v
+    var2 = v
+    vel = '0.1 0.1'
   [../]
   [./diff2]
     type = Diffusion
@@ -84,12 +85,12 @@
   [../]
 
   [./forceu]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fnu
   [../]
   [./forcev]
-    type = BodyForce
+    type = UserForcingFunction
     variable = v
     function = forcing_fnv
   [../]
@@ -169,6 +170,7 @@
 
   [./h]
     type = AverageElementSize
+    variable = u
   [../]
 
   [./L2u]
@@ -196,6 +198,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 #  petsc_options = '-snes'
   nl_rel_tol = 1e-15

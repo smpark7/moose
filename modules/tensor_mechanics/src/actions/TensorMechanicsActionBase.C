@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "TensorMechanicsActionBase.h"
 #include "CommonTensorMechanicsAction.h"
 #include "ActionWarehouse.h"
@@ -29,6 +26,7 @@ const std::map<std::string, std::pair<std::string, std::vector<std::string>>>
         {"max_principal", {"MaxPrincipal", {"stress"}}},
         {"mid_principal", {"MidPrincipal", {"stress"}}},
         {"min_principal", {"MinPrincipal", {"stress"}}},
+        {"effective", {"EffectiveStrain", {"plastic_strain", "creep_strain"}}},
         {"firstinv", {"FirstInvariant", {"stress", "strain"}}},
         {"secondinv", {"SecondInvariant", {"stress", "strain"}}},
         {"thirdinv", {"ThirdInvariant", {"stress", "strain"}}}};
@@ -39,9 +37,9 @@ validParams<TensorMechanicsActionBase>()
 {
   InputParameters params = validParams<Action>();
 
-  params.addRequiredParam<std::vector<VariableName>>(
+  params.addRequiredParam<std::vector<NonlinearVariableName>>(
       "displacements", "The nonlinear displacement variables for the problem");
-  params.addParam<VariableName>("temperature", "The temperature");
+  params.addParam<NonlinearVariableName>("temperature", "The temperature");
 
   MooseEnum strainType("SMALL FINITE", "SMALL");
   params.addParam<MooseEnum>("strain", strainType, "Strain formulation");
@@ -57,15 +55,6 @@ validParams<TensorMechanicsActionBase>()
   params.addParam<bool>("add_variables", false, "Add the displacement variables");
   params.addParam<std::vector<MaterialPropertyName>>(
       "eigenstrain_names", "List of eigenstrains to be applied in this strain calculation");
-  params.addParam<bool>("use_automatic_differentiation",
-                        false,
-                        "Flag to use automatic differentiation (AD) objects when possible");
-  // Global Strain
-  params.addParam<MaterialPropertyName>(
-      "global_strain",
-      "Name of the global strain material to be applied in this strain calculation. "
-      "The global strain tensor is constant over the whole domain and allows visualization "
-      "of the deformed shape with the periodic BC");
 
   // Advanced
   params.addParam<std::vector<AuxVariableName>>("save_in", "The displacement residuals");
@@ -81,21 +70,18 @@ validParams<TensorMechanicsActionBase>()
                                   "NONE"); // PLANE_STRESS
   params.addParam<MooseEnum>(
       "planar_formulation", planarFormulationType, "Out-of-plane stress/strain formulation");
-  params.addParam<VariableName>("scalar_out_of_plane_strain",
-                                "Scalar variable for the out-of-plane strain (in y "
-                                "direction for 1D Axisymmetric or in z direction for 2D "
-                                "Cartesian problems)");
-  MooseEnum outOfPlaneDirection("x y z", "z");
-  params.addParam<MooseEnum>(
-      "out_of_plane_direction", outOfPlaneDirection, "The direction of the out-of-plane strain.");
+  params.addParam<NonlinearVariableName>("scalar_out_of_plane_strain",
+                                         "Scalar variable for the out-of-plane strain (in y "
+                                         "direction for 1D Axisymmetric or in z direction for 2D "
+                                         "Cartesian problems)");
   params.addParam<FunctionName>("out_of_plane_pressure",
                                 "0",
                                 "Function used to prescribe pressure in the out-of-plane direction "
                                 "(y for 1D Axisymmetric or z for 2D Cartesian problems)");
   params.addParam<Real>("pressure_factor", 1.0, "Scale factor applied to prescribed pressure");
-  params.addParamNamesToGroup("planar_formulation scalar_out_of_plane_strain out_of_plane_pressure "
-                              "pressure_factor out_of_plane_direction",
-                              "Out-of-plane stress/strain");
+  params.addParamNamesToGroup(
+      "planar_formulation scalar_out_of_plane_strain out_of_plane_pressure pressure_factor",
+      "Out-of-plane stress/strain");
 
   // Output
   params.addParam<MultiMooseEnum>("generate_output",
@@ -107,7 +93,7 @@ validParams<TensorMechanicsActionBase>()
 }
 
 TensorMechanicsActionBase::TensorMechanicsActionBase(const InputParameters & parameters)
-  : Action(parameters), _use_ad(getParam<bool>("use_automatic_differentiation"))
+  : Action(parameters)
 {
   // check if a container block with common parameters is found
   auto action = _awh.getActions<CommonTensorMechanicsAction>();

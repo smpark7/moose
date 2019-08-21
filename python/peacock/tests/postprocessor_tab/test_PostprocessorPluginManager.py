@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 import sys
 import os
 import unittest
@@ -105,7 +96,7 @@ class TestPostprocessorPluginManager(Testing.PeacockImageTestCase):
             script = fid.read()
         with open(os.path.join('gold', name), 'r') as fid:
             gold_script = fid.read()
-        self.assertIn(script.strip('\n'), gold_script.strip('\n'))
+        self.assertEqual(script.strip('\n'), gold_script.strip('\n'))
 
         # Remove the show from the script and make it output a png
         script = script.replace('plt.show()', '')

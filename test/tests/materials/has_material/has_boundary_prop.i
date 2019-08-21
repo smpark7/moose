@@ -28,7 +28,6 @@
     variable = u
     boundary = 2
     mat_prop = 'right_bc'
-    has_check = true
   [../]
 []
 

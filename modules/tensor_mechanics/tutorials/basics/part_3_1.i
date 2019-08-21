@@ -4,6 +4,7 @@
 
 [GlobalParams]
   displacements = 'disp_x disp_y disp_z'
+  order = second
 []
 
 [Mesh]
@@ -22,11 +23,46 @@
   [../]
 []
 
-[Modules/TensorMechanics/Master]
-  [./block1]
-    strain = FINITE
-    add_variables = true
-    generate_output = 'stress_yy strain_yy'
+[Variables]
+  [./disp_x]
+  [../]
+  [./disp_y]
+  [../]
+  [./disp_z]
+  [../]
+[]
+
+[Kernels]
+  [./TensorMechanics]
+    use_displaced_mesh = true
+  [../]
+[]
+
+[AuxVariables]
+  [./stress_zz]
+    family = MONOMIAL
+    order = CONSTANT
+  [../]
+  [./strain_zz]
+    family = MONOMIAL
+    order = CONSTANT
+  [../]
+[]
+
+[AuxKernels]
+  [./stress_zz]
+    type = RankTwoAux
+    variable = stress_zz
+    rank_two_tensor = stress
+    index_i = 1
+    index_j = 1
+  [../]
+  [./strain_zz]
+    type = RankTwoAux
+    variable = strain_zz
+    rank_two_tensor = total_strain
+    index_i = 1
+    index_j = 1
   [../]
 []
 
@@ -35,6 +71,9 @@
     type = ComputeIsotropicElasticityTensor
     youngs_modulus = 2.1e5
     poissons_ratio = 0.3
+  [../]
+  [./strain]
+    type = ComputeFiniteStrain
   [../]
   [./stress]
     type = ComputeMultiPlasticityStress
@@ -62,25 +101,25 @@
 [BCs]
   [./left]
     type = PresetBC
-    variable = disp_x #change the variable to reflect the new displacement names
+    variable = disp_x
     boundary = left
     value = 0.0
   [../]
   [./back]
     type = PresetBC
-    variable = disp_z #change the variable to reflect the new displacement names
+    variable = disp_z
     boundary = back
     value = 0.0
   [../]
   [./bottom]
     type = PresetBC
-    variable = disp_y #change the variable to reflect the new displacement names
+    variable = disp_y
     boundary = bottom
     value = 0.0
   [../]
   [./top]
     type = FunctionPresetBC
-    variable = disp_y #change the variable to reflect the new displacement names
+    variable = disp_y
     boundary = top
     function = '0.0007*t'
   [../]
@@ -108,19 +147,19 @@
 [Postprocessors]
   [./ave_stress_bottom]
     type = SideAverageValue
-    variable = stress_yy
+    variable = stress_zz
     boundary = bottom
   [../]
   [./ave_strain_bottom]
     type = SideAverageValue
-    variable = strain_yy
+    variable = strain_zz
     boundary = bottom
   [../]
 []
 
 [Outputs]
   exodus = true
-  perf_graph = true
+  print_perf_log = true
   csv = true
   print_linear_residuals = false
 []

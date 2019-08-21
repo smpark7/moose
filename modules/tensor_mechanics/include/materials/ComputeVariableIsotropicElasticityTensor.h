@@ -1,20 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTEVARIABLEISOTROPICELASTICITYTENSOR_H
+#define COMPUTEVARIABLEISOTROPICELASTICITYTENSOR_H
 
 #include "ComputeElasticityTensorBase.h"
-
-class ComputeVariableIsotropicElasticityTensor;
-
-template <>
-InputParameters validParams<ComputeVariableIsotropicElasticityTensor>();
 
 /**
  * ComputeVariableIsotropicElasticityTensor defines an elasticity tensor material for
@@ -26,15 +19,20 @@ class ComputeVariableIsotropicElasticityTensor : public ComputeElasticityTensorB
 public:
   ComputeVariableIsotropicElasticityTensor(const InputParameters & parameters);
 
+  virtual bool isGuaranteedIsotropic() const override { return true; }
+
 protected:
   virtual void initialSetup() override;
   virtual void initQpStatefulProperties() override;
   virtual void computeQpElasticityTensor() override;
 
-  /// Material defining the Young's Modulus
+  /// Store the old elasticity tensor to compute the stress correctly for incremental formulations
+  MaterialProperty<RankFourTensor> & _elasticity_tensor_old;
+
+  /// Material defininig the Young's Modulus
   const MaterialProperty<Real> & _youngs_modulus;
 
-  /// Material defining the Poisson's Ratio
+  /// Material defininig the Poisson's Ratio
   const MaterialProperty<Real> & _poissons_ratio;
 
   /// number of variables the moduli depend on
@@ -59,3 +57,4 @@ protected:
   std::vector<Real> _isotropic_elastic_constants;
 };
 
+#endif // COMPUTEVARIABLEISOTROPICELASTICITYTENSOR_H

@@ -1,18 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MaterialPropertyStorage.h"
-#include "MaterialProperty.h"
 #include "Material.h"
 #include "MaterialData.h"
 #include "MooseMesh.h"
 
+// libmesh includes
 #include "libmesh/fe_interface.h"
 #include "libmesh/quadrature.h"
 
@@ -59,15 +64,19 @@ shallowCopyDataBack(const std::vector<unsigned int> & stateful_prop_ids,
 MaterialPropertyStorage::MaterialPropertyStorage()
   : _has_stateful_props(false), _has_older_prop(false)
 {
-  _props_elem =
-      libmesh_make_unique<HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>>();
-  _props_elem_old =
-      libmesh_make_unique<HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>>();
-  _props_elem_older =
-      libmesh_make_unique<HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>>();
+  _props_elem = new HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>;
+  _props_elem_old = new HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>;
+  _props_elem_older = new HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>;
 }
 
-MaterialPropertyStorage::~MaterialPropertyStorage() { releaseProperties(); }
+MaterialPropertyStorage::~MaterialPropertyStorage()
+{
+  releaseProperties();
+
+  delete _props_elem;
+  delete _props_elem_old;
+  delete _props_elem_older;
+}
 
 void
 MaterialPropertyStorage::releaseProperties()
@@ -88,8 +97,8 @@ MaterialPropertyStorage::releaseProperties()
 void
 MaterialPropertyStorage::prolongStatefulProps(
     const std::vector<std::vector<QpMap>> & refinement_map,
-    const QBase & qrule,
-    const QBase & qrule_face,
+    QBase & qrule,
+    QBase & qrule_face,
     MaterialPropertyStorage & parent_material_props,
     MaterialData & child_material_data,
     const Elem & elem,
@@ -132,7 +141,7 @@ MaterialPropertyStorage::prolongStatefulProps(
     if (input_child == -1 && input_child_side != -1 && !elem.is_child_on_side(child, parent_side))
       continue;
 
-    const Elem * child_elem = elem.child_ptr(child);
+    const Elem * child_elem = elem.child(child);
 
     mooseAssert(child < refinement_map.size(), "Refinement_map vector not initialized");
     const std::vector<QpMap> & child_map = refinement_map[child];
@@ -164,8 +173,8 @@ void
 MaterialPropertyStorage::restrictStatefulProps(
     const std::vector<std::pair<unsigned int, QpMap>> & coarsening_map,
     const std::vector<const Elem *> & coarsened_element_children,
-    const QBase & qrule,
-    const QBase & qrule_face,
+    QBase & qrule,
+    QBase & qrule_face,
     MaterialData & material_data,
     const Elem & elem,
     int input_side)
@@ -265,29 +274,19 @@ MaterialPropertyStorage::initStatefulProps(MaterialData & material_data,
 }
 
 void
-MaterialPropertyStorage::shift(const FEProblemBase & fe_problem)
+MaterialPropertyStorage::shift()
 {
-  /**
-   * Shift properties back in time and reuse older data for current (save reallocations etc.)
-   * With current, old, and older this can be accomplished by two swaps:
-   * older <-> old
-   * old <-> current
-   */
   if (_has_older_prop)
-    std::swap(_props_elem_older, _props_elem_old);
-
-  // Intentional fall through for case above and for handling just using old properties
-  std::swap(_props_elem_old, _props_elem);
-  if (fe_problem.usingADMatProps())
   {
-    for (auto && elem_pair : (*_props_elem))
-      for (auto && side_pair : elem_pair.second)
-        for (auto && prop_value_ptr : side_pair.second)
-          prop_value_ptr->markAD(true);
-    for (auto && elem_pair : (*_props_elem_old))
-      for (auto && side_pair : elem_pair.second)
-        for (auto && prop_value_ptr : side_pair.second)
-          prop_value_ptr->markAD(false);
+    // shift the properties back in time and reuse older for current (save reallocations etc.)
+    HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>> * tmp = _props_elem_older;
+    _props_elem_older = _props_elem_old;
+    _props_elem_old = _props_elem;
+    _props_elem = tmp;
+  }
+  else
+  {
+    std::swap(_props_elem, _props_elem_old);
   }
 }
 

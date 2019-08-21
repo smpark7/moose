@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef PHASEFIELDFRACTUREMECHANICSOFFDIAG_H
+#define PHASEFIELDFRACTUREMECHANICSOFFDIAG_H
 
 #include "Kernel.h"
 #include "RankTwoTensor.h"
@@ -20,6 +18,7 @@
  */
 
 class PhaseFieldFractureMechanicsOffDiag;
+class RankTwoTensor;
 
 template <>
 InputParameters validParams<PhaseFieldFractureMechanicsOffDiag>();
@@ -36,7 +35,7 @@ protected:
 
   virtual Real computeQpOffDiagJacobian(unsigned int jvar) override;
 
-  const std::string _base_name;
+  std::string _base_name;
   const unsigned int _component;
 
   const bool _c_coupled;
@@ -44,3 +43,4 @@ protected:
   const MaterialProperty<RankTwoTensor> & _d_stress_dc;
 };
 
+#endif // PHASEFIELDFRACTUREMECHANICSOFFDIAG_H

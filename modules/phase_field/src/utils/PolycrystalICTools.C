@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PolycrystalICTools.h"
 
@@ -13,7 +11,7 @@
 #include "MooseMesh.h"
 #include "MooseVariable.h"
 
-#include "libmesh/mesh_tools.h"
+// libMesh includes
 #include "libmesh/periodic_boundaries.h"
 #include "libmesh/point_locator_base.h"
 
@@ -161,8 +159,10 @@ PolycrystalICTools::buildElementalGrainAdjacencyMatrix(
   std::vector<std::set<dof_id_type>> halo_ids(n_grains);
 
   std::unique_ptr<PointLocatorBase> point_locator = mesh.getMesh().sub_point_locator();
-  for (const auto & elem : mesh.getMesh().active_element_ptr_range())
+  const auto end = mesh.getMesh().active_elements_end();
+  for (auto el = mesh.getMesh().active_elements_begin(); el != end; ++el)
   {
+    const Elem * elem = *el;
     std::map<dof_id_type, unsigned int>::const_iterator grain_it =
         element_to_grain.find(elem->id());
     mooseAssert(grain_it != element_to_grain.end(), "Element not found in map");

@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MultiAppVariableValueSamplePostprocessorTransfer.h"
 
@@ -13,27 +18,23 @@
 #include "FEProblem.h"
 #include "MooseMesh.h"
 #include "MooseTypes.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "MultiApp.h"
 #include "SystemBase.h"
 
+// libMesh includes
 #include "libmesh/meshfree_interpolation.h"
 #include "libmesh/system.h"
-
-registerMooseObject("MooseApp", MultiAppVariableValueSamplePostprocessorTransfer);
 
 template <>
 InputParameters
 validParams<MultiAppVariableValueSamplePostprocessorTransfer>()
 {
   InputParameters params = validParams<MultiAppTransfer>();
-  params.addClassDescription(
-      "Transfers the value of a variable within the master application at each sub-application "
-      "position and transfers the value to a postprocessor on the sub-application(s).");
   params.addRequiredParam<PostprocessorName>(
       "postprocessor",
       "The name of the postprocessor in the MultiApp to transfer the value to.  "
-      "This should most likely be a Reciever Postprocessor.");
+      "This should most likely be a Reporter Postprocessor.");
   params.addRequiredParam<VariableName>("source_variable", "The variable to transfer from.");
   return params;
 }
@@ -56,7 +57,7 @@ MultiAppVariableValueSamplePostprocessorTransfer::execute()
     case TO_MULTIAPP:
     {
       FEProblemBase & from_problem = _multi_app->problemBase();
-      MooseVariable & from_var = from_problem.getStandardVariable(0, _from_var_name);
+      MooseVariable & from_var = from_problem.getVariable(0, _from_var_name);
       SystemBase & from_system_base = from_var.sys();
       SubProblem & from_sub_problem = from_system_base.subproblem();
 

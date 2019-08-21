@@ -35,6 +35,7 @@ RICHARDS                  := no
 SOLID_MECHANICS           := no
 # tensor_mechanics is required by Steps 9-10.
 TENSOR_MECHANICS          := yes
+WATER_STEAM_EOS           := no
 XFEM                      := no
 include           $(MOOSE_DIR)/modules/modules.mk
 ###############################################################################
@@ -46,13 +47,12 @@ ADDITIONAL_LIBS 	:= $(FRAMEWORK_DIR)/contrib/gtest/libgtest.la
 # dep apps
 APPLICATION_DIR    := $(CURRENT_DIR)/..
 APPLICATION_NAME   := darcy_thermo_mech
-GEN_REVISION       := no
 include            $(FRAMEWORK_DIR)/app.mk
 
 APPLICATION_DIR    := $(CURRENT_DIR)
 APPLICATION_NAME   := darcy_thermo_mech-unit
 BUILD_EXEC         := yes
-GEN_REVISION       := no
+DEP_APPS    ?= $(shell $(FRAMEWORK_DIR)/scripts/find_dep_apps.py $(APPLICATION_NAME))
 include $(FRAMEWORK_DIR)/app.mk
 
 # Find all the DARCY_THERMO_MECH unit test source files and include their dependencies.

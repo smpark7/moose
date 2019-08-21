@@ -21,18 +21,18 @@
     variable = u
   [../]
   [./force_u]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
-    function = 'x*x*x+y*y*y'
+    function = 'x*x*x + y*y*y'
   [../]
   [./diff_v]
     type = Diffusion
     variable = v
   [../]
   [./force_v]
-    type = BodyForce
+    type = UserForcingFunction
     variable = v
-    function = 'x*x*x+y*y*y'
+    function = 'x*x*x + y*y*y'
   [../]
 []
 
@@ -54,6 +54,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
 

@@ -1,16 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MooseParsedVectorFunction.h"
 #include "MooseParsedFunctionWrapper.h"
-
-registerMooseObjectAliased("MooseApp", MooseParsedVectorFunction, "ParsedVectorFunction");
 
 template <>
 InputParameters
@@ -21,9 +24,6 @@ validParams<MooseParsedVectorFunction>()
   params.addParam<std::string>("value_x", "0", "x-component of function.");
   params.addParam<std::string>("value_y", "0", "y-component of function.");
   params.addParam<std::string>("value_z", "0", "z-component of function.");
-  params.addParam<std::string>("curl_x", "0", "x-component of curl of function.");
-  params.addParam<std::string>("curl_y", "0", "y-component of curl of function.");
-  params.addParam<std::string>("curl_z", "0", "z-component of curl of function.");
   return params;
 }
 
@@ -32,27 +32,18 @@ MooseParsedVectorFunction::MooseParsedVectorFunction(const InputParameters & par
     MooseParsedFunctionBase(parameters),
     _vector_value(verifyFunction(std::string("{") + getParam<std::string>("value_x") + "}{" +
                                  getParam<std::string>("value_y") + "}{" +
-                                 getParam<std::string>("value_z") + "}")),
-    _curl_value(verifyFunction(std::string("{") + getParam<std::string>("curl_x") + "}{" +
-                               getParam<std::string>("curl_y") + "}{" +
-                               getParam<std::string>("curl_z") + "}"))
+                                 getParam<std::string>("value_z") + "}"))
 {
 }
 
 RealVectorValue
-MooseParsedVectorFunction::vectorValue(Real t, const Point & p) const
+MooseParsedVectorFunction::vectorValue(Real t, const Point & p)
 {
   return _function_ptr->evaluate<RealVectorValue>(t, p);
 }
 
-RealVectorValue
-MooseParsedVectorFunction::vectorCurl(Real t, const Point & p) const
-{
-  return _curl_function_ptr->evaluate<RealVectorValue>(t, p);
-}
-
 RealGradient
-MooseParsedVectorFunction::gradient(Real /*t*/, const Point & /*p*/) const
+MooseParsedVectorFunction::gradient(Real /*t*/, const Point & /*p*/)
 {
   mooseError("The gradient method is not defined in MooseParsedVectorFunction");
 }
@@ -60,15 +51,13 @@ MooseParsedVectorFunction::gradient(Real /*t*/, const Point & /*p*/) const
 void
 MooseParsedVectorFunction::initialSetup()
 {
-  THREAD_ID tid = 0;
-  if (isParamValid("_tid"))
-    tid = getParam<THREAD_ID>("_tid");
-
   if (!_function_ptr)
+  {
+    THREAD_ID tid = 0;
+    if (isParamValid("_tid"))
+      tid = getParam<THREAD_ID>("_tid");
+
     _function_ptr = libmesh_make_unique<MooseParsedFunctionWrapper>(
         _pfb_feproblem, _vector_value, _vars, _vals, tid);
-
-  if (!_curl_function_ptr)
-    _curl_function_ptr = libmesh_make_unique<MooseParsedFunctionWrapper>(
-        _pfb_feproblem, _curl_value, _vars, _vals, tid);
+  }
 }

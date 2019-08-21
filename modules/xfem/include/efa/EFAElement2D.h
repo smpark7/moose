@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef EFAELEMENT2D_H
+#define EFAELEMENT2D_H
 
 #include "EFAElement.h"
 #include "EFAPoint.h"
@@ -42,7 +41,6 @@ public:
 
   virtual void switchNode(EFANode * new_node, EFANode * old_node, bool descend_to_parent);
   virtual void switchEmbeddedNode(EFANode * new_node, EFANode * old_node);
-  virtual void updateFragmentNode();
   virtual void getMasterInfo(EFANode * node,
                              std::vector<EFANode *> & master_nodes,
                              std::vector<double> & master_weights) const;
@@ -116,10 +114,6 @@ public:
                   EFANode * embedded_node,
                   std::map<unsigned int, EFANode *> & EmbeddedNodes,
                   bool add_to_neighbor);
-  void addNodeCut(unsigned int node_id,
-                  EFANode * embedded_permanent_node,
-                  std::map<unsigned int, EFANode *> & PermanentNodes,
-                  std::map<unsigned int, EFANode *> & EmbeddedPermanentNodes);
   bool addFragmentEdgeCut(unsigned int frag_edge_id,
                           double position,
                           std::map<unsigned int, EFANode *> & EmbeddedNodes);
@@ -136,3 +130,4 @@ private:
   void setLocalCoordinates();
 };
 
+#endif

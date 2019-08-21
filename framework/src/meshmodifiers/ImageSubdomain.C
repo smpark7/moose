@@ -1,33 +1,29 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-// provides round, not std::round (see http://www.cplusplus.com/reference/cmath/round/)
-#include <cmath>
+// STL includes
+#include <cmath> // provides round, not std::round (see http://www.cplusplus.com/reference/cmath/round/)
 
 // MOOSE includes
 #include "ImageSubdomain.h"
 #include "MooseMesh.h"
-
-#include "libmesh/elem.h"
-
-registerMooseObjectReplaced("MooseApp",
-                            ImageSubdomain,
-                            "11/30/2019 00:00",
-                            ImageSubdomainGenerator);
 
 template <>
 InputParameters
 validParams<ImageSubdomain>()
 {
   InputParameters params = validParams<MeshModifier>();
-  params.addClassDescription("Samples an image at the coordinates of each element centroid using "
-                             "the resulting value as each element's subdomain ID");
   params += validParams<ImageSampler>();
   return params;
 }
@@ -52,9 +48,11 @@ ImageSubdomain::modify()
 
   // Loop over the elements and sample the image at the element centroid and use the value for the
   // subdomain id
-  for (auto & elem : mesh.active_element_ptr_range())
+  for (MeshBase::element_iterator el = mesh.active_elements_begin();
+       el != mesh.active_elements_end();
+       ++el)
   {
-    SubdomainID id = static_cast<SubdomainID>(round(sample(elem->centroid())));
-    elem->subdomain_id() = id;
+    SubdomainID id = static_cast<SubdomainID>(round(sample((*el)->centroid())));
+    (*el)->subdomain_id() = id;
   }
 }

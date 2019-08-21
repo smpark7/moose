@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWRELATIVEPERMEABILITYVG_H
+#define POROUSFLOWRELATIVEPERMEABILITYVG_H
 
 #include "PorousFlowRelativePermeabilityBase.h"
 #include "PorousFlowVanGenuchten.h"
@@ -41,10 +40,7 @@ protected:
   /// van Genuchten exponent m for the specified phase
   const Real _m;
 
-  /// Whether to use the wetting or non-wetting van Genuchten expression
-  const bool _wetting;
-
-  /// Start of cubic smoothing
+  /// start of cubic smoothing
   const Real _cut;
 
   /// Parameter of the cubic
@@ -57,3 +53,4 @@ protected:
   const Real _cub3;
 };
 
+#endif // POROUSFLOWRELATIVEPERMEABILITYVG_H

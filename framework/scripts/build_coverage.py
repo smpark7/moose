@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 import os, sys, argparse, string, subprocess, time, re
 from argparse import RawTextHelpFormatter
 
@@ -69,7 +60,6 @@ def buildCMD(options):
                         '--gcov-tool', options.cov_tool,
                         '--extract', os.getcwd() + '/combined.info', '*' + options.application[0] + '/src*',
                         '--extract', os.getcwd() + '/combined.info', '*' + options.application[0] + '/include*',
-                        '--extract', os.getcwd() + '/combined.info', '*' + options.application[0] + '/build/header_symlinks*',
                         '--output-file', options.outfile ])
 
         # Build genhtml command if --generate-html was used
@@ -122,7 +112,7 @@ def buildCMD(options):
 
 def verifyCoverage(options):
     summary_command = subprocess.Popen([options.lcov_command[0], '--gcov-tool', options.cov_tool, '--summary', options.outfile], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    summary_output = ' '.join(summary_command.communicate())
+    summary_output = summary_command.communicate()[1]
     coverage = float(re.findall(r'lines.*: (\d+.\d+)', summary_output)[0])
     print summary_output + '\n\nCode Coverage: ' + str(coverage)
     if coverage >= options.coverage_percent:

@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "AbaqusUmatMaterial.h"
 #include "Factory.h"
@@ -13,8 +11,6 @@
 
 #include <dlfcn.h>
 #define QUOTE(macro) stringifyName(macro)
-
-registerMooseObject("SolidMechanicsApp", AbaqusUmatMaterial);
 
 template <>
 InputParameters
@@ -44,9 +40,9 @@ AbaqusUmatMaterial::AbaqusUmatMaterial(const InputParameters & parameters)
     _grad_disp_y_old(coupledGradientOld("disp_y")),
     _grad_disp_z_old(coupledGradientOld("disp_z")),
     _state_var(declareProperty<std::vector<Real>>("state_var")),
-    _state_var_old(getMaterialPropertyOld<std::vector<Real>>("state_var")),
+    _state_var_old(declarePropertyOld<std::vector<Real>>("state_var")),
     _Fbar(declareProperty<ColumnMajorMatrix>("Fbar")),
-    _Fbar_old(getMaterialPropertyOld<ColumnMajorMatrix>("Fbar")),
+    _Fbar_old(declarePropertyOld<ColumnMajorMatrix>("Fbar")),
     _elastic_strain_energy(declareProperty<Real>("elastic_strain_energy")),
     _plastic_dissipation(declareProperty<Real>("plastic_dissipation")),
     _creep_dissipation(declareProperty<Real>("creep_dissipation"))
@@ -174,8 +170,12 @@ AbaqusUmatMaterial::initQpStatefulProperties()
 {
   // Initialize state variable vector
   _state_var[_qp].resize(_num_state_vars);
+  _state_var_old[_qp].resize(_num_state_vars);
   for (unsigned int i = 0; i < _num_state_vars; ++i)
+  {
     _state_var[_qp][i] = 0.0;
+    _state_var_old[_qp][i] = 0.0;
+  }
 }
 
 void

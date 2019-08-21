@@ -1,46 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "CO2FluidPropertiesTest.h"
-#include "SinglePhaseFluidPropertiesTestUtils.h"
-
-/**
- * Test that the fluid name is correctly returned
- */
-TEST_F(CO2FluidPropertiesTest, fluidName) { EXPECT_EQ(_fp->fluidName(), "co2"); }
-
-/**
- * Test that the molar mass is correctly returned
- */
-TEST_F(CO2FluidPropertiesTest, molarMass)
-{
-  ABS_TEST(_fp->molarMass(), 44.0098e-3, REL_TOL_SAVED_VALUE);
-}
-
-/**
- * Test that the critical properties are correctly returned
- */
-TEST_F(CO2FluidPropertiesTest, criticalProperties)
-{
-  ABS_TEST(_fp->criticalPressure(), 7.3773e6, REL_TOL_SAVED_VALUE);
-  ABS_TEST(_fp->criticalTemperature(), 304.1282, REL_TOL_SAVED_VALUE);
-  ABS_TEST(_fp->criticalDensity(), 467.6, REL_TOL_SAVED_VALUE);
-}
-
-/**
- * Test that the triple point properties are correctly returned
- */
-TEST_F(CO2FluidPropertiesTest, triplePointProperties)
-{
-  ABS_TEST(_fp->triplePointPressure(), 0.51795e6, REL_TOL_SAVED_VALUE);
-  ABS_TEST(_fp->triplePointTemperature(), 216.592, REL_TOL_SAVED_VALUE);
-}
+#include "Utils.h"
 
 /**
  * Verify calculation of melting pressure using experimental data from
@@ -53,11 +26,9 @@ TEST_F(CO2FluidPropertiesTest, triplePointProperties)
  */
 TEST_F(CO2FluidPropertiesTest, melting)
 {
-  const Real tol = 10.0 * REL_TOL_EXTERNAL_VALUE;
-
-  REL_TEST(_fp->meltingPressure(217.03), 2.57e6, tol);
-  REL_TEST(_fp->meltingPressure(235.29), 95.86e6, tol);
-  REL_TEST(_fp->meltingPressure(266.04), 286.77e6, tol);
+  REL_TEST("melting", _fp->meltingPressure(217.03), 2.57e6, 1.0e-2);
+  REL_TEST("melting", _fp->meltingPressure(235.29), 95.86e6, 1.0e-2);
+  REL_TEST("melting", _fp->meltingPressure(266.04), 286.77e6, 1.0e-2);
 }
 
 /**
@@ -67,7 +38,7 @@ TEST_F(CO2FluidPropertiesTest, melting)
  */
 TEST_F(CO2FluidPropertiesTest, sublimation)
 {
-  REL_TEST(_fp->sublimationPressure(194.6857), 0.101325e6, REL_TOL_EXTERNAL_VALUE);
+  REL_TEST("sublimation", _fp->sublimationPressure(194.6857), 0.101325e6, 1.0e-4);
 }
 
 /**
@@ -81,22 +52,20 @@ TEST_F(CO2FluidPropertiesTest, sublimation)
  */
 TEST_F(CO2FluidPropertiesTest, vapor)
 {
-  const Real tol = 10.0 * REL_TOL_EXTERNAL_VALUE;
-
   // Vapor pressure
-  REL_TEST(_fp->vaporPressure(217.0), 0.52747e6, tol);
-  REL_TEST(_fp->vaporPressure(245.0), 1.51887e6, tol);
-  REL_TEST(_fp->vaporPressure(303.8), 7.32029e6, tol);
+  REL_TEST("vapor", _fp->vaporPressure(217.0), 0.52747e6, 1.0e-2);
+  REL_TEST("vapor", _fp->vaporPressure(245.0), 1.51887e6, 1.0e-2);
+  REL_TEST("vapor", _fp->vaporPressure(303.8), 7.32029e6, 1.0e-2);
 
   // Saturated vapor density
-  REL_TEST(_fp->saturatedVaporDensity(217.0), 14.0017, tol);
-  REL_TEST(_fp->saturatedVaporDensity(245.0), 39.5048, tol);
-  REL_TEST(_fp->saturatedVaporDensity(303.8), 382.30, tol);
+  REL_TEST("saturated vapor density", _fp->saturatedVaporDensity(217.0), 14.0017, 1.0e-2);
+  REL_TEST("saturated vapor density", _fp->saturatedVaporDensity(245.0), 39.5048, 1.0e-2);
+  REL_TEST("saturated vapor density", _fp->saturatedVaporDensity(303.8), 382.30, 1.0e-2);
 
   // Saturated liquid density
-  REL_TEST(_fp->saturatedLiquidDensity(217.0), 1177.03, tol);
-  REL_TEST(_fp->saturatedLiquidDensity(245.0), 1067.89, tol);
-  REL_TEST(_fp->saturatedLiquidDensity(303.8), 554.14, tol);
+  REL_TEST("saturated liquid density", _fp->saturatedLiquidDensity(217.0), 1177.03, 1.0e-2);
+  REL_TEST("saturated liquid density", _fp->saturatedLiquidDensity(245.0), 1067.89, 1.0e-2);
+  REL_TEST("saturated liquid density", _fp->saturatedLiquidDensity(303.8), 554.14, 1.0e-2);
 }
 
 /**
@@ -109,26 +78,22 @@ TEST_F(CO2FluidPropertiesTest, vapor)
  */
 TEST_F(CO2FluidPropertiesTest, partialDensity)
 {
-  const Real tol = 50.0 * REL_TOL_EXTERNAL_VALUE;
-
-  REL_TEST(_fp->partialDensity(373.15), 1182.8, tol);
-  REL_TEST(_fp->partialDensity(473.35), 880.0, tol);
-  REL_TEST(_fp->partialDensity(573.15), 593.8, tol);
+  REL_TEST("partial density", _fp->partialDensity(373.15), 1182.8, 5.0e-2);
+  REL_TEST("partial density", _fp->partialDensity(473.35), 880.0, 5.0e-2);
+  REL_TEST("partial density", _fp->partialDensity(573.15), 593.8, 5.0e-2);
 }
 
 /**
- * Verify that the coefficients for Henry's constant are correct using
+ * Verify calculation of Henry's constant using data from
  * Guidelines on the Henry's constant and vapour liquid distribution constant
  * for gases in H20 and D20 at high temperatures, IAPWS (2004).
  */
 TEST_F(CO2FluidPropertiesTest, henry)
 {
-  const Real tol = REL_TOL_EXTERNAL_VALUE;
-  const std::vector<Real> hc = _fp->henryCoefficients();
-
-  REL_TEST(hc[0], -8.55445, tol);
-  REL_TEST(hc[1], 4.01195, tol);
-  REL_TEST(hc[2], 9.52345, tol);
+  REL_TEST("henry", _fp->henryConstant(300.0), 173.63e6, 1.0e-3);
+  REL_TEST("henry", _fp->henryConstant(400.0), 579.84e6, 1.0e-3);
+  REL_TEST("henry", _fp->henryConstant(500.0), 520.79e6, 1.0e-3);
+  REL_TEST("henry", _fp->henryConstant(600.0), 259.53e6, 1.0e-3);
 }
 
 /**
@@ -139,15 +104,9 @@ TEST_F(CO2FluidPropertiesTest, henry)
  */
 TEST_F(CO2FluidPropertiesTest, thermalConductivity)
 {
-  const Real tol = REL_TOL_EXTERNAL_VALUE;
-
-  REL_TEST(_fp->k_from_rho_T(23.435, 250.0), 13.45e-3, tol);
-  REL_TEST(_fp->k_from_rho_T(18.579, 300.0), 17.248e-3, tol);
-  REL_TEST(_fp->k_from_rho_T(11.899, 450.0), 29.377e-3, tol);
-
-  REL_TEST(_fp->k_from_p_T(1.0e6, 250.0), 1.34504e-2, tol);
-  REL_TEST(_fp->k_from_p_T(1.0e6, 300.0), 1.72483e-2, tol);
-  REL_TEST(_fp->k_from_p_T(1.0e6, 450.0), 2.93767e-2, tol);
+  REL_TEST("thermal conductivity", _fp->k(23.435, 250.0), 13.45e-3, 1.0e-3);
+  REL_TEST("thermal conductivity", _fp->k(18.579, 300.0), 17.248e-3, 1.0e-3);
+  REL_TEST("thermal conductivity", _fp->k(11.899, 450.0), 29.377e-3, 1.0e-3);
 }
 
 /**
@@ -157,15 +116,9 @@ TEST_F(CO2FluidPropertiesTest, thermalConductivity)
  */
 TEST_F(CO2FluidPropertiesTest, viscosity)
 {
-  const Real tol = REL_TOL_EXTERNAL_VALUE;
-
-  REL_TEST(_fp->mu_from_rho_T(20.199, 280.0), 14.15e-6, tol);
-  REL_TEST(_fp->mu_from_rho_T(15.105, 360.0), 17.94e-6, tol);
-  REL_TEST(_fp->mu_from_rho_T(10.664, 500.0), 24.06e-6, tol);
-
-  REL_TEST(_fp->mu_from_p_T(1.0e6, 280.0), 1.41505e-05, tol);
-  REL_TEST(_fp->mu_from_p_T(1.0e6, 360.0), 1.79395e-05, tol);
-  REL_TEST(_fp->mu_from_p_T(1.0e6, 500.0), 2.40643e-05, tol);
+  REL_TEST("viscosity", _fp->mu(20.199, 280.0), 14.15e-6, 1.0e-3);
+  REL_TEST("viscosity", _fp->mu(15.105, 360.0), 17.94e-6, 1.0e-3);
+  REL_TEST("viscosity", _fp->mu(10.664, 500.0), 24.06e-6, 1.0e-3);
 }
 
 /**
@@ -180,36 +133,33 @@ TEST_F(CO2FluidPropertiesTest, propertiesSW)
   // Pressure = 1 MPa, temperature = 280 K
   Real p = 1.0e6;
   Real T = 280.0;
-
-  const Real tol = REL_TOL_EXTERNAL_VALUE;
-
-  REL_TEST(_fp->rho_from_p_T(p, T), 20.199, tol);
-  REL_TEST(_fp->h_from_p_T(p, T), -26.385e3, tol);
-  REL_TEST(_fp->e_from_p_T(p, T), -75.892e3, tol);
-  REL_TEST(_fp->s_from_p_T(p, T), -0.51326e3, tol);
-  REL_TEST(_fp->cp_from_p_T(p, T), 0.92518e3, tol);
-  REL_TEST(_fp->cv_from_p_T(p, T), 0.67092e3, tol);
-  REL_TEST(_fp->c_from_p_T(p, T), 252.33, tol);
+  REL_TEST("density", _fp->rho(p, T), 20.199, 1.0e-3);
+  REL_TEST("enthalpy", _fp->h(p, T), -26.385e3, 1.0e-3);
+  REL_TEST("internal energy", _fp->e(p, T), -75.892e3, 1.0e-3);
+  REL_TEST("entropy", _fp->s(p, T), -0.51326e3, 1.0e-3);
+  REL_TEST("cp", _fp->cp(p, T), 0.92518e3, 1.0e-3);
+  REL_TEST("cv", _fp->cv(p, T), 0.67092e3, 1.0e-3);
+  REL_TEST("c", _fp->c(p, T), 252.33, 1.0e-3);
 
   // Pressure = 1 MPa, temperature = 500 K
   T = 500.0;
-  REL_TEST(_fp->rho_from_p_T(p, T), 10.664, tol);
-  REL_TEST(_fp->h_from_p_T(p, T), 185.60e3, tol);
-  REL_TEST(_fp->e_from_p_T(p, T), 91.829e3, tol);
-  REL_TEST(_fp->s_from_p_T(p, T), 0.04225e3, tol);
-  REL_TEST(_fp->cp_from_p_T(p, T), 1.0273e3, tol);
-  REL_TEST(_fp->cv_from_p_T(p, T), 0.82823e3, tol);
-  REL_TEST(_fp->c_from_p_T(p, T), 339.81, tol);
+  REL_TEST("density", _fp->rho(p, T), 10.664, 1.0e-3);
+  REL_TEST("enthalpy", _fp->h(p, T), 185.60e3, 1.0e-3);
+  REL_TEST("internal energy", _fp->e(p, T), 91.829e3, 1.0e-3);
+  REL_TEST("entropy", _fp->s(p, T), 0.04225e3, 1.0e-3);
+  REL_TEST("cp", _fp->cp(p, T), 1.0273e3, 1.0e-3);
+  REL_TEST("cv", _fp->cv(p, T), 0.82823e3, 1.0e-3);
+  REL_TEST("c", _fp->c(p, T), 339.81, 1.0e-3);
 
   // Pressure = 10 MPa, temperature = 500 K
   p = 10.0e6;
-  REL_TEST(_fp->rho_from_p_T(p, T), 113.07, tol);
-  REL_TEST(_fp->h_from_p_T(p, T), 157.01e3, tol);
-  REL_TEST(_fp->e_from_p_T(p, T), 68.569e3, tol);
-  REL_TEST(_fp->s_from_p_T(p, T), -0.4383e3, tol);
-  REL_TEST(_fp->cp_from_p_T(p, T), 1.1624e3, tol);
-  REL_TEST(_fp->cv_from_p_T(p, T), 0.85516e3, tol);
-  REL_TEST(_fp->c_from_p_T(p, T), 337.45, tol);
+  REL_TEST("density", _fp->rho(p, T), 113.07, 1.0e-3);
+  REL_TEST("enthalpy", _fp->h(p, T), 157.01e3, 1.0e-3);
+  REL_TEST("internal energy", _fp->e(p, T), 68.569e3, 1.0e-3);
+  REL_TEST("entropy", _fp->s(p, T), -0.4383e3, 1.0e-3);
+  REL_TEST("cp", _fp->cp(p, T), 1.1624e3, 1.0e-3);
+  REL_TEST("cv", _fp->cv(p, T), 0.85516e3, 1.0e-3);
+  REL_TEST("c", _fp->c(p, T), 337.45, 1.0e-3);
 }
 
 /**
@@ -218,95 +168,63 @@ TEST_F(CO2FluidPropertiesTest, propertiesSW)
  */
 TEST_F(CO2FluidPropertiesTest, derivatives)
 {
-  const Real tol = REL_TOL_DERIVATIVE;
-
-  const Real p = 1.0e6;
+  Real p = 1.0e6;
   Real T = 350.0;
 
-  DERIV_TEST(_fp->rho_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->mu_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->e_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->h_from_p_T, p, T, tol);
-  DERIV_TEST(_fp->k_from_p_T, p, T, tol);
+  // Finite differencing parameters
+  Real dp = 1.0e1;
+  Real dT = 1.0e-4;
 
-  // Viscosity from density and temperature
+  // density
+  Real drho_dp_fd = (_fp->rho(p + dp, T) - _fp->rho(p - dp, T)) / (2.0 * dp);
+  Real drho_dT_fd = (_fp->rho(p, T + dT) - _fp->rho(p, T - dT)) / (2.0 * dT);
+  Real rho = 0.0, drho_dp = 0.0, drho_dT = 0.0;
+  _fp->rho_dpT(p, T, rho, drho_dp, drho_dT);
+
+  ABS_TEST("rho", rho, _fp->rho(p, T), 1.0e-15);
+  REL_TEST("drho_dp", drho_dp, drho_dp_fd, 1.0e-6);
+  REL_TEST("drho_dT", drho_dT, drho_dT_fd, 1.0e-6);
+
+  // enthalpy
+  Real dh_dp_fd = (_fp->h(p + dp, T) - _fp->h(p - dp, T)) / (2.0 * dp);
+  Real dh_dT_fd = (_fp->h(p, T + dT) - _fp->h(p, T - dT)) / (2.0 * dT);
+  Real h = 0.0, dh_dp = 0.0, dh_dT = 0.0;
+  _fp->h_dpT(p, T, h, dh_dp, dh_dT);
+
+  ABS_TEST("h", h, _fp->h(p, T), 1.0e-15);
+  REL_TEST("dh_dp", dh_dp, dh_dp_fd, 1.0e-6);
+  REL_TEST("dh_dT", dh_dT, dh_dT_fd, 1.0e-6);
+
+  // internal energy
+  Real de_dp_fd = (_fp->e(p + dp, T) - _fp->e(p - dp, T)) / (2.0 * dp);
+  Real de_dT_fd = (_fp->e(p, T + dT) - _fp->e(p, T - dT)) / (2.0 * dT);
+  Real e = 0.0, de_dp = 0.0, de_dT = 0.0;
+  _fp->e_dpT(p, T, e, de_dp, de_dT);
+
+  ABS_TEST("e", e, _fp->e(p, T), 1.0e-15);
+  REL_TEST("de_dp", de_dp, de_dp_fd, 1.0e-6);
+  REL_TEST("de_dT", de_dT, de_dT_fd, 1.0e-6);
+
+  // Viscosity
+  rho = 15.105;
   T = 360.0;
-  const Real drho = 1.0e-4;
-  Real rho, drho_dp, drho_dT;
-  _fp->rho_from_p_T(p, T, rho, drho_dp, drho_dT);
+  Real drho = 1.0e-4;
 
-  Real dmu_drho_fd =
-      (_fp->mu_from_rho_T(rho + drho, T) - _fp->mu_from_rho_T(rho - drho, T)) / (2.0 * drho);
+  Real dmu_drho_fd = (_fp->mu(rho + drho, T) - _fp->mu(rho - drho, T)) / (2.0 * drho);
+  Real dmu_dT_fd = (_fp->mu(rho, T + dT) - _fp->mu(rho, T - dT)) / (2.0 * dT);
   Real mu = 0.0, dmu_drho = 0.0, dmu_dT = 0.0;
-  _fp->mu_from_rho_T(rho, T, drho_dT, mu, dmu_drho, dmu_dT);
+  _fp->mu_drhoT(rho, T, mu, dmu_drho, dmu_dT);
 
-  ABS_TEST(mu, _fp->mu_from_rho_T(rho, T), REL_TOL_CONSISTENCY);
-  REL_TEST(dmu_drho, dmu_drho_fd, tol);
+  ABS_TEST("mu", mu, _fp->mu(rho, T), 1.0e-15);
+  REL_TEST("dmu_dp", dmu_drho, dmu_drho_fd, 1.0e-6);
+  REL_TEST("dmu_dT", dmu_dT, dmu_dT_fd, 1.0e-6);
 
-  // To properly test derivative wrt temperature, use p and T and calculate density,
-  // so that the change in density wrt temperature is included
-  const Real dp = 1.0e1;
-  const Real dT = 1.0e-4;
-  _fp->rho_from_p_T(p, T, rho, drho_dp, drho_dT);
-  _fp->mu_from_rho_T(rho, T, drho_dT, mu, dmu_drho, dmu_dT);
+  // Henry's constant
+  T = 300.0;
 
-  Real dmu_dT_fd = (_fp->mu_from_rho_T(_fp->rho_from_p_T(p, T + dT), T + dT) -
-                    _fp->mu_from_rho_T(_fp->rho_from_p_T(p, T - dT), T - dT)) /
-                   (2.0 * dT);
-
-  REL_TEST(dmu_dT, dmu_dT_fd, tol);
-
-  Real dmu_dp_fd = (_fp->mu_from_p_T(p + dp, T) - _fp->mu_from_p_T(p - dp, T)) / (2.0 * dp);
-  Real dmu_dp = 0.0;
-  _fp->mu_from_p_T(p, T, mu, dmu_dp, dmu_dT);
-
-  ABS_TEST(mu, _fp->mu_from_p_T(p, T), REL_TOL_CONSISTENCY);
-  REL_TEST(dmu_dp, dmu_dp_fd, tol);
-
-  _fp->mu_from_p_T(p, T, mu, dmu_dp, dmu_dT);
-  dmu_dT_fd = (_fp->mu_from_p_T(p, T + dT) - _fp->mu_from_p_T(p, T - dT)) / (2.0 * dT);
-
-  REL_TEST(dmu_dT, dmu_dT_fd, tol);
-}
-
-/**
- * Verify that the methods that return multiple properties in one call return identical
- * values as the individual methods
- */
-TEST_F(CO2FluidPropertiesTest, combined)
-{
-  const Real p = 1.0e6;
-  const Real T = 300.0;
-  const Real tol = REL_TOL_CONSISTENCY;
-
-  // Single property methods
-  Real rho, drho_dp, drho_dT;
-  _fp->rho_from_p_T(p, T, rho, drho_dp, drho_dT);
-  Real mu, dmu_dp, dmu_dT;
-  _fp->mu_from_p_T(p, T, mu, dmu_dp, dmu_dT);
-  Real e, de_dp, de_dT;
-  _fp->e_from_p_T(p, T, e, de_dp, de_dT);
-
-  // Combined property methods
-  Real rho2, drho2_dp, drho2_dT, mu2, dmu2_dp, dmu2_dT, e2, de2_dp, de2_dT;
-  _fp->rho_mu_from_p_T(p, T, rho2, mu2);
-
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(mu, mu2, tol);
-
-  _fp->rho_mu_from_p_T(p, T, rho2, drho2_dp, drho2_dT, mu2, dmu2_dp, dmu2_dT);
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(drho_dp, drho2_dp, tol);
-  ABS_TEST(drho_dT, drho2_dT, tol);
-  ABS_TEST(mu, mu2, tol);
-  ABS_TEST(dmu_dp, dmu2_dp, tol);
-  ABS_TEST(dmu_dT, dmu2_dT, tol);
-
-  _fp->rho_e_from_p_T(p, T, rho2, drho2_dp, drho2_dT, e2, de2_dp, de2_dT);
-  ABS_TEST(rho, rho2, tol);
-  ABS_TEST(drho_dp, drho2_dp, tol);
-  ABS_TEST(drho_dT, drho2_dT, tol);
-  ABS_TEST(e, e2, tol);
-  ABS_TEST(de_dp, de2_dp, tol);
-  ABS_TEST(de_dT, de2_dT, tol);
+  Real dKh_dT_fd = (_fp->henryConstant(T + dT) - _fp->henryConstant(T - dT)) / (2.0 * dT);
+  Real Kh = 0.0, dKh_dT = 0.0;
+  _fp->henryConstant_dT(T, Kh, dKh_dT);
+  REL_TEST("henry", Kh, _fp->henryConstant(T), 1.0e-6);
+  REL_TEST("dhenry_dT", dKh_dT_fd, dKh_dT, 1.0e-6);
 }

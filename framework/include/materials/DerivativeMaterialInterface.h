@@ -1,28 +1,31 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
+#ifndef DERIVATIVEMATERIALINTERFACE_H
+#define DERIVATIVEMATERIALINTERFACE_H
 
 #include "AuxiliarySystem.h"
 #include "BlockRestrictable.h"
 #include "BoundaryRestrictable.h"
 #include "DerivativeMaterialPropertyNameInterface.h"
 #include "KernelBase.h"
-#include "BoundaryCondition.h"
 #include "Material.h"
-#include "MooseVariableFE.h"
+#include "MaterialProperty.h"
+#include "MooseVariable.h"
 #include "NonlinearSystem.h"
 
 // Forward declarations
 class FEProblemBase;
-template <typename>
-class MaterialProperty;
 
 /**
  * Interface class ("Veneer") to provide generator methods for derivative
@@ -145,7 +148,7 @@ private:
 
   // check if the speciified variable name is not the variable this kernel is acting on (always true
   // for any other type of object)
-  bool isNotObjectVariable(const VariableName & name);
+  bool isNotKernelVariable(const VariableName & name);
 
   /// Reference to FEProblemBase
   FEProblemBase & _dmi_fe_problem;
@@ -179,7 +182,7 @@ DerivativeMaterialInterface<T>::haveMaterialProperty(const std::string & prop_na
   return ((bnd && bnd->boundaryRestricted() &&
            bnd->template hasBoundaryMaterialProperty<U>(prop_name)) ||
           (blk && blk->template hasBlockMaterialProperty<U>(prop_name)) ||
-          (hasMaterialProperty<U>(prop_name)));
+          (this->template hasMaterialProperty<U>(prop_name)));
 }
 
 template <class T>
@@ -207,7 +210,7 @@ DerivativeMaterialInterface<T>::getDefaultMaterialPropertyByName(const std::stri
 {
   // if found return the requested property
   if (haveMaterialProperty<U>(prop_name))
-    return getMaterialPropertyByName<U>(prop_name);
+    return this->template getMaterialPropertyByName<U>(prop_name);
 
   return this->template getZeroMaterialProperty<U>(prop_name);
 }
@@ -218,7 +221,7 @@ MaterialProperty<U> &
 DerivativeMaterialInterface<T>::declarePropertyDerivative(const std::string & base,
                                                           const std::vector<VariableName> & c)
 {
-  return declareProperty<U>(derivativePropertyName(base, c));
+  return this->template declareProperty<U>(propertyName(base, c));
 }
 
 template <class T>
@@ -230,10 +233,10 @@ DerivativeMaterialInterface<T>::declarePropertyDerivative(const std::string & ba
                                                           const VariableName & c3)
 {
   if (c3 != "")
-    return declareProperty<U>(derivativePropertyNameThird(base, c1, c2, c3));
+    return this->template declareProperty<U>(propertyNameThird(base, c1, c2, c3));
   if (c2 != "")
-    return declareProperty<U>(derivativePropertyNameSecond(base, c1, c2));
-  return declareProperty<U>(derivativePropertyNameFirst(base, c1));
+    return this->template declareProperty<U>(propertyNameSecond(base, c1, c2));
+  return this->template declareProperty<U>(propertyNameFirst(base, c1));
 }
 
 template <class T>
@@ -252,7 +255,7 @@ DerivativeMaterialInterface<T>::getMaterialPropertyDerivative(const std::string 
   if (this->template defaultMaterialProperty<U>(prop_name))
     return this->template getZeroMaterialProperty<U>(prop_name + "_zeroderivative");
 
-  return getDefaultMaterialPropertyByName<U>(derivativePropertyName(prop_name, c));
+  return getDefaultMaterialPropertyByName<U>(propertyName(prop_name, c));
 }
 
 template <class T>
@@ -274,10 +277,10 @@ DerivativeMaterialInterface<T>::getMaterialPropertyDerivative(const std::string 
     return this->template getZeroMaterialProperty<U>(prop_name + "_zeroderivative");
 
   if (c3 != "")
-    return getDefaultMaterialPropertyByName<U>(derivativePropertyNameThird(prop_name, c1, c2, c3));
+    return getDefaultMaterialPropertyByName<U>(propertyNameThird(prop_name, c1, c2, c3));
   if (c2 != "")
-    return getDefaultMaterialPropertyByName<U>(derivativePropertyNameSecond(prop_name, c1, c2));
-  return getDefaultMaterialPropertyByName<U>(derivativePropertyNameFirst(prop_name, c1));
+    return getDefaultMaterialPropertyByName<U>(propertyNameSecond(prop_name, c1, c2));
+  return getDefaultMaterialPropertyByName<U>(propertyNameFirst(prop_name, c1));
 }
 
 template <class T>
@@ -286,7 +289,7 @@ const MaterialProperty<U> &
 DerivativeMaterialInterface<T>::getMaterialPropertyDerivativeByName(
     const MaterialPropertyName & base, const std::vector<VariableName> & c)
 {
-  return getDefaultMaterialPropertyByName<U>(derivativePropertyName(base, c));
+  return getDefaultMaterialPropertyByName<U>(propertyName(base, c));
 }
 
 template <class T>
@@ -299,10 +302,10 @@ DerivativeMaterialInterface<T>::getMaterialPropertyDerivativeByName(
     const VariableName & c3)
 {
   if (c3 != "")
-    return getDefaultMaterialPropertyByName<U>(derivativePropertyNameThird(base, c1, c2, c3));
+    return getDefaultMaterialPropertyByName<U>(propertyNameThird(base, c1, c2, c3));
   if (c2 != "")
-    return getDefaultMaterialPropertyByName<U>(derivativePropertyNameSecond(base, c1, c2));
-  return getDefaultMaterialPropertyByName<U>(derivativePropertyNameFirst(base, c1));
+    return getDefaultMaterialPropertyByName<U>(propertyNameSecond(base, c1, c2));
+  return getDefaultMaterialPropertyByName<U>(propertyNameFirst(base, c1));
 }
 
 template <class T>
@@ -326,10 +329,10 @@ DerivativeMaterialInterface<T>::validateCouplingHelper(const MaterialPropertyNam
       cj.push_back(jname);
 
       // if the derivative exists make sure the variable is coupled
-      if (haveMaterialProperty<U>(derivativePropertyName(base, cj)))
+      if (haveMaterialProperty<U>(propertyName(base, cj)))
       {
-        // kernels and BCs to not have the variable they are acting on in coupled_moose_vars
-        bool is_missing = isNotObjectVariable(jname);
+        // kernels to not have the variable they are acting on in coupled_moose_vars
+        bool is_missing = isNotKernelVariable(jname);
 
         for (unsigned int k = 0; k < ncoupled; ++k)
           if (this->_coupled_moose_vars[k]->name() == jname)
@@ -426,7 +429,7 @@ void
 DerivativeMaterialInterface<T>::validateDerivativeMaterialPropertyBase(const std::string & base)
 {
   // resolve the input parameter name base to the actual material property name
-  const MaterialPropertyName prop_name = getParam<MaterialPropertyName>(base);
+  const MaterialPropertyName prop_name = this->template getParam<MaterialPropertyName>(base);
 
   // check if the material property does not exist on the blocks of the current object,
   // and check if it is not a plain number in the input file
@@ -441,18 +444,17 @@ DerivativeMaterialInterface<T>::validateDerivativeMaterialPropertyBase(const std
 
 template <class T>
 inline bool
-DerivativeMaterialInterface<T>::isNotObjectVariable(const VariableName & name)
+DerivativeMaterialInterface<T>::isNotKernelVariable(const VariableName & name)
 {
   // try to cast this to a Kernel pointer
-  KernelBase * kernel_ptr = dynamic_cast<KernelBase *>(this);
-  if (kernel_ptr != nullptr)
-    return kernel_ptr->variable().name() != name;
+  KernelBase * k = dynamic_cast<KernelBase *>(this);
 
-  // try to cast this to a BoundaryCondition pointer
-  BoundaryCondition * bc_ptr = dynamic_cast<BoundaryCondition *>(this);
-  if (bc_ptr != nullptr)
-    return bc_ptr->variable().name() != name;
+  // This interface is not templated on a class derived from Kernel
+  if (k == NULL)
+    return true;
 
-  // This interface is not templated on a class derived from either Kernel or BC
-  return true;
+  // We are templated on a kernel class, so we check if the kernel variable
+  return k->variable().name() != name;
 }
+
+#endif // DERIVATIVEMATERIALINTERFACE_H

@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef LEVELSETOLSSONBUBBLE_H
+#define LEVELSETOLSSONBUBBLE_H
 
 // MOOSE includes
 #include "Function.h"
@@ -25,9 +24,9 @@ class LevelSetOlssonBubble : public Function
 public:
   LevelSetOlssonBubble(const InputParameters & parameters);
 
-  virtual Real value(Real /*t*/, const Point & p) const override;
+  virtual Real value(Real /*t*/, const Point & p) override;
 
-  virtual RealGradient gradient(Real /*t*/, const Point & p) const override;
+  virtual RealGradient gradient(Real /*t*/, const Point & p) override;
 
 protected:
   /// The 'center' of the bubble
@@ -39,3 +38,5 @@ protected:
   /// The interface thickness
   const Real & _epsilon;
 };
+
+#endif // LEVELSETOLSSONBUBBLE_H

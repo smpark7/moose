@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "MaterialWarehouse.h"
@@ -58,26 +63,16 @@ void
 MaterialWarehouse::subdomainSetup(THREAD_ID tid /*=0*/) const
 {
   MooseObjectWarehouse<Material>::subdomainSetup(tid);
-  _face_materials.subdomainSetup(tid);
-}
-
-void
-MaterialWarehouse::neighborSubdomainSetup(THREAD_ID tid /*=0*/) const
-{
   _neighbor_materials.subdomainSetup(tid);
+  _face_materials.subdomainSetup(tid);
 }
 
 void
 MaterialWarehouse::subdomainSetup(SubdomainID id, THREAD_ID tid /*=0*/) const
 {
   MooseObjectWarehouse<Material>::subdomainSetup(id, tid);
-  _face_materials.subdomainSetup(id, tid);
-}
-
-void
-MaterialWarehouse::neighborSubdomainSetup(SubdomainID id, THREAD_ID tid /*=0*/) const
-{
   _neighbor_materials.subdomainSetup(id, tid);
+  _face_materials.subdomainSetup(id, tid);
 }
 
 void

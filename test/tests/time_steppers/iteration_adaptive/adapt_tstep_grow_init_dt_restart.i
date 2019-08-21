@@ -42,6 +42,7 @@
 [Executioner]
   type = Transient
   solve_type = NEWTON
+  start_time = 0.0
   end_time = 50.0
   n_startup_steps = 2
   dtmax = 6.0

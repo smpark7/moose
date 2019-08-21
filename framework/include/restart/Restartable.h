@@ -1,25 +1,28 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef RESTARTABLE_H
+#define RESTARTABLE_H
 
 // MOOSE includes
 #include "MooseTypes.h"
 #include "RestartableData.h"
-#include "MemberTemplateMacros.h"
 
 // Forward declarations
 class PostprocessorData;
 class SubProblem;
 class InputParameters;
-class MooseObject;
-class MooseApp;
 
 /**
  * A class for creating restricted objects
@@ -30,33 +33,31 @@ class Restartable
 public:
   /**
    * Class constructor
-   *
-   * @param moose_object The MooseObject that this interface is being implemented on.
+   * Populates the SubProblem and MooseMesh pointers
+   * @param parameters The InputParameters for the object.
    * @param system_name The name of the MOOSE system.  ie "Kernel", "BCs", etc.  Should roughly
    * correspond to the section in the input file so errors are easy to understand.
-   *
-   * This method will forward the thread id if it exists in the moose_object parameters. Delegates
-   * to the "MooseApp &" constructor.
+   * @param subproblem An optional method for inputting the SubProblem object, this is used by
+   * FEProblemBase, othersize
+   * the SubProblem comes from the parameters
    */
-  Restartable(const MooseObject * moose_object, const std::string & system_name);
+  Restartable(const InputParameters & parameters,
+              std::string system_name,
+              SubProblem * subproblem = NULL);
 
   /**
-   * Class constructor
+   * Constructor for objects that don't have "parameters"
    *
-   * Similar to the other class constructor but also accepts an individual thread ID. If this
-   * method is used, no thread ID in the parameters object is used. Delegates to the "MooseApp &"
-   * constructor.
+   * @param name The name of the object
+   * @param system_name The name of the MOOSE system.  ie "Kernel", "BCs", etc.  Should roughly
+   * correspond to the section in the input file so errors are easy to understand.
+   * @param subproblem A reference to the subproblem for this object
+   * @param tid Optional thread id (will default to zero)
    */
-  Restartable(const MooseObject * moose_object, const std::string & system_name, THREAD_ID tid);
-
-  /**
-   * This class constructor is used for non-Moose-based objects like interfaces. A name for the
-   * storage as well as a system name must be passed in along with the thread ID explicitly.
-   */
-  Restartable(MooseApp & moose_app,
-              const std::string & name,
-              const std::string & system_name,
-              THREAD_ID tid);
+  Restartable(const std::string & name,
+              std::string system_name,
+              SubProblem & subproblem,
+              THREAD_ID tid = 0);
 
   /**
    * Emtpy destructor
@@ -74,7 +75,7 @@ protected:
    * @param data_name The name of the data (usually just use the same name as the member variable)
    */
   template <typename T>
-  T & declareRestartableDataTempl(std::string data_name);
+  T & declareRestartableData(std::string data_name);
 
   /**
    * Declare a piece of data as "restartable" and initialize it.
@@ -87,7 +88,7 @@ protected:
    * @param init_value The initial value of the data
    */
   template <typename T>
-  T & declareRestartableDataTempl(std::string data_name, const T & init_value);
+  T & declareRestartableData(std::string data_name, const T & init_value);
 
   /**
    * Declare a piece of data as "restartable".
@@ -117,36 +118,10 @@ protected:
   T &
   declareRestartableDataWithContext(std::string data_name, const T & init_value, void * context);
 
+private:
   /**
-   * Declare a piece of data as "recoverable".
-   * This means that in the event of a recovery this piece of data
-   * will be restored back to its previous value.
+   * Note: This is only used internally in MOOSE.  DO NOT use this function!
    *
-   * Note - this data will NOT be restored on _Restart_!
-   *
-   * NOTE: This returns a _reference_!  Make sure you store it in a _reference_!
-   *
-   * @param data_name The name of the data (usually just use the same name as the member variable)
-   */
-  template <typename T>
-  T & declareRecoverableData(std::string data_name);
-
-  /**
-   * Declare a piece of data as "restartable" and initialize it.
-   * This means that in the event of a restart this piece of data
-   * will be restored back to its previous value.
-   *
-   * Note - this data will NOT be restored on _Restart_!
-   *
-   * NOTE: This returns a _reference_!  Make sure you store it in a _reference_!
-   *
-   * @param data_name The name of the data (usually just use the same name as the member variable)
-   * @param init_value The initial value of the data
-   */
-  template <typename T>
-  T & declareRecoverableData(std::string data_name, const T & init_value);
-
-  /**
    * Declare a piece of data as "restartable".
    * This means that in the event of a restart this piece of data
    * will be restored back to its previous value.
@@ -160,6 +135,8 @@ protected:
   T & declareRestartableDataWithObjectName(std::string data_name, std::string object_name);
 
   /**
+   * Note: This is only used internally in MOOSE.  DO NOT use this function!
+   *
    * Declare a piece of data as "restartable".
    * This means that in the event of a restart this piece of data
    * will be restored back to its previous value.
@@ -175,53 +152,100 @@ protected:
                                                       std::string object_name,
                                                       void * context);
 
-private:
-  /// Helper function for actually registering the restartable data.
-  void registerRestartableDataOnApp(std::string name,
-                                    std::unique_ptr<RestartableDataValue> data,
-                                    THREAD_ID tid);
+  /**
+   * NOTE: These are used internally in MOOSE.  NOT FOR PUBLIC CONSUMPTION!
+   *
+   * Declare a piece of data as "recoverable".
+   * This means that in the event of a recovery this piece of data
+   * will be restored back to its previous value.
+   *
+   * Note - this data will NOT be restored on _Restart_!
+   *
+   * NOTE: This returns a _reference_!  Make sure you store it in a _reference_!
+   *
+   * @param data_name The name of the data (usually just use the same name as the member variable)
+   */
+  template <typename T>
+  T & declareRecoverableData(std::string data_name);
 
-  /// Helper function for actually registering the restartable data.
-  void registerRecoverableDataOnApp(std::string name);
+  /**
+   * NOTE: These are used internally in MOOSE.  NOT FOR PUBLIC CONSUMPTION!
+   *
+   * Declare a piece of data as "restartable" and initialize it.
+   * This means that in the event of a restart this piece of data
+   * will be restored back to its previous value.
+   *
+   * Note - this data will NOT be restored on _Restart_!
+   *
+   * NOTE: This returns a _reference_!  Make sure you store it in a _reference_!
+   *
+   * @param data_name The name of the data (usually just use the same name as the member variable)
+   * @param init_value The initial value of the data
+   */
+  template <typename T>
+  T & declareRecoverableData(std::string data_name, const T & init_value);
 
-  /// Reference to the application
-  MooseApp & _restartable_app;
+  /// Helper function so we don't have to include SubProblem in the header
+  void
+  registerRestartableDataOnSubProblem(std::string name, RestartableDataValue * data, THREAD_ID tid);
+
+  /// Helper function so we don't have to include SubProblem in the header
+  void registerRecoverableDataOnSubProblem(std::string name);
 
   /// The name of the object
   std::string _restartable_name;
+
+  /// The object's parameters
+  const InputParameters * _restartable_params;
 
   /// The system name this object is in
   std::string _restartable_system_name;
 
   /// The thread ID for this object
   THREAD_ID _restartable_tid;
+
+  /// Pointer to the SubProblem class
+  SubProblem * _restartable_subproblem;
+
+  /// For access to registerRestartableDataOnSubProblem()
+  friend class PostprocessorData;
+  friend class VectorPostprocessorData;
+  friend class NearestNodeLocator;
+  friend class ReportableData;
+  friend class FileOutput;
+  friend class FEProblemBase;
+  friend class Transient;
+  friend class TableOutput;
+  friend class TransientMultiApp;
 };
 
 template <typename T>
 T &
-Restartable::declareRestartableDataTempl(std::string data_name)
+Restartable::declareRestartableData(std::string data_name)
 {
-  return declareRestartableDataWithContext<T>(data_name, nullptr);
+  return declareRestartableDataWithContext<T>(data_name, NULL);
 }
 
 template <typename T>
 T &
-Restartable::declareRestartableDataTempl(std::string data_name, const T & init_value)
+Restartable::declareRestartableData(std::string data_name, const T & init_value)
 {
-  return declareRestartableDataWithContext<T>(data_name, init_value, nullptr);
+  return declareRestartableDataWithContext<T>(data_name, init_value, NULL);
 }
 
 template <typename T>
 T &
 Restartable::declareRestartableDataWithContext(std::string data_name, void * context)
 {
+  if (!_restartable_subproblem)
+    mooseError("No valid SubProblem found for ", _restartable_system_name, "/", _restartable_name);
+
   std::string full_name = _restartable_system_name + "/" + _restartable_name + "/" + data_name;
-  auto data_ptr = libmesh_make_unique<RestartableData<T>>(full_name, context);
-  T & restartable_data_ref = data_ptr->get();
+  RestartableData<T> * data_ptr = new RestartableData<T>(full_name, context);
 
-  registerRestartableDataOnApp(full_name, std::move(data_ptr), _restartable_tid);
+  registerRestartableDataOnSubProblem(full_name, data_ptr, _restartable_tid);
 
-  return restartable_data_ref;
+  return data_ptr->get();
 }
 
 template <typename T>
@@ -230,21 +254,24 @@ Restartable::declareRestartableDataWithContext(std::string data_name,
                                                const T & init_value,
                                                void * context)
 {
+  if (!_restartable_subproblem)
+    mooseError("No valid SubProblem found for ", _restartable_system_name, "/", _restartable_name);
+
   std::string full_name = _restartable_system_name + "/" + _restartable_name + "/" + data_name;
-  auto data_ptr = libmesh_make_unique<RestartableData<T>>(full_name, context);
+  RestartableData<T> * data_ptr = new RestartableData<T>(full_name, context);
+
   data_ptr->set() = init_value;
 
-  T & restartable_data_ref = data_ptr->get();
-  registerRestartableDataOnApp(full_name, std::move(data_ptr), _restartable_tid);
+  registerRestartableDataOnSubProblem(full_name, data_ptr, _restartable_tid);
 
-  return restartable_data_ref;
+  return data_ptr->get();
 }
 
 template <typename T>
 T &
 Restartable::declareRestartableDataWithObjectName(std::string data_name, std::string object_name)
 {
-  return declareRestartableDataWithObjectNameWithContext<T>(data_name, object_name, nullptr);
+  return declareRestartableDataWithObjectNameWithContext<T>(data_name, object_name, NULL);
 }
 
 template <typename T>
@@ -268,20 +295,28 @@ template <typename T>
 T &
 Restartable::declareRecoverableData(std::string data_name)
 {
+  if (!_restartable_subproblem)
+    mooseError("No valid SubProblem found for ", _restartable_system_name, "/", _restartable_name);
+
   std::string full_name = _restartable_system_name + "/" + _restartable_name + "/" + data_name;
 
-  registerRecoverableDataOnApp(full_name);
+  registerRecoverableDataOnSubProblem(full_name);
 
-  return declareRestartableDataWithContext<T>(data_name, nullptr);
+  return declareRestartableDataWithContext<T>(data_name, NULL);
 }
 
 template <typename T>
 T &
 Restartable::declareRecoverableData(std::string data_name, const T & init_value)
 {
+  if (!_restartable_subproblem)
+    mooseError("No valid SubProblem found for ", _restartable_system_name, "/", _restartable_name);
+
   std::string full_name = _restartable_system_name + "/" + _restartable_name + "/" + data_name;
 
-  registerRecoverableDataOnApp(full_name);
+  registerRecoverableDataOnSubProblem(full_name);
 
-  return declareRestartableDataWithContext<T>(data_name, init_value, nullptr);
+  return declareRestartableDataWithContext<T>(data_name, init_value, NULL);
 }
+
+#endif // RESTARTABLE

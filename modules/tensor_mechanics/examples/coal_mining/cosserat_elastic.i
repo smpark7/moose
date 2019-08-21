@@ -458,12 +458,6 @@
   [../]
   [./strain]
     type = ComputeCosseratIncrementalSmallStrain
-    eigenstrain_names = ini_stress
-  [../]
-  [./ini_stress]
-    type = ComputeEigenstrainFromInitialStress
-    initial_stress = 'ini_xx 0 0  0 ini_xx 0  0 0 ini_zz'
-    eigenstrain_name = ini_stress
   [../]
 
   [./stress]
@@ -475,6 +469,7 @@
     absolute_tolerance = 1E6
     max_iterations = 1
     tangent_operator = nonlinear
+    initial_stress = 'ini_xx 0 0  0 ini_xx 0  0 0 ini_zz'
     perform_finite_strain_rotations = false
   [../]
   [./dp]
@@ -483,7 +478,7 @@
     warn_about_precision_loss = false
     host_youngs_modulus = 8E3
     host_poissons_ratio = 0.25
-    base_name = dp
+    name_prepender = dp
     DP_model = drucker_prager_model
     tensile_strength = dp_tensile_str_strong_harden
     compressive_strength = dp_compressive_str
@@ -498,7 +493,7 @@
     type = CappedWeakPlaneCosseratStressUpdate
     block = 0
     warn_about_precision_loss = false
-    base_name = wp
+    name_prepender = wp
     cohesion = wp_coh
     tan_friction_angle = wp_tan_fric
     tan_dilation_angle = wp_tan_dil
@@ -568,6 +563,7 @@
   console = true
   #[./console]
   #  type = Console
+  #  perf_log = true
   #  output_linear = false
   #[../]
 []

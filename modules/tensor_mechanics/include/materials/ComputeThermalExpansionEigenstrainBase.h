@@ -1,21 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTETHERMALEXPANSIONEIGENSTRAINBASE_H
+#define COMPUTETHERMALEXPANSIONEIGENSTRAINBASE_H
 
 #include "ComputeEigenstrainBase.h"
 #include "DerivativeMaterialInterface.h"
 
 class ComputeThermalExpansionEigenstrainBase;
-template <typename>
-class RankTwoTensorTempl;
-typedef RankTwoTensorTempl<Real> RankTwoTensor;
+class RankTwoTensor;
 
 template <>
 InputParameters validParams<ComputeThermalExpansionEigenstrainBase>();
@@ -25,7 +21,7 @@ InputParameters validParams<ComputeThermalExpansionEigenstrainBase>();
  * compute eigenstrains due to thermal expansion of a material.
  */
 class ComputeThermalExpansionEigenstrainBase
-  : public DerivativeMaterialInterface<ComputeEigenstrainBase>
+    : public DerivativeMaterialInterface<ComputeEigenstrainBase>
 {
 public:
   ComputeThermalExpansionEigenstrainBase(const InputParameters & parameters);
@@ -49,3 +45,4 @@ protected:
   const VariableValue & _stress_free_temperature;
 };
 
+#endif // COMPUTETHERMALEXPANSIONEIGENSTRAINBASE_H

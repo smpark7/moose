@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef AB2PREDICTORCORRECTOR_H
+#define AB2PREDICTORCORRECTOR_H
 
 // MOOSE includes
 #include "TimeStepper.h"
@@ -40,8 +46,7 @@ public:
   virtual void step() override;
   virtual void preExecute() override;
   virtual void preSolve() override;
-  virtual void postSolve() override;
-  virtual bool converged() const override;
+  virtual bool converged() override;
 
 protected:
   virtual Real computeDT() override;
@@ -49,6 +54,8 @@ protected:
 
   virtual Real estimateTimeError(NumericVector<Number> & sol);
 
+  int stringtoint(std::string string);
+  ///
   NumericVector<Number> & _u1;
   NumericVector<Number> & _aux1;
   NumericVector<Number> & _pred1;
@@ -77,3 +84,4 @@ protected:
   std::ofstream myfile;
 };
 
+#endif // AB2PREDICTORCORRECTOR_H

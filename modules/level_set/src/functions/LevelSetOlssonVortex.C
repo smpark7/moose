@@ -1,15 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "LevelSetOlssonVortex.h"
-
-registerMooseObject("LevelSetApp", LevelSetOlssonVortex);
 
 template <>
 InputParameters
@@ -39,24 +35,23 @@ LevelSetOlssonVortex::LevelSetOlssonVortex(const InputParameters & parameters)
 }
 
 Real
-LevelSetOlssonVortex::value(Real t, const Point & p) const
+LevelSetOlssonVortex::value(Real t, const Point & p)
 {
   return vectorValue(t, p)(_component);
 }
 
 RealVectorValue
-LevelSetOlssonVortex::vectorValue(Real t, const Point & p) const
+LevelSetOlssonVortex::vectorValue(Real t, const Point & p)
 {
   // Compute the velocity field
-  RealVectorValue output;
-  output(0) = std::sin(_pi * p(0)) * std::sin(_pi * p(0)) * std::sin(2 * _pi * p(1));
-  output(1) = -std::sin(_pi * p(1)) * std::sin(_pi * p(1)) * std::sin(2 * _pi * p(0));
+  _output(0) = std::sin(_pi * p(0)) * std::sin(_pi * p(0)) * std::sin(2 * _pi * p(1));
+  _output(1) = -std::sin(_pi * p(1)) * std::sin(_pi * p(1)) * std::sin(2 * _pi * p(0));
 
   // Compute the coefficient used to reverse the flow
-  Real reverse_coefficient = 1.0;
+  _reverse_coefficient = 1.0;
   if (_reverse_type == 0 && t > _reverse_time / 2.)
-    reverse_coefficient = -1.0;
+    _reverse_coefficient = -1.0;
   else if (_reverse_type == 1)
-    reverse_coefficient = std::cos(_pi * t / _reverse_time);
-  return reverse_coefficient * output;
+    _reverse_coefficient = std::cos(_pi * t / _reverse_time);
+  return _reverse_coefficient * _output;
 }

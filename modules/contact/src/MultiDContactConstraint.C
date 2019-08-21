@@ -1,23 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 // MOOSE includes
 #include "MultiDContactConstraint.h"
 #include "SystemBase.h"
 #include "PenetrationLocator.h"
 #include "MooseMesh.h"
-#include "ContactAction.h"
 
+// libMesh includes
 #include "libmesh/string_to_enum.h"
 #include "libmesh/sparse_matrix.h"
-
-registerMooseObject("ContactApp", MultiDContactConstraint);
 
 template <>
 InputParameters
@@ -43,7 +39,7 @@ validParams<MultiDContactConstraint>()
       "displacements",
       "The displacements appropriate for the simulation geometry and coordinate system");
 
-  params.addParam<MooseEnum>("model", ContactAction::getModelEnum(), "The contact model to use");
+  params.addParam<std::string>("model", "frictionless", "The contact model to use");
   params.addParam<Real>(
       "penalty",
       1e8,
@@ -60,7 +56,7 @@ MultiDContactConstraint::MultiDContactConstraint(const InputParameters & paramet
     _residual_copy(_sys.residualGhosted()),
     _jacobian_update(getParam<bool>("jacobian_update")),
     _component(getParam<unsigned int>("component")),
-    _model(getParam<MooseEnum>("model").getEnum<ContactModel>()),
+    _model(ContactMaster::contactModel(getParam<std::string>("model"))),
     _penalty(getParam<Real>("penalty")),
     _mesh_dimension(_mesh.dimension()),
     _vars(3, libMesh::invalid_uint)
@@ -131,11 +127,11 @@ MultiDContactConstraint::updateContactSet()
     // Real resid = 0;
     switch (_model)
     {
-      case ContactModel::FRICTIONLESS:
+      case CM_FRICTIONLESS:
         // resid = pinfo->_normal * res_vec;
         break;
 
-      case ContactModel::GLUED:
+      case CM_GLUED:
         // resid = pinfo->_normal * res_vec;
         break;
 
@@ -227,11 +223,11 @@ MultiDContactConstraint::computeQpResidual(Moose::ConstraintType type)
     case Moose::Slave:
       switch (_model)
       {
-        case ContactModel::FRICTIONLESS:
+        case CM_FRICTIONLESS:
           resid = pinfo->_normal(_component) * (pinfo->_normal * (pen_force - res_vec));
           break;
 
-        case ContactModel::GLUED:
+        case CM_GLUED:
           resid = pen_force(_component) - res_vec(_component);
           break;
 
@@ -243,11 +239,11 @@ MultiDContactConstraint::computeQpResidual(Moose::ConstraintType type)
     case Moose::Master:
       switch (_model)
       {
-        case ContactModel::FRICTIONLESS:
+        case CM_FRICTIONLESS:
           resid = pinfo->_normal(_component) * (pinfo->_normal * res_vec);
           break;
 
-        case ContactModel::GLUED:
+        case CM_GLUED:
           resid = res_vec(_component);
           break;
 
@@ -271,7 +267,7 @@ MultiDContactConstraint::computeQpJacobian(Moose::ConstraintJacobianType type)
     case Moose::SlaveSlave:
       switch (_model)
       {
-        case ContactModel::FRICTIONLESS:
+        case CM_FRICTIONLESS:
 
           slave_jac = pinfo->_normal(_component) * pinfo->_normal(_component) *
                       (_penalty * _phi_slave[_j][_qp] -
@@ -279,7 +275,7 @@ MultiDContactConstraint::computeQpJacobian(Moose::ConstraintJacobianType type)
                                     _connected_dof_indices[_j]));
           break;
 
-        case ContactModel::GLUED:
+        case CM_GLUED:
           // resid = pen_force(_component) - res_vec(_component);
           break;
 
@@ -292,13 +288,13 @@ MultiDContactConstraint::computeQpJacobian(Moose::ConstraintJacobianType type)
     case Moose::SlaveMaster:
       switch (_model)
       {
-        case ContactModel::FRICTIONLESS:
+        case CM_FRICTIONLESS:
 
           slave_jac = pinfo->_normal(_component) * pinfo->_normal(_component) *
                       (-_penalty * _phi_master[_j][_qp]);
           break;
 
-        case ContactModel::GLUED:
+        case CM_GLUED:
           /*
                 resid = pen_force(_component)
                   - res_vec(_component)
@@ -319,9 +315,6 @@ MultiDContactConstraint::computeQpJacobian(Moose::ConstraintJacobianType type)
 
     case Moose::MasterMaster:
       return 0.0;
-
-    default:
-      mooseError("Unhandled ConstraintJacobianType");
   }
   return 0.0;
 }

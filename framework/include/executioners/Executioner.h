@@ -1,21 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef EXECUTIONER_H
+#define EXECUTIONER_H
 
 #include "MooseObject.h"
 #include "UserObjectInterface.h"
 #include "PostprocessorInterface.h"
 #include "Restartable.h"
-#include "PerfGraphInterface.h"
-#include "FEProblemSolve.h"
-#include "PicardSolve.h"
 
 // System includes
 #include <string>
@@ -28,12 +31,17 @@ InputParameters validParams<Executioner>();
 
 /**
  * Executioners are objects that do the actual work of solving your problem.
+ *
+ * In general there are two "sets" of Executioners: Steady and Transient.
+ *
+ * The Difference is that a Steady Executioner usually only calls "solve()"
+ * for the NonlinearSystem once... where Transient Executioners call solve()
+ * multiple times... i.e. once per timestep.
  */
 class Executioner : public MooseObject,
                     public UserObjectInterface,
                     public PostprocessorInterface,
-                    public Restartable,
-                    public PerfGraphInterface
+                    public Restartable
 {
 public:
   /**
@@ -43,12 +51,12 @@ public:
    */
   Executioner(const InputParameters & parameters);
 
-  virtual ~Executioner() {}
+  virtual ~Executioner();
 
   /**
    * Initialize the executioner
    */
-  virtual void init() {}
+  virtual void init();
 
   /**
    * Pure virtual execute function MUST be overridden by children classes.
@@ -59,22 +67,22 @@ public:
   /**
    * Override this for actions that should take place before execution
    */
-  virtual void preExecute() {}
+  virtual void preExecute();
 
   /**
    * Override this for actions that should take place after execution
    */
-  virtual void postExecute() {}
+  virtual void postExecute();
 
   /**
-   * Override this for actions that should take place before execution, called by PicardSolve
+   * Override this for actions that should take place before execution
    */
-  virtual void preSolve() {}
+  virtual void preSolve();
 
   /**
-   * Override this for actions that should take place after execution, called by PicardSolve
+   * Override this for actions that should take place after execution
    */
-  virtual void postSolve() {}
+  virtual void postSolve();
 
   /**
    * Deprecated:
@@ -91,7 +99,7 @@ public:
    * This is an empty string for non-Transient executioners
    * @return A string of giving the TimeStepper name
    */
-  virtual std::string getTimeStepperName() { return std::string(); }
+  virtual std::string getTimeStepperName();
 
   /**
    * Can be used by subsclasses to call parentOutputPositionChanged()
@@ -102,22 +110,7 @@ public:
   /**
    * Whether or not the last solve converged.
    */
-  virtual bool lastSolveConverged() const = 0;
-
-  /// Return the underlining FEProblemSolve object.
-  FEProblemSolve & feProblemSolve() { return _feproblem_solve; }
-
-  /// Return underlining PicardSolve object.
-  PicardSolve & picardSolve() { return _picard_solve; }
-
-  /// Augmented Picard convergence check that to be called by PicardSolve and can be overridden by derived executioners
-  virtual bool augmentedPicardConvergenceCheck() const { return false; }
-
-  /**
-   * Get the verbose output flag
-   * @return The verbose output flag
-   */
-  const bool & verbose() const { return _verbose; }
+  virtual bool lastSolveConverged();
 
 protected:
   /**
@@ -132,12 +125,15 @@ protected:
 
   FEProblemBase & _fe_problem;
 
-  FEProblemSolve _feproblem_solve;
-  PicardSolve _picard_solve;
+  /// Initial Residual Variables
+  Real _initial_residual_norm;
+  Real _old_initial_residual_norm;
 
   // Restart
   std::string _restart_file_base;
 
-  /// True if printing out additional information
-  const bool & _verbose;
+  // Splitting
+  std::vector<std::string> _splitting;
 };
+
+#endif // EXECUTIONER_H

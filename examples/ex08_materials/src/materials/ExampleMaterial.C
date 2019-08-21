@@ -1,15 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ExampleMaterial.h"
-
-registerMooseObject("ExampleApp", ExampleMaterial);
 
 template <>
 InputParameters
@@ -17,16 +20,12 @@ validParams<ExampleMaterial>()
 {
   InputParameters params = validParams<Material>();
 
-  // Allow users to specify vectors defining the points of a piecewise function formed via linear
-  // interpolation.
+  // Vectors for Linear Interpolation
   params.addRequiredParam<std::vector<Real>>(
-      "independent_vals",
-      "The vector of z-coordinate values for a piecewise function's independent variable");
+      "independent_vals", "The vector of indepedent values for building the piecewise function");
   params.addRequiredParam<std::vector<Real>>(
-      "dependent_vals", "The vector of diffusivity values for a piecewise function's dependent");
+      "dependent_vals", "The vector of depedent values for building the piecewise function");
 
-  // Allow the user to specify which independent variable's gradient to use for calculating the
-  // convection velocity property:
   params.addCoupledVar(
       "diffusion_gradient",
       "The gradient of this variable will be used to compute a velocity vector property.");
@@ -36,19 +35,18 @@ validParams<ExampleMaterial>()
 
 ExampleMaterial::ExampleMaterial(const InputParameters & parameters)
   : Material(parameters),
-    // Declare that this material is going to provide a Real value typed
-    // material property named "diffusivity" that Kernels and other objects can use.
-    // This property is "bound" to the class's "_diffusivity" member.
+    // Declare that this material is going to provide a Real
+    // valued property named "diffusivity" that Kernels can use.
     _diffusivity(declareProperty<Real>("diffusivity")),
 
-    // Also declare a second "convection_velocity" RealGradient value typed property.
+    // Declare that this material is going to provide a RealGradient
+    // valued property named "convection_velocity" that Kernels can use.
     _convection_velocity(declareProperty<RealGradient>("convection_velocity")),
 
-    // Get the reference to the variable coupled into this Material.
+    // Get the reference to the variable coupled into this Material
     _diffusion_gradient(isCoupled("diffusion_gradient") ? coupledGradient("diffusion_gradient")
                                                         : _grad_zero),
 
-    // Initialize our piecewise function helper with the user-specified interpolation points.
     _piecewise_func(getParam<std::vector<Real>>("independent_vals"),
                     getParam<std::vector<Real>>("dependent_vals"))
 {
@@ -57,10 +55,9 @@ ExampleMaterial::ExampleMaterial(const InputParameters & parameters)
 void
 ExampleMaterial::computeQpProperties()
 {
-  // Diffusivity will be the value of the (linearly-interpolated) piece-wise function described by
-  // the user.
+  // We will compute the diffusivity based on the Linear Interpolation of the provided vectors in
+  // the z-direction
   _diffusivity[_qp] = _piecewise_func.sample(_q_point[_qp](2));
 
-  // Convection velocity is set equal to the gradient of the variable set by the user.
   _convection_velocity[_qp] = _diffusion_gradient[_qp];
 }

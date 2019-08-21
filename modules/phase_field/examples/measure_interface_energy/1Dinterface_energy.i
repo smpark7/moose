@@ -193,5 +193,5 @@
     type = Console
     execute_on = 'FAILED INITIAL NONLINEAR TIMESTEP_END final'
   [../]
-  perf_graph = true
+  print_perf_log = true
 []

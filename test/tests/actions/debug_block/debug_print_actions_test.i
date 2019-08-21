@@ -10,6 +10,8 @@
 []
 
 [Variables]
+  active = 'u'
+
   [./u]
     order = FIRST
     family = LAGRANGE
@@ -17,6 +19,8 @@
 []
 
 [Kernels]
+  active = 'diff'
+
   [./diff]
     type = Diffusion
     variable = u
@@ -24,6 +28,8 @@
 []
 
 [BCs]
+  active = 'left right'
+
   [./left]
     type = DirichletBC
     variable = u
@@ -41,6 +47,15 @@
 
 [Executioner]
   type = Steady
+
+  # Preconditioned JFNK (default)
+  solve_type = 'PJFNK'
+[]
+
+[Outputs]
+  execute_on = 'timestep_end'
+  file_base = out
+  exodus = true
 []
 
 [Debug]

@@ -1,13 +1,4 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
-from TestHarness import util
+import util
 from RunApp import RunApp
 
 class RunException(RunApp):
@@ -16,7 +7,7 @@ class RunException(RunApp):
     def validParams():
         params = RunApp.validParams()
 
-        params.addParam('expect_err', "A regular expression or literal string that must occur in the ouput (see match_literal). (Test may terminiate unexpectedly and be considered passing)")
+        params.addParam('expect_err', "A regular expression that must occur in the ouput. (Test may terminiate unexpectedly and be considered passing)")
         params.addParam('expect_assert', "DEBUG MODE ONLY: A regular expression that must occur in the ouput. (Test may terminiate unexpectedly and be considered passing)")
         params.addParam('should_crash', True, "Inidicates that the test is expected to crash or otherwise terminate early")
 
@@ -27,13 +18,10 @@ class RunException(RunApp):
 
     def __init__(self, name, params):
         RunApp.__init__(self, name, params)
-        if (params.isValid("expect_err") == False and params.isValid("expect_assert") == False):
-            raise RuntimeError('Either "expect_err" or "expect_assert" must be supplied in RunException')
 
     def checkRunnable(self, options):
         if options.enable_recover:
-            self.addCaveats('type=RunException')
-            self.setStatus(self.skip)
+            self.setStatus('RunException RECOVER', self.bucket_skip)
             return False
         return RunApp.checkRunnable(self, options)
 
@@ -44,14 +32,26 @@ class RunException(RunApp):
                 file_paths.append(self.name() + '.processor.{}'.format(processor_id))
             util.deleteFilesAndFolders(self.specs['test_dir'], file_paths, False)
 
-    def processResults(self, moose_dir, options, output):
-        # Exceptions are written to stderr, which can be interleaved so we normally redirect these
-        # separate files. Here we must gather those file outputs before processing
-        if self.hasRedirectedOutput(options):
-            redirected_output = util.getOutputFromFiles(self, options)
-            output += redirected_output
+    def processResults(self, moose_dir, retcode, options, output):
+        reason = ''
+        specs = self.specs
 
-        output += self.testFileOutput(moose_dir, options, output)
-        self.testExitCodes(moose_dir, options, output)
+        # Expected errors and assertions might do a lot of things including crash so we
+        # will handle them seperately
+        if specs.isValid('expect_err'):
+            if not util.checkOutputForPattern(output, specs['expect_err']):
+                reason = 'NO EXPECTED ERR'
+        elif specs.isValid('expect_assert'):
+            if options.method == 'dbg':  # Only check asserts in debug mode
+                if not util.checkOutputForPattern(output, specs['expect_assert']):
+                    reason = 'NO EXPECTED ASSERT'
+
+        if reason == '':
+            output = RunApp.processResults(self, moose_dir, retcode, options, output)
+
+        if reason != '':
+            self.setStatus(reason, self.bucket_fail)
+        else:
+            self.setStatus(self.success_message, self.bucket_success)
 
         return output

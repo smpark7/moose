@@ -1,22 +1,32 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef EXAMPLEMATERIAL_H
+#define EXAMPLEMATERIAL_H
 
 #include "Material.h"
 #include "LinearInterpolation.h"
 
+// Forward Declarations
 class ExampleMaterial;
 
 template <>
 InputParameters validParams<ExampleMaterial>();
 
+/**
+ * Example material class that defines a few properties.
+ */
 class ExampleMaterial : public Material
 {
 public:
@@ -26,17 +36,28 @@ protected:
   virtual void computeQpProperties() override;
 
 private:
-  /// member variable to hold the computed diffusivity coefficient
+  /**
+   * This is the member reference that will hold the computed values
+   * for the Real value property in this class.
+   */
   MaterialProperty<Real> & _diffusivity;
-  /// member variable to hold the computed convection velocity gradient term
+
+  /**
+   * Computed values for the Gradient value property in this class.
+   */
   MaterialProperty<RealGradient> & _convection_velocity;
 
-  /// A place to store the coupled variable gradient for calculating the convection velocity
-  /// property.
+  /**
+   * This is the member reference that will hold the gradient
+   * of the coupled variable
+   */
   const VariableGradient & _diffusion_gradient;
 
-  /// A helper object for performaing linear interpolations on tabulated data for calculating the
-  /// diffusivity property.
+  /**
+   * This object returns a piecewise linear function based an a series
+   * of points and their corresponding values
+   */
   LinearInterpolation _piecewise_func;
 };
 
+#endif // EXAMPLEMATERIAL_H

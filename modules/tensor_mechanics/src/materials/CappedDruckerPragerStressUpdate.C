@@ -1,17 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "CappedDruckerPragerStressUpdate.h"
 
 #include "libmesh/utility.h"
-
-registerMooseObject("TensorMechanicsApp", CappedDruckerPragerStressUpdate);
 
 template <>
 InputParameters
@@ -71,7 +66,7 @@ CappedDruckerPragerStressUpdate::CappedDruckerPragerStressUpdate(const InputPara
 }
 
 void
-CappedDruckerPragerStressUpdate::initializeReturnProcess()
+CappedDruckerPragerStressUpdate::initialiseReturnProcess()
 {
   _stress_return_type = StressReturnType::nothing_special;
 }
@@ -159,7 +154,7 @@ void
 CappedDruckerPragerStressUpdate::computeAllQ(Real p,
                                              Real q,
                                              const std::vector<Real> & intnl,
-                                             std::vector<yieldAndFlow> & all_q) const
+                                             std::vector<f_and_derivs> & all_q) const
 {
   Real aaa;
   Real bbb;
@@ -261,7 +256,7 @@ CappedDruckerPragerStressUpdate::computeAllQ(Real p,
 }
 
 void
-CappedDruckerPragerStressUpdate::initializeVars(Real p_trial,
+CappedDruckerPragerStressUpdate::initialiseVars(Real p_trial,
                                                 Real q_trial,
                                                 const std::vector<Real> & intnl_old,
                                                 Real & p,
@@ -366,7 +361,7 @@ CappedDruckerPragerStressUpdate::setIntnlValues(Real p_trial,
 {
   intnl[0] = intnl_old[0] + (q_trial - q) / _Eqq;
   Real tanpsi;
-  _dp.onlyB(intnl[0], _dp.dilation, tanpsi);
+  _dp.onlyB(intnl_old[0], _dp.dilation, tanpsi);
   intnl[1] = intnl_old[1] + (p_trial - p) / _Epp - (q_trial - q) * tanpsi / _Eqq;
 }
 
@@ -376,7 +371,7 @@ CappedDruckerPragerStressUpdate::setStressAfterReturn(const RankTwoTensor & stre
                                                       Real q_ok,
                                                       Real /*gaE*/,
                                                       const std::vector<Real> & /*intnl*/,
-                                                      const yieldAndFlow & /*smoothed_q*/,
+                                                      const f_and_derivs & /*smoothed_q*/,
                                                       const RankFourTensor & /*Eijkl*/,
                                                       RankTwoTensor & stress) const
 {
@@ -430,11 +425,14 @@ CappedDruckerPragerStressUpdate::consistentTangentOperator(const RankTwoTensor &
                                                            Real /*p*/,
                                                            Real q,
                                                            Real gaE,
-                                                           const yieldAndFlow & smoothed_q,
+                                                           const f_and_derivs & smoothed_q,
                                                            const RankFourTensor & Eijkl,
                                                            bool compute_full_tangent_operator,
                                                            RankFourTensor & cto) const
 {
+  if (!_fe_problem.currentlyComputingJacobian())
+    return;
+
   cto = Eijkl;
   if (!compute_full_tangent_operator)
     return;

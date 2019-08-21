@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeMultiPlasticityStress.h"
 #include "MultiPlasticityDebugger.h"
 #include "MatrixTools.h"
@@ -15,8 +12,6 @@
 #include "RotationMatrix.h" // for rotVecToZ
 
 #include "libmesh/utility.h"
-
-registerMooseObject("TensorMechanicsApp", ComputeMultiPlasticityStress);
 
 template <>
 InputParameters
@@ -119,12 +114,10 @@ ComputeMultiPlasticityStress::ComputeMultiPlasticityStress(const InputParameters
 
     _perform_finite_strain_rotations(getParam<bool>("perform_finite_strain_rotations")),
 
-    _elasticity_tensor_name(_base_name + "elasticity_tensor"),
-    _elasticity_tensor(getMaterialPropertyByName<RankFourTensor>(_elasticity_tensor_name)),
     _plastic_strain(declareProperty<RankTwoTensor>("plastic_strain")),
-    _plastic_strain_old(getMaterialPropertyOld<RankTwoTensor>("plastic_strain")),
+    _plastic_strain_old(declarePropertyOld<RankTwoTensor>("plastic_strain")),
     _intnl(declareProperty<std::vector<Real>>("plastic_internal_parameter")),
-    _intnl_old(getMaterialPropertyOld<std::vector<Real>>("plastic_internal_parameter")),
+    _intnl_old(declarePropertyOld<std::vector<Real>>("plastic_internal_parameter")),
     _yf(declareProperty<std::vector<Real>>("plastic_yield_function")),
     _iter(declareProperty<Real>("plastic_NR_iterations")), // this is really an unsigned int, but
                                                            // for visualisation i convert it to Real
@@ -140,34 +133,34 @@ ComputeMultiPlasticityStress::ComputeMultiPlasticityStress(const InputParameters
                                                                             // visualisation i
                                                                             // convert it to Real
     _n(declareProperty<RealVectorValue>("plastic_transverse_direction")),
-    _n_old(getMaterialPropertyOld<RealVectorValue>("plastic_transverse_direction")),
+    _n_old(declarePropertyOld<RealVectorValue>("plastic_transverse_direction")),
 
     _strain_increment(getMaterialPropertyByName<RankTwoTensor>(_base_name + "strain_increment")),
     _total_strain_old(getMaterialPropertyOldByName<RankTwoTensor>(_base_name + "total_strain")),
     _rotation_increment(
         getMaterialPropertyByName<RankTwoTensor>(_base_name + "rotation_increment")),
 
-    _stress_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "stress")),
-    _elastic_strain_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "elastic_strain")),
+    _stress_old(declarePropertyOld<RankTwoTensor>(_base_name + "stress")),
+    _elastic_strain_old(declarePropertyOld<RankTwoTensor>(_base_name + "elastic_strain")),
 
     // TODO: This design does NOT work. It makes these materials construction order dependent and it
     // disregards block restrictions.
     _cosserat(hasMaterialProperty<RankTwoTensor>("curvature") &&
               hasMaterialProperty<RankFourTensor>("elastic_flexural_rigidity_tensor")),
-    _curvature(_cosserat ? &getMaterialPropertyByName<RankTwoTensor>("curvature") : nullptr),
+    _curvature(_cosserat ? &getMaterialPropertyByName<RankTwoTensor>("curvature") : NULL),
     _elastic_flexural_rigidity_tensor(
         _cosserat ? &getMaterialPropertyByName<RankFourTensor>("elastic_flexural_rigidity_tensor")
-                  : nullptr),
-    _couple_stress(_cosserat ? &declareProperty<RankTwoTensor>("couple_stress") : nullptr),
-    _couple_stress_old(_cosserat ? &getMaterialPropertyOld<RankTwoTensor>("couple_stress")
-                                 : nullptr),
+                  : NULL),
+    _couple_stress(_cosserat ? &declareProperty<RankTwoTensor>("couple_stress") : NULL),
+    _couple_stress_old(_cosserat ? &declarePropertyOld<RankTwoTensor>("couple_stress") : NULL),
     _Jacobian_mult_couple(_cosserat ? &declareProperty<RankFourTensor>("couple_Jacobian_mult")
-                                    : nullptr),
+                                    : NULL),
 
     _my_elasticity_tensor(RankFourTensor()),
     _my_strain_increment(RankTwoTensor()),
     _my_flexural_rigidity_tensor(RankFourTensor()),
-    _my_curvature(RankTwoTensor())
+    _my_curvature(RankTwoTensor()),
+    _step_one(declareRestartableData<bool>("step_one", true))
 {
   if (_epp_tol <= 0)
     mooseError("ComputeMultiPlasticityStress: ep_plastic_tolerance must be positive");
@@ -191,9 +184,14 @@ ComputeMultiPlasticityStress::initQpStatefulProperties()
 {
   ComputeStressBase::initQpStatefulProperties();
 
+  _stress_old[_qp] = _stress[_qp];
+  _elastic_strain_old[_qp] = _elastic_strain[_qp];
+
   _plastic_strain[_qp].zero();
+  _plastic_strain_old[_qp].zero();
 
   _intnl[_qp].assign(_num_models, 0);
+  _intnl_old[_qp].assign(_num_models, 0);
 
   _yf[_qp].assign(_num_surfaces, 0);
 
@@ -205,9 +203,13 @@ ComputeMultiPlasticityStress::initQpStatefulProperties()
   _constraints_added[_qp] = 0;
 
   _n[_qp] = _n_input;
+  _n_old[_qp] = _n_input;
 
   if (_cosserat)
+  {
     (*_couple_stress)[_qp].zero();
+    (*_couple_stress_old)[_qp].zero();
+  }
 
   if (_fspb_debug == "jacobian")
   {
@@ -246,13 +248,13 @@ ComputeMultiPlasticityStress::computeQpStress()
   _cumulative_pm.assign(_num_surfaces, 0);
   // try a "quick" return first - this can be purely elastic, or a customised plastic return defined
   // by a TensorMechanicsPlasticXXXX UserObject
-  const bool found_solution = quickStep(rot(_stress_old[_qp]),
+  const bool found_solution = quickStep(_stress_old[_qp],
                                         _stress[_qp],
                                         _intnl_old[_qp],
                                         _intnl[_qp],
                                         _dummy_pm,
                                         _cumulative_pm,
-                                        rot(_plastic_strain_old[_qp]),
+                                        _plastic_strain_old[_qp],
                                         _plastic_strain[_qp],
                                         _my_elasticity_tensor,
                                         _my_strain_increment,
@@ -264,11 +266,11 @@ ComputeMultiPlasticityStress::computeQpStress()
 
   // if not purely elastic or the customised stuff failed, do some plastic return
   if (!found_solution)
-    plasticStep(rot(_stress_old[_qp]),
+    plasticStep(_stress_old[_qp],
                 _stress[_qp],
                 _intnl_old[_qp],
                 _intnl[_qp],
-                rot(_plastic_strain_old[_qp]),
+                _plastic_strain_old[_qp],
                 _plastic_strain[_qp],
                 _my_elasticity_tensor,
                 _my_strain_increment,
@@ -307,14 +309,6 @@ ComputeMultiPlasticityStress::computeQpStress()
   }
 }
 
-RankTwoTensor
-ComputeMultiPlasticityStress::rot(const RankTwoTensor & tens)
-{
-  if (!_n_supplied)
-    return tens;
-  return tens.rotated(_rot);
-}
-
 void
 ComputeMultiPlasticityStress::preReturnMap()
 {
@@ -325,10 +319,13 @@ ComputeMultiPlasticityStress::preReturnMap()
 
     // rotate the tensors to this frame
     _my_elasticity_tensor.rotate(_rot);
+    _stress_old[_qp].rotate(_rot);
+    _plastic_strain_old[_qp].rotate(_rot);
     _my_strain_increment.rotate(_rot);
     if (_cosserat)
     {
       _my_flexural_rigidity_tensor.rotate(_rot);
+      (*_couple_stress_old)[_qp].rotate(_rot);
       _my_curvature.rotate(_rot);
     }
   }
@@ -345,6 +342,8 @@ ComputeMultiPlasticityStress::postReturnMap()
     // rotate the tensors back to original frame where _n is correctly oriented
     _my_elasticity_tensor.rotate(_rot);
     _Jacobian_mult[_qp].rotate(_rot);
+    _stress_old[_qp].rotate(_rot);
+    _plastic_strain_old[_qp].rotate(_rot);
     _my_strain_increment.rotate(_rot);
     _stress[_qp].rotate(_rot);
     _plastic_strain[_qp].rotate(_rot);
@@ -352,6 +351,7 @@ ComputeMultiPlasticityStress::postReturnMap()
     {
       _my_flexural_rigidity_tensor.rotate(_rot);
       (*_Jacobian_mult_couple)[_qp].rotate(_rot);
+      (*_couple_stress_old)[_qp].rotate(_rot);
       _my_curvature.rotate(_rot);
       (*_couple_stress)[_qp].rotate(_rot);
     }
@@ -443,7 +443,7 @@ ComputeMultiPlasticityStress::quickStep(const RankTwoTensor & stress_old,
           for (unsigned surface = 0; surface < _f[custom_model]->numberSurfaces(); ++surface)
             custom_model_pm.push_back(cumulative_pm[_surfaces_given_model[custom_model][surface]]);
           consistent_tangent_operator =
-              _f[custom_model]->consistentTangentOperator(stress_old + E_ijkl * strain_increment,
+              _f[custom_model]->consistentTangentOperator(stress_old,
                                                           intnl_old[custom_model],
                                                           stress,
                                                           intnl[custom_model],
@@ -502,6 +502,9 @@ ComputeMultiPlasticityStress::plasticStep(const RankTwoTensor & stress_old,
   Real step_size = 1.0;
   Real time_simulated = 0.0;
 
+  if (_t_step >= 2)
+    _step_one = false;
+
   // the "good" variables hold the latest admissible stress
   // and internal parameters.
   RankTwoTensor stress_good = stress_old;
@@ -514,6 +517,12 @@ ComputeMultiPlasticityStress::plasticStep(const RankTwoTensor & stress_old,
   // Following is necessary because I want strain_increment to be "const"
   // but I also want to be able to subdivide an initial_stress
   RankTwoTensor this_strain_increment = strain_increment;
+  if (isParamValid("initial_stress") && _step_one)
+  {
+    RankFourTensor E_inv = E_ijkl.invSymm();
+    this_strain_increment += E_inv * stress_old;
+    stress_good = RankTwoTensor();
+  }
 
   RankTwoTensor dep = step_size * this_strain_increment;
 
@@ -690,7 +699,7 @@ ComputeMultiPlasticityStress::returnMap(const RankTwoTensor & stress_old,
 
   iter = 0;
 
-  // Initialize the set of active constraints
+  // Initialise the set of active constraints
   // At this stage, the active constraints are
   // those that exceed their _f_tol
   // active constraints.

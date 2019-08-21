@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ACTIONFACTORY_H
+#define ACTIONFACTORY_H
 
 #include <vector>
 #include <map>
@@ -41,7 +47,7 @@ class MooseApp;
 /**
  * Typedef for function to build objects
  */
-typedef std::shared_ptr<Action> (*buildActionPtr)(const InputParameters & parameters);
+typedef std::shared_ptr<Action> (*buildActionPtr)(InputParameters parameters);
 
 /**
  * Typedef for validParams
@@ -53,9 +59,9 @@ typedef InputParameters (*paramsActionPtr)();
  */
 template <class T>
 std::shared_ptr<Action>
-buildAction(const InputParameters & parameters)
+buildAction(InputParameters parameters)
 {
-  return std::make_shared<T>(parameters);
+  return std::shared_ptr<Action>(new T(parameters));
 }
 
 /**
@@ -68,23 +74,21 @@ public:
 
   virtual ~ActionFactory();
 
-  MooseApp & app() { return _app; }
-
   template <typename T>
   void reg(const std::string & name,
            const std::string & task,
            const std::string & file = "",
            int line = -1)
   {
-    reg(name, task, &buildAction<T>, &validParams<T>, file, line);
+    BuildInfo build_info;
+    build_info._build_pointer = &buildAction<T>;
+    build_info._params_pointer = &validParams<T>;
+    build_info._task = task;
+    build_info._unique_id = _unique_id++;
+    _name_to_build_info.insert(std::make_pair(name, build_info));
+    _task_to_action_map.insert(std::make_pair(task, name));
+    _name_to_line.addInfo(name, task, file, line);
   }
-
-  void reg(const std::string & name,
-           const std::string & task,
-           buildActionPtr obj_builder,
-           paramsActionPtr ref_params,
-           const std::string & file = "",
-           int line = -1);
 
   /**
    * Gets file and line information where an action was registered.
@@ -97,7 +101,7 @@ public:
   std::string getTaskName(const std::string & action);
 
   std::shared_ptr<Action>
-  create(const std::string & action, const std::string & action_name, InputParameters & parameters);
+  create(const std::string & action, const std::string & action_name, InputParameters parameters);
 
   InputParameters getValidParams(const std::string & name);
 
@@ -107,6 +111,7 @@ public:
     buildActionPtr _build_pointer;
     paramsActionPtr _params_pointer;
     std::string _task;
+    unsigned int _unique_id;
   };
 
   /// Typedef for registered Action iterator
@@ -133,6 +138,8 @@ protected:
   FileLineInfoMap _name_to_line;
   std::multimap<std::string, std::string> _task_to_action_map;
 
-  /// set<objectname, task> used to track if an object previously added is being added again
-  std::set<std::pair<std::string, std::string>> _current_objs;
+  // TODO: I don't think we need this anymore
+  static unsigned int _unique_id; ///< Unique ID for identifying multiple registrations
 };
+
+#endif /* ACTIONFACTORY_H */

@@ -43,7 +43,7 @@
     variable = u
   [../]
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = force_fn
   [../]
@@ -77,6 +77,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

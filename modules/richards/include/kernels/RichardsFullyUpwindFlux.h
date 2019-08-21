@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef RICHARDSFULLYUPWINDFLUX
+#define RICHARDSFULLYUPWINDFLUX
 
 #include "Kernel.h"
 #include "RichardsVarNames.h"
@@ -55,14 +54,13 @@ protected:
    * In computeResidual we sum over the quadpoints and then add
    * the upwind mobility parts
    */
-  virtual Real computeQpResidual() override;
+  virtual Real computeQpResidual();
 
   /// This simply calls upwind
-  virtual void computeResidual() override;
+  virtual void computeResidual();
 
   /// this simply calls upwind
-  virtual void computeOffDiagJacobian(MooseVariableFEBase & jvar) override;
-  using Kernel::computeOffDiagJacobian;
+  virtual void computeOffDiagJacobian(unsigned int jvar);
 
   /// the derivative of the flux without the upstream mobility terms
   Real computeQpJac(unsigned int dvar);
@@ -137,7 +135,9 @@ protected:
    * Holds the values of pressures at all the nodes of the element
    * Eg:
    * _ps_at_nodes[_pvar] is a pointer to this variable's nodal porepressure values
-   * So: (*_ps_at_nodes[_pvar])[i] = _var.dofValues()[i] = value of porepressure at node i
+   * So: (*_ps_at_nodes[_pvar])[i] = _var.nodalSln()[i] = value of porepressure at node i
    */
   std::vector<const VariableValue *> _ps_at_nodes;
 };
+
+#endif // RICHARDSFULLYUPWINDFLUX

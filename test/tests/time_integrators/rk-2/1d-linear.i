@@ -50,7 +50,7 @@
   [../]
 
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
     implicit = false
@@ -90,5 +90,5 @@
 
 [Outputs]
   exodus = true
-  perf_graph = true
+  print_perf_log = true
 []

@@ -1,17 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "TensorMechanicsPlasticTensile.h"
-#include "RankFourTensor.h"
 #include "libmesh/utility.h"
-
-registerMooseObject("TensorMechanicsApp", TensorMechanicsPlasticTensile);
 
 template <>
 InputParameters
@@ -121,9 +115,10 @@ TensorMechanicsPlasticTensile::dyieldFunction_dstress(const RankTwoTensor & stre
     std::vector<RankTwoTensor> deigvals;
     stress.dsymmetricEigenvalues(eigvals, deigvals);
     Real denom = std::sqrt(smooth(stress) + Utility::pow<2>(eigvals[2] - mean_stress));
-    return dmean_stress + (0.5 * dsmooth(stress) * dmean_stress +
-                           (eigvals[2] - mean_stress) * (deigvals[2] - dmean_stress)) /
-                              denom;
+    return dmean_stress +
+           (0.5 * dsmooth(stress) * dmean_stress +
+            (eigvals[2] - mean_stress) * (deigvals[2] - dmean_stress)) /
+               denom;
   }
   else
   {
@@ -133,9 +128,10 @@ TensorMechanicsPlasticTensile::dyieldFunction_dstress(const RankTwoTensor & stre
     Real sibar2 = stress.secondInvariant();
     RankTwoTensor dsibar2 = stress.dsecondInvariant();
     Real denom = std::sqrt(smooth(stress) + sibar2 * Utility::pow<2>(kk));
-    return dmean_stress + (0.5 * dsmooth(stress) * dmean_stress +
-                           0.5 * dsibar2 * Utility::pow<2>(kk) + sibar2 * kk * dkk) /
-                              denom;
+    return dmean_stress +
+           (0.5 * dsmooth(stress) * dmean_stress + 0.5 * dsibar2 * Utility::pow<2>(kk) +
+            sibar2 * kk * dkk) /
+               denom;
   }
 }
 

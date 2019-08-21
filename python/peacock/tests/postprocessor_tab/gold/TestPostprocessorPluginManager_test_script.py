@@ -1,12 +1,3 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
 """
 python TestPostprocessorPluginManager_test_script.py
 """
@@ -31,7 +22,7 @@ axes0.set_title('Snow Data')
 
 # y1-axis Settings
 axes1.set_ylabel('Air Temperature [C]')
-axes1.set_ylim([0.0, 35.94])
+axes1.set_ylim([0.0, 35.939999999999998])
 
 # Show figure and write pdf
 plt.show()

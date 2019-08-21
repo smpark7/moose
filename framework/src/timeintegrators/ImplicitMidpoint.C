@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ImplicitMidpoint.h"
 #include "NonlinearSystem.h"
 #include "FEProblem.h"
 #include "PetscSupport.h"
-
-registerMooseObject("MooseApp", ImplicitMidpoint);
 
 template <>
 InputParameters
@@ -28,31 +31,21 @@ ImplicitMidpoint::ImplicitMidpoint(const InputParameters & parameters)
     _stage(1),
     _residual_stage1(_nl.addVector("residual_stage1", false, GHOSTED))
 {
-  mooseInfo("ImplicitMidpoint and other multistage TimeIntegrators are known not to work with "
-            "Materials/AuxKernels that accumulate 'state' and should be used with caution.");
 }
+
+ImplicitMidpoint::~ImplicitMidpoint() {}
 
 void
 ImplicitMidpoint::computeTimeDerivatives()
 {
-  // We are multiplying by the method coefficients in postResidual(), so
+  // We are multiplying by the method coefficients in postStep(), so
   // the time derivatives are of the same form at every stage although
   // the current solution varies depending on the stage.
-  if (!_sys.solutionUDot())
-    mooseError("ImplicitMidpoint: Time derivative of solution (`u_dot`) is not stored. Please set "
-               "uDotRequested() to true in FEProblemBase befor requesting `u_dot`.");
-
-  NumericVector<Number> & u_dot = *_sys.solutionUDot();
-  u_dot = *_solution;
-  computeTimeDerivativeHelper(u_dot, _solution_old);
-  u_dot.close();
+  _u_dot = *_solution;
+  _u_dot -= _solution_old;
+  _u_dot *= 1. / _dt;
+  _u_dot.close();
   _du_dot_du = 1. / _dt;
-}
-
-void
-ImplicitMidpoint::computeADTimeDerivatives(DualReal & ad_u_dot, const dof_id_type & dof) const
-{
-  computeTimeDerivativeHelper(ad_u_dot, _solution_old(dof));
 }
 
 void
@@ -62,22 +55,12 @@ ImplicitMidpoint::solve()
   Real time_old = _fe_problem.timeOld();
   Real time_half = (time_new + time_old) / 2.;
 
-  // Reset iteration counts
-  _n_nonlinear_iterations = 0;
-  _n_linear_iterations = 0;
-
   // Compute first stage
   _fe_problem.initPetscOutput();
   _console << "1st stage\n";
   _stage = 1;
   _fe_problem.time() = time_half;
   _fe_problem.getNonlinearSystemBase().system().solve();
-  _n_nonlinear_iterations += getNumNonlinearIterationsLastSolve();
-  _n_linear_iterations += getNumLinearIterationsLastSolve();
-
-  // Abort time step immediately on stage failure - see TimeIntegrator doc page
-  if (!_fe_problem.converged())
-    return;
 
   // Compute second stage
   _fe_problem.initPetscOutput();
@@ -85,12 +68,10 @@ ImplicitMidpoint::solve()
   _stage = 2;
   _fe_problem.time() = time_new;
   _fe_problem.getNonlinearSystemBase().system().solve();
-  _n_nonlinear_iterations += getNumNonlinearIterationsLastSolve();
-  _n_linear_iterations += getNumLinearIterationsLastSolve();
 }
 
 void
-ImplicitMidpoint::postResidual(NumericVector<Number> & residual)
+ImplicitMidpoint::postStep(NumericVector<Number> & residual)
 {
   if (_stage == 1)
   {
@@ -128,5 +109,5 @@ ImplicitMidpoint::postResidual(NumericVector<Number> & residual)
   }
   else
     mooseError(
-        "ImplicitMidpoint::postResidual(): _stage = ", _stage, ", only _stage = 1, 2 is allowed.");
+        "ImplicitMidpoint::postStep(): _stage = ", _stage, ", only _stage = 1, 2 is allowed.");
 }

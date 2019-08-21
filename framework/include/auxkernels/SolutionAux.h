@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef SOLUTIONAUX_H
+#define SOLUTIONAUX_H
 
 #include "AuxKernel.h"
 
@@ -18,8 +24,7 @@ class SolutionUserObject;
 template <>
 InputParameters validParams<SolutionAux>();
 
-/**
- * AuxKernel for reading a solution from file.
+/** AuxKernal for reading a solution from file
  * Creates a function that extracts values from a solution read from a file,
  * via a SolutionUserObject. It is possible to scale and add a constant to the
  * solution read.
@@ -27,6 +32,9 @@ InputParameters validParams<SolutionAux>();
 class SolutionAux : public AuxKernel
 {
 public:
+  /** Constructor
+   * @param parameters The input parameters for the kernel
+   */
   SolutionAux(const InputParameters & parameters);
 
   /**
@@ -35,7 +43,7 @@ public:
   virtual void initialSetup() override;
 
 protected:
-  /**
+  /** Compute the value for the kernel
    * Computes a value for a node or element depending on the type of kernel,
    * it also uses the 'direct' flag to extract values based on the dof if the
    * flag is set to true.
@@ -59,3 +67,4 @@ protected:
   const Real _add_factor;
 };
 
+#endif // SOLUTIONAUX_H

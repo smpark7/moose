@@ -1,24 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "EBSDReaderAvgDataAux.h"
 #include "EBSDReader.h"
 #include "GrainTrackerInterface.h"
-
-registerMooseObject("PhaseFieldApp", EBSDReaderAvgDataAux);
 
 template <>
 InputParameters
 validParams<EBSDReaderAvgDataAux>()
 {
   InputParameters params = validParams<AuxKernel>();
-  params.addParam<unsigned int>("phase", "The phase to use for all queries.");
   params.addRequiredParam<UserObjectName>("ebsd_reader", "The EBSDReader GeneralUserObject");
   params.addRequiredParam<UserObjectName>("grain_tracker", "The GrainTracker UserObject");
   MooseEnum field_types = EBSDAccessFunctors::getAvgDataFieldType();
@@ -32,7 +26,6 @@ validParams<EBSDReaderAvgDataAux>()
 
 EBSDReaderAvgDataAux::EBSDReaderAvgDataAux(const InputParameters & parameters)
   : AuxKernel(parameters),
-    _phase(isParamValid("phase") ? getParam<unsigned int>("phase") : libMesh::invalid_uint),
     _ebsd_reader(getUserObject<EBSDReader>("ebsd_reader")),
     _grain_tracker(getUserObject<GrainTrackerInterface>("grain_tracker")),
     _data_name(getParam<MooseEnum>("data_name")),
@@ -56,8 +49,7 @@ EBSDReaderAvgDataAux::precalculateValue()
 
   // get the data for the grain
   else
-    _value = _phase != libMesh::invalid_uint ? (*_val)(_ebsd_reader.getAvgData(_phase, grain_id))
-                                             : (*_val)(_ebsd_reader.getAvgData(grain_id));
+    _value = (*_val)(_ebsd_reader.getAvgData(grain_id));
 }
 
 Real

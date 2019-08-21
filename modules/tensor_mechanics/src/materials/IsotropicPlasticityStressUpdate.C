@@ -1,18 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "IsotropicPlasticityStressUpdate.h"
 
 #include "Function.h"
 #include "ElasticityTensorTools.h"
-
-registerMooseObject("TensorMechanicsApp", IsotropicPlasticityStressUpdate);
 
 template <>
 InputParameters
@@ -32,18 +27,14 @@ validParams<IsotropicPlasticityStressUpdate>()
                                 "True stress as a function of plastic strain");
   params.addParam<Real>("hardening_constant", 0.0, "Hardening slope");
   params.addCoupledVar("temperature", 0.0, "Coupled Temperature");
-  params.addDeprecatedParam<std::string>(
-      "plastic_prepend",
-      "",
-      "String that is prepended to the plastic_strain Material Property",
-      "This has been replaced by the 'base_name' parameter");
-  params.set<std::string>("effective_inelastic_strain_name") = "effective_plastic_strain";
+  params.addParam<std::string>(
+      "plastic_prepend", "", "String that is prepended to the plastic_strain Material Property");
 
   return params;
 }
 
 IsotropicPlasticityStressUpdate::IsotropicPlasticityStressUpdate(const InputParameters & parameters)
-  : RadialReturnStressUpdate(parameters),
+  : RadialReturnStressUpdate(parameters, "plastic"),
     _plastic_prepend(getParam<std::string>("plastic_prepend")),
     _yield_stress_function(
         isParamValid("yield_stress_function") ? &getFunction("yield_stress_function") : NULL),
@@ -51,14 +42,13 @@ IsotropicPlasticityStressUpdate::IsotropicPlasticityStressUpdate(const InputPara
     _hardening_constant(getParam<Real>("hardening_constant")),
     _hardening_function(isParamValid("hardening_function") ? &getFunction("hardening_function")
                                                            : NULL),
-    _yield_condition(-1.0), // set to a non-physical value to catch uninitalized yield condition
-    _hardening_slope(0.0),
-    _plastic_strain(
-        declareProperty<RankTwoTensor>(_base_name + _plastic_prepend + "plastic_strain")),
-    _plastic_strain_old(
-        getMaterialPropertyOld<RankTwoTensor>(_base_name + _plastic_prepend + "plastic_strain")),
-    _hardening_variable(declareProperty<Real>(_base_name + "hardening_variable")),
-    _hardening_variable_old(getMaterialPropertyOld<Real>(_base_name + "hardening_variable")),
+    _shear_modulus(0.0),
+
+    _plastic_strain(declareProperty<RankTwoTensor>(_plastic_prepend + "plastic_strain")),
+    _plastic_strain_old(getMaterialPropertyOld<RankTwoTensor>(_plastic_prepend + "plastic_strain")),
+
+    _hardening_variable(declareProperty<Real>("hardening_variable")),
+    _hardening_variable_old(declarePropertyOld<Real>("hardening_variable")),
     _temperature(coupledValue("temperature"))
 {
   if (parameters.isParamSetByUser("yield_stress") && _yield_stress <= 0.0)
@@ -78,58 +68,56 @@ IsotropicPlasticityStressUpdate::IsotropicPlasticityStressUpdate(const InputPara
 void
 IsotropicPlasticityStressUpdate::initQpStatefulProperties()
 {
+  // set a default non-physical value to catch uninitalized yield condition--could cause problems
+  // later on
+  _yield_condition = -1.0;
   _hardening_variable[_qp] = 0.0;
+  _hardening_variable_old[_qp] = 0.0;
+  _hardening_slope = 0.0;
   _plastic_strain[_qp].zero();
 }
 
 void
-IsotropicPlasticityStressUpdate::propagateQpStatefulProperties()
-{
-  _hardening_variable[_qp] = _hardening_variable_old[_qp];
-  _plastic_strain[_qp] = _plastic_strain_old[_qp];
-
-  propagateQpStatefulPropertiesRadialReturn();
-}
-
-void
-IsotropicPlasticityStressUpdate::computeStressInitialize(const Real effective_trial_stress,
+IsotropicPlasticityStressUpdate::computeStressInitialize(Real effectiveTrialStress,
                                                          const RankFourTensor & elasticity_tensor)
 {
+  _shear_modulus = ElasticityTensorTools::getIsotropicShearModulus(elasticity_tensor);
   computeYieldStress(elasticity_tensor);
 
-  _yield_condition = effective_trial_stress - _hardening_variable_old[_qp] - _yield_stress;
+  _yield_condition = effectiveTrialStress - _hardening_variable_old[_qp] - _yield_stress;
   _hardening_variable[_qp] = _hardening_variable_old[_qp];
   _plastic_strain[_qp] = _plastic_strain_old[_qp];
 }
 
 Real
-IsotropicPlasticityStressUpdate::computeResidual(const Real effective_trial_stress,
-                                                 const Real scalar)
+IsotropicPlasticityStressUpdate::computeResidual(Real effectiveTrialStress, Real scalar)
 {
-  mooseAssert(_yield_condition != -1.0,
+  Real residual = 0.;
+
+  mooseAssert(_yield_condition != -1.,
               "the yield stress was not updated by computeStressInitialize");
 
-  if (_yield_condition > 0.0)
+  if (_yield_condition > 0.)
   {
     _hardening_slope = computeHardeningDerivative(scalar);
     _hardening_variable[_qp] = computeHardeningValue(scalar);
 
-    return (effective_trial_stress - _hardening_variable[_qp] - _yield_stress) /
-               _three_shear_modulus -
-           scalar;
+    // The order here is important: the final term can be small, and we don't want it lost to
+    // roundoff.
+    residual = effectiveTrialStress - _yield_stress - _hardening_variable[_qp];
+    residual -= 3.0 * _shear_modulus * scalar;
   }
-
-  return 0.0;
+  return residual;
 }
 
-Real
-IsotropicPlasticityStressUpdate::computeDerivative(const Real /*effective_trial_stress*/,
-                                                   const Real /*scalar*/)
+Real IsotropicPlasticityStressUpdate::computeDerivative(Real /*effectiveTrialStress*/,
+                                                        Real /*scalar*/)
 {
+  Real derivative = 1.0;
   if (_yield_condition > 0.0)
-    return -1.0 - _hardening_slope / _three_shear_modulus;
+    derivative = -3.0 * _shear_modulus - _hardening_slope;
 
-  return 1.0;
+  return derivative;
 }
 
 void
@@ -140,37 +128,36 @@ IsotropicPlasticityStressUpdate::iterationFinalize(Real scalar)
 }
 
 void
-IsotropicPlasticityStressUpdate::computeStressFinalize(
-    const RankTwoTensor & plastic_strain_increment)
+IsotropicPlasticityStressUpdate::computeStressFinalize(const RankTwoTensor & plasticStrainIncrement)
 {
-  _plastic_strain[_qp] += plastic_strain_increment;
+  _plastic_strain[_qp] += plasticStrainIncrement;
 }
 
 Real
 IsotropicPlasticityStressUpdate::computeHardeningValue(Real scalar)
 {
+  Real value = _hardening_variable_old[_qp] + (_hardening_slope * scalar);
   if (_hardening_function)
   {
     const Real strain_old = _effective_inelastic_strain_old[_qp];
-    const Point p;
+    Point p;
 
-    return _hardening_function->value(strain_old + scalar, p) - _yield_stress;
+    value = _hardening_function->value(strain_old + scalar, p) - _yield_stress;
   }
-
-  return _hardening_variable_old[_qp] + _hardening_slope * scalar;
+  return value;
 }
 
 Real IsotropicPlasticityStressUpdate::computeHardeningDerivative(Real /*scalar*/)
 {
+  Real slope = _hardening_constant;
   if (_hardening_function)
   {
     const Real strain_old = _effective_inelastic_strain_old[_qp];
-    const Point p; // Always (0,0,0)
+    Point p; // Always (0,0,0)
 
-    return _hardening_function->timeDerivative(strain_old, p);
+    slope = _hardening_function->timeDerivative(strain_old, p);
   }
-
-  return _hardening_constant;
+  return slope;
 }
 
 void
@@ -178,11 +165,10 @@ IsotropicPlasticityStressUpdate::computeYieldStress(const RankFourTensor & /*ela
 {
   if (_yield_stress_function)
   {
-    const Point p;
+    Point p;
     _yield_stress = _yield_stress_function->value(_temperature[_qp], p);
-
     if (_yield_stress <= 0.0)
-      mooseError(
-          "In ", _name, ": The calculated yield stress (", _yield_stress, ") is less than zero");
+      mooseError("The yield stress must be greater than zero, but during the simulation your yield "
+                 "stress became less than zero.");
   }
 }

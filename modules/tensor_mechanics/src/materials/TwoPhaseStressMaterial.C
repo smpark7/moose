@@ -1,17 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "TwoPhaseStressMaterial.h"
 #include "RankTwoTensor.h"
 #include "RankFourTensor.h"
-
-registerMooseObject("TensorMechanicsApp", TwoPhaseStressMaterial);
 
 template <>
 InputParameters
@@ -28,7 +23,7 @@ validParams<TwoPhaseStressMaterial>()
 }
 
 TwoPhaseStressMaterial::TwoPhaseStressMaterial(const InputParameters & parameters)
-  : DerivativeMaterialInterface<Material>(parameters),
+  : Material(parameters),
     _h_eta(getMaterialProperty<Real>("h")),
 
     _base_A(getParam<std::string>("base_A") + "_"),
@@ -41,8 +36,7 @@ TwoPhaseStressMaterial::TwoPhaseStressMaterial(const InputParameters & parameter
 
     _base_name(isParamValid("base_name") ? getParam<std::string>("base_name") + "_" : ""),
     _stress(declareProperty<RankTwoTensor>(_base_name + "stress")),
-    _dstress_dstrain(declareProperty<RankFourTensor>(_base_name + "Jacobian_mult")),
-    _global_extra_stress(getDefaultMaterialProperty<RankTwoTensor>("extra_stress"))
+    _dstress_dstrain(declareProperty<RankFourTensor>(_base_name + "Jacobian_mult"))
 {
 }
 
@@ -50,10 +44,6 @@ void
 TwoPhaseStressMaterial::computeQpProperties()
 {
   _stress[_qp] = _h_eta[_qp] * _stress_B[_qp] + (1.0 - _h_eta[_qp]) * _stress_A[_qp];
-
-  // Add in global extra stress
-  _stress[_qp] += _global_extra_stress[_qp];
-
   _dstress_dstrain[_qp] =
       _h_eta[_qp] * _dstress_dstrain_B[_qp] + (1.0 - _h_eta[_qp]) * _dstress_dstrain_A[_qp];
 }

@@ -1,26 +1,31 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "Conversion.h"
 #include "MooseError.h"
-#include "ExecFlagEnum.h"
-#include "MooseUtils.h"
+#include "MultiMooseEnum.h"
 
+// libMesh includes
 #include "libmesh/string_to_enum.h"
-#include "libmesh/point.h"
 
 // system includes
 #include <iomanip>
 
 namespace Moose
 {
+std::map<std::string, ExecFlagType> execstore_type_to_enum;
 std::map<std::string, QuadratureType> quadrature_type_to_enum;
 std::map<std::string, CoordinateSystemType> coordinate_system_type_to_enum;
 std::map<std::string, SolveType> solve_type_to_enum;
@@ -28,9 +33,20 @@ std::map<std::string, EigenSolveType> eigen_solve_type_to_enum;
 std::map<std::string, EigenProblemType> eigen_problem_type_to_enum;
 std::map<std::string, WhichEigenPairs> which_eigen_pairs_to_enum;
 std::map<std::string, LineSearchType> line_search_type_to_enum;
-std::map<std::string, TimeIntegratorType> time_integrator_to_enum;
-std::map<std::string, MffdType> mffd_type_to_enum;
-std::map<std::string, RelationshipManagerType> rm_type_to_enum;
+
+void
+initExecStoreType()
+{
+  if (execstore_type_to_enum.empty())
+  {
+    execstore_type_to_enum["INITIAL"] = EXEC_INITIAL;
+    execstore_type_to_enum["LINEAR"] = EXEC_LINEAR;
+    execstore_type_to_enum["NONLINEAR"] = EXEC_NONLINEAR;
+    execstore_type_to_enum["TIMESTEP_END"] = EXEC_TIMESTEP_END;
+    execstore_type_to_enum["TIMESTEP_BEGIN"] = EXEC_TIMESTEP_BEGIN;
+    execstore_type_to_enum["CUSTOM"] = EXEC_CUSTOM;
+  }
+}
 
 void
 initQuadratureType()
@@ -81,10 +97,6 @@ initEigenSolveType()
     eigen_solve_type_to_enum["ARNOLDI"] = EST_ARNOLDI;
     eigen_solve_type_to_enum["KRYLOVSCHUR"] = EST_KRYLOVSCHUR;
     eigen_solve_type_to_enum["JACOBI_DAVIDSON"] = EST_JACOBI_DAVIDSON;
-    eigen_solve_type_to_enum["NONLINEAR_POWER"] = EST_NONLINEAR_POWER;
-    eigen_solve_type_to_enum["MF_NONLINEAR_POWER"] = EST_MF_NONLINEAR_POWER;
-    eigen_solve_type_to_enum["MONOLITH_NEWTON"] = EST_MONOLITH_NEWTON;
-    eigen_solve_type_to_enum["MF_MONOLITH_NEWTON"] = EST_MF_MONOLITH_NEWTON;
   }
 }
 
@@ -99,7 +111,6 @@ initEigenProlemType()
     eigen_problem_type_to_enum["GEN_NON_HERMITIAN"] = EPT_GEN_NON_HERMITIAN;
     eigen_problem_type_to_enum["GEN_INDEFINITE"] = EPT_GEN_INDEFINITE;
     eigen_problem_type_to_enum["POS_GEN_NON_HERMITIAN"] = EPT_POS_GEN_NON_HERMITIAN;
-    eigen_problem_type_to_enum["SLEPC_DEFAULT"] = EPT_SLEPC_DEFAULT;
   }
 }
 
@@ -118,7 +129,6 @@ initWhichEigenPairs()
     which_eigen_pairs_to_enum["TARGET_REAL"] = WEP_TARGET_REAL;
     which_eigen_pairs_to_enum["TARGET_IMAGINARY"] = WEP_TARGET_IMAGINARY;
     which_eigen_pairs_to_enum["ALL_EIGENVALUES"] = WEP_ALL_EIGENVALUES;
-    which_eigen_pairs_to_enum["SLEPC_DEFAULT"] = WEP_SLEPC_DEFAULT;
   }
 }
 
@@ -140,47 +150,24 @@ initLineSearchType()
     line_search_type_to_enum["L2"] = LS_L2;
     line_search_type_to_enum["BT"] = LS_BT;
     line_search_type_to_enum["CP"] = LS_CP;
-    line_search_type_to_enum["CONTACT"] = LS_CONTACT;
 #endif
 #endif
   }
 }
 
-void
-initTimeIntegratorsType()
+template <>
+ExecFlagType
+stringToEnum(const std::string & s)
 {
-  if (time_integrator_to_enum.empty())
-  {
-    time_integrator_to_enum["IMPLICIT_EULER"] = TI_IMPLICIT_EULER;
-    time_integrator_to_enum["EXPLICIT_EULER"] = TI_EXPLICIT_EULER;
-    time_integrator_to_enum["CRANK_NICOLSON"] = TI_CRANK_NICOLSON;
-    time_integrator_to_enum["BDF2"] = TI_BDF2;
-    time_integrator_to_enum["EXPLICIT_MIDPOINT"] = TI_EXPLICIT_MIDPOINT;
-    time_integrator_to_enum["LSTABLE_DIRK2"] = TI_LSTABLE_DIRK2;
-    time_integrator_to_enum["EXPLICIT_TVDRK2"] = TI_EXPLICIT_TVD_RK_2;
-  }
-}
+  initExecStoreType();
 
-void
-initMffdType()
-{
-  if (mffd_type_to_enum.empty())
-  {
-    mffd_type_to_enum["DS"] = MFFD_DS;
-    mffd_type_to_enum["WP"] = MFFD_WP;
-  }
-}
+  std::string upper(s);
+  std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
-void
-initRMType()
-{
-  if (rm_type_to_enum.empty())
-  {
-    rm_type_to_enum["DEFAULT"] = RelationshipManagerType::DEFAULT;
-    rm_type_to_enum["GEOMETRIC"] = RelationshipManagerType::GEOMETRIC;
-    rm_type_to_enum["ALGEBRAIC"] = RelationshipManagerType::ALGEBRAIC;
-    rm_type_to_enum["COUPLING"] = RelationshipManagerType::COUPLING;
-  }
+  if (!execstore_type_to_enum.count(upper))
+    mooseError("Unknown execution flag: ", upper);
+
+  return execstore_type_to_enum[upper];
 }
 
 template <>
@@ -302,129 +289,17 @@ stringToEnum<LineSearchType>(const std::string & s)
 }
 
 template <>
-TimeIntegratorType
-stringToEnum<TimeIntegratorType>(const std::string & s)
+std::vector<ExecFlagType>
+vectorStringsToEnum<ExecFlagType>(const MultiMooseEnum & v)
 {
-  initTimeIntegratorsType();
+  std::vector<ExecFlagType> exec_flags(v.size());
+  for (unsigned int i = 0; i < v.size(); ++i)
+    exec_flags[i] = stringToEnum<ExecFlagType>(v[i]);
 
-  std::string upper(s);
-  std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
-
-  if (!time_integrator_to_enum.count(upper))
-    mooseError("Unknown time integrator: ", upper);
-
-  return time_integrator_to_enum[upper];
+  return exec_flags;
 }
 
 template <>
-MffdType
-stringToEnum<MffdType>(const std::string & s)
-{
-  initMffdType();
-
-  std::string upper(s);
-  std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
-
-  if (!mffd_type_to_enum.count(upper))
-    mooseError("Unknown mffd type: ", upper);
-
-  return mffd_type_to_enum[upper];
-}
-
-template <>
-RelationshipManagerType
-stringToEnum<RelationshipManagerType>(const std::string & s)
-{
-  initRMType();
-
-  std::string upper(s);
-  std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
-
-  if (!rm_type_to_enum.count(upper))
-    mooseError("Unknown RelationshipManager type: ", upper);
-
-  return rm_type_to_enum[upper];
-}
-
-// Ignore warnings about switching on the |'d type
-#include "libmesh/ignore_warnings.h"
-
-// Definition in MooseTypes.h
-std::string
-stringify(const RelationshipManagerType & t)
-{
-  // Cannot make a switch statement because the boolean logic doesn't work well with the class type
-  // enumeration and because Cody says so.
-  if (t == RelationshipManagerType::DEFAULT)
-    return "DEFAULT";
-  if (t == RelationshipManagerType::GEOMETRIC)
-    return "GEOMETRIC";
-  if (t == RelationshipManagerType::ALGEBRAIC)
-    return "ALGEBRAIC";
-  if (t == (RelationshipManagerType::GEOMETRIC | RelationshipManagerType::ALGEBRAIC))
-    return "GEOMETRIC and ALGEBRAIC";
-  if (t == (RelationshipManagerType::ALGEBRAIC | RelationshipManagerType::COUPLING))
-    return "ALGEBRAIC and COUPLING";
-  if (t == (RelationshipManagerType::GEOMETRIC | RelationshipManagerType::ALGEBRAIC |
-            RelationshipManagerType::COUPLING))
-    return "GEOMETRIC and ALGEBRAIC and COUPLING";
-  if (t == RelationshipManagerType::COUPLING)
-    return "COUPLING";
-
-  mooseError("Unknown RelationshipManagerType");
-}
-
-std::string
-stringify(FEFamily f)
-{
-  switch (f)
-  {
-    case 0:
-      return "LAGRANGE";
-    case 1:
-      return "HIERARCHIC";
-    case 2:
-      return "MONOMIAL";
-    case 6:
-      return "L2_HIERARCHIC";
-    case 7:
-      return "L2_LAGRANGE";
-    case 3:
-      return "BERNSTEIN";
-    case 4:
-      return "SZABAB";
-    case 5:
-      return "XYZ";
-    case 11:
-      return "INFINITE_MAP";
-    case 12:
-      return "JACOBI_20_00";
-    case 13:
-      return "JACOBI_30_00";
-    case 14:
-      return "LEGENDRE";
-    case 21:
-      return "CLOUGH";
-    case 22:
-      return "HERMITE";
-    case 23:
-      return "SUBDIVISION";
-    case 31:
-      return "SCALAR";
-    case 41:
-      return "LAGRANGE_VEC";
-    case 42:
-      return "NEDELEC_ONE";
-    case 99:
-      return "INVALID_FE";
-    default:
-      mooseError("Unrecognized FEFamily ", static_cast<int>(f));
-  }
-}
-
-// Turn the warnings back on
-#include "libmesh/restore_warnings.h"
-
 std::string
 stringify(const SolveType & t)
 {
@@ -444,29 +319,36 @@ stringify(const SolveType & t)
   return "";
 }
 
+template <>
 std::string
-stringify(const VarFieldType & t)
+stringify(const ExecFlagType & t)
 {
   switch (t)
   {
-    case VAR_FIELD_STANDARD:
-      return "STANDARD";
-    case VAR_FIELD_VECTOR:
-      return "VECTOR";
-    case VAR_FIELD_ARRAY:
-      return "ARRAY";
-    case VAR_FIELD_SCALAR:
-      return "SCALAR";
-    case VAR_FIELD_ANY:
-      return "ANY";
+    case EXEC_INITIAL:
+      return "INITIAL";
+    case EXEC_LINEAR:
+      return "LINEAR";
+    case EXEC_NONLINEAR:
+      return "NONLINEAR";
+    case EXEC_TIMESTEP_END:
+      return "TIMESTEP_END";
+    case EXEC_TIMESTEP_BEGIN:
+      return "TIMESTEP_BEGIN";
+    case EXEC_CUSTOM:
+      return "CUSTOM";
+    case EXEC_FINAL:
+      return "FINAL";
+    case EXEC_FORCED:
+      return "FORCED";
+    case EXEC_FAILED:
+      return "FAILED";
+    case EXEC_SUBDOMAIN:
+      return "SUBDOMAIN";
+    case EXEC_NONE:
+      return "NONE";
   }
   return "";
-}
-
-std::string
-stringify(const std::string & s)
-{
-  return s;
 }
 
 std::string
@@ -480,11 +362,11 @@ stringifyExact(Real t)
   os << std::setprecision(max_digits10) << t;
   return os.str();
 }
+}
 
 Point
 toPoint(const std::vector<Real> & pos)
 {
   mooseAssert(pos.size() == LIBMESH_DIM, "Wrong array size while converting into a point");
   return Point(pos[0], pos[1], pos[2]);
-}
 }

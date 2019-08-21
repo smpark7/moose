@@ -1,32 +1,29 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "SlaveConstraint.h"
+#include "FrictionalContactProblem.h"
 
 // Moose includes
 #include "SystemBase.h"
 #include "MooseMesh.h"
-#include "ContactAction.h"
 
+// libmesh includes
 #include "libmesh/plane.h"
 #include "libmesh/sparse_matrix.h"
 #include "libmesh/string_to_enum.h"
-
-registerMooseObject("ContactApp", SlaveConstraint);
 
 template <>
 InputParameters
 validParams<SlaveConstraint>()
 {
-  InputParameters params = validParams<DiracKernel>();
-  params += ContactAction::commonParameters();
+  MooseEnum orders("CONSTANT FIRST SECOND THIRD FOURTH", "FIRST");
 
+  InputParameters params = validParams<DiracKernel>();
   params.addRequiredParam<BoundaryName>("boundary", "The slave boundary");
   params.addRequiredParam<BoundaryName>("master", "The master boundary");
   params.addRequiredParam<unsigned int>("component",
@@ -43,6 +40,7 @@ validParams<SlaveConstraint>()
       "The displacements appropriate for the simulation geometry and coordinate system");
 
   params.addRequiredCoupledVar("nodal_area", "The nodal area");
+  params.addParam<std::string>("model", "frictionless", "The contact model to use");
 
   params.set<bool>("use_displaced_mesh") = true;
   params.addParam<Real>(
@@ -52,6 +50,13 @@ validParams<SlaveConstraint>()
   params.addParam<Real>("friction_coefficient", 0, "The friction coefficient");
   params.addParam<Real>("tangential_tolerance",
                         "Tangential distance to extend edges of contact surfaces");
+  params.addParam<Real>(
+      "normal_smoothing_distance",
+      "Distance from edge in parametric coordinates over which to smooth contact normal");
+  params.addParam<std::string>("normal_smoothing_method",
+                               "Method to use to smooth normals (edge_based|nodal_normal_based)");
+  params.addParam<MooseEnum>("order", orders, "The finite element order");
+  params.addParam<std::string>("formulation", "default", "The contact formulation");
   params.addParam<bool>(
       "normalize_penalty",
       false,
@@ -62,8 +67,8 @@ validParams<SlaveConstraint>()
 SlaveConstraint::SlaveConstraint(const InputParameters & parameters)
   : DiracKernel(parameters),
     _component(getParam<unsigned int>("component")),
-    _model(getParam<MooseEnum>("model").getEnum<ContactModel>()),
-    _formulation(getParam<MooseEnum>("formulation").getEnum<ContactFormulation>()),
+    _model(ContactMaster::contactModel(getParam<std::string>("model"))),
+    _formulation(ContactMaster::contactFormulation(getParam<std::string>("formulation"))),
     _normalize_penalty(getParam<bool>("normalize_penalty")),
     _penetration_locator(
         getPenetrationLocator(getParam<BoundaryName>("master"),
@@ -165,17 +170,17 @@ SlaveConstraint::computeQpResidual()
 
   const Real area = nodalArea(*pinfo);
 
-  if (_formulation == ContactFormulation::KINEMATIC)
+  if (_formulation == CF_DEFAULT)
   {
     RealVectorValue distance_vec(_mesh.nodeRef(node->id()) - pinfo->_closest_point);
     RealVectorValue pen_force(_penalty * distance_vec);
     if (_normalize_penalty)
       pen_force *= area;
 
-    if (_model == ContactModel::FRICTIONLESS)
+    if (_model == CM_FRICTIONLESS)
       resid += pinfo->_normal(_component) * pinfo->_normal * pen_force;
 
-    else if (_model == ContactModel::GLUED || _model == ContactModel::COULOMB)
+    else if (_model == CM_GLUED || _model == CM_COULOMB)
       resid += pen_force(_component);
   }
 
@@ -220,7 +225,7 @@ SlaveConstraint::computeQpJacobian()
 
   Real term(0);
 
-  if (ContactModel::FRICTIONLESS == _model)
+  if (CM_FRICTIONLESS == _model)
   {
 
     const Real nnTDiag = normal(_component) * normal(_component);
@@ -289,7 +294,7 @@ SlaveConstraint::computeQpJacobian()
     else
       term += penalty * (1 - nnTDiag + AinvDAT33);
   }
-  else if (ContactModel::GLUED == _model || ContactModel::COULOMB == _model)
+  else if (CM_GLUED == _model || CM_COULOMB == _model)
   {
     normal.zero();
     normal(_component) = 1;

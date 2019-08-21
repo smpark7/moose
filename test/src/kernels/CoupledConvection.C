@@ -1,15 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 #include "CoupledConvection.h"
-
-registerMooseObject("MooseTestApp", CoupledConvection);
 
 template <>
 InputParameters
@@ -21,12 +23,6 @@ validParams<CoupledConvection>()
       "lag_coupling",
       false,
       "Tells the object to use the old velocity vector instead of the current vector");
-
-  params.addParam<bool>("test_coupling_declaration_error",
-                        false,
-                        "Set to true to verify that error messages are "
-                        "produced if a coupling is requested that wasn't "
-                        "declared");
   return params;
 }
 
@@ -35,9 +31,6 @@ CoupledConvection::CoupledConvection(const InputParameters & parameters)
     _velocity_vector(getParam<bool>("lag_coupling") ? coupledGradientOld("velocity_vector")
                                                     : coupledGradient("velocity_vector"))
 {
-  // Test coupling error
-  if (getParam<bool>("test_coupling_declaration_error"))
-    coupledGradient("var_undeclared");
 }
 
 Real

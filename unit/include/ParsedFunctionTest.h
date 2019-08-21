@@ -1,15 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef USERFUNCTIONTEST_H
+#define USERFUNCTIONTEST_H
 
-#include "gtest_include.h"
+#include "gtest/gtest.h"
 
 #include "InputParameters.h"
 #include "MooseParsedFunction.h"
@@ -26,21 +32,17 @@ protected:
   {
     const char * argv[2] = {"foo", "\0"};
 
-    _app = AppFactory::createAppShared("MooseUnitApp", 1, (char **)argv);
+    _app.reset(AppFactory::createApp("MooseUnitApp", 1, (char **)argv));
     _factory = &_app->getFactory();
 
     InputParameters mesh_params = _factory->getValidParams("GeneratedMesh");
     mesh_params.set<MooseEnum>("dim") = "3";
     mesh_params.set<std::string>("_object_name") = "mesh";
-    mesh_params.set<std::string>("_type") = "GneratedMesh";
-
     _mesh = libmesh_make_unique<GeneratedMesh>(mesh_params);
-    _mesh->setMeshBase(_mesh->buildMeshBaseObject());
 
     InputParameters problem_params = _factory->getValidParams("FEProblem");
     problem_params.set<MooseMesh *>("mesh") = _mesh.get();
     problem_params.set<std::string>("_object_name") = "FEProblem";
-    problem_params.set<std::string>("_type") = "FEProblem";
     _fe_problem = libmesh_make_unique<FEProblem>(problem_params);
   }
 
@@ -49,9 +51,10 @@ protected:
     return f._function_ptr->_function_ptr.get();
   }
 
-  std::shared_ptr<MooseApp> _app;
+  std::unique_ptr<MooseApp> _app;
   std::unique_ptr<MooseMesh> _mesh;
   std::unique_ptr<FEProblem> _fe_problem;
   Factory * _factory;
 };
 
+#endif // USERFUNCTIONTEST_H

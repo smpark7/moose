@@ -1,13 +1,17 @@
 #pylint: disable=missing-docstring
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#################################################################
+#                   DO NOT MODIFY THIS HEADER                   #
+#  MOOSE - Multiphysics Object Oriented Simulation Environment  #
+#                                                               #
+#            (c) 2010 Battelle Energy Alliance, LLC             #
+#                      ALL RIGHTS RESERVED                      #
+#                                                               #
+#           Prepared by Battelle Energy Alliance, LLC           #
+#             Under Contract No. DE-AC07-05ID14517              #
+#              With the U. S. Department of Energy              #
+#                                                               #
+#              See COPYRIGHT for full restrictions              #
+#################################################################
 import os
 import collections
 import bisect
@@ -95,11 +99,11 @@ class ExodusReader(base.ChiggerObject):
     NODAL = vtk.vtkExodusIIReader.NODAL
     ELEMENTAL = vtk.vtkExodusIIReader.ELEM_BLOCK
     GLOBAL = vtk.vtkExodusIIReader.GLOBAL
-    VARIABLE_TYPES = [ELEMENTAL, NODAL, GLOBAL]
+    VARIABLE_TYPES = [NODAL, ELEMENTAL, GLOBAL]
 
     # Information data structures
     BlockInformation = collections.namedtuple('BlockInformation', ['name', 'object_type',
-                                                                   'object_index', 'number',
+                                                                   'object_index',
                                                                    'multiblock_index'])
     VariableInformation = collections.namedtuple('VariableInformation', ['name', 'object_type',
                                                                          'num_components'])
@@ -351,12 +355,10 @@ class ExodusReader(base.ChiggerObject):
             # Account for out-of-range timesteps
             if (timestep < 0) and (timestep != -1):
                 mooseutils.mooseWarning("Timestep out of range:", timestep, 'not in', repr([0, n]))
-                self.setOption('timestep', 0)
                 timestep = 0
             elif timestep > n:
                 mooseutils.mooseWarning("Timestep out of range:", timestep, 'not in', repr([0, n]))
-                self.setOption('timestep', n)
-                timestep = n
+                timestep = -1
 
         # Time
         elif self.isOptionValid('time'):
@@ -472,7 +474,7 @@ class ExodusReader(base.ChiggerObject):
                 if name.startswith('Unnamed'):
                     name = vtkid
 
-                binfo = ExodusReader.BlockInformation(object_type=obj_type, name=name, number=vtkid,
+                binfo = ExodusReader.BlockInformation(object_type=obj_type, name=name,
                                                       object_index=j, multiblock_index=index)
                 self.__blockinfo[obj_type][vtkid] = binfo
 

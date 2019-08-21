@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef MATERIALTENSORCALCULATORTOOLS_H
+#define MATERIALTENSORCALCULATORTOOLS_H
 
 #include "libmesh/vector_value.h"
 #include "MooseTypes.h"
@@ -53,8 +51,6 @@ Real hydrostatic(const SymmTensor & symm_tensor);
  * The volumentric strain is the change in volume over the original volume. In
  * this method the squared and cubic terms are included so that the calculation
  * is valid for both small and finite strains.
- * @param strain Total logarithmic strain
- * @return volumetric strain (delta V / V)
  */
 Real volumetricStrain(const SymmTensor & symm_strain);
 
@@ -179,3 +175,4 @@ Real directionValueTensor(const SymmTensor & symm_tensor, const RealVectorValue 
 Real triaxialityStress(const SymmTensor & symm_stress);
 }
 
+#endif // MATERIALTENSORCALCULATORTOOLS_H

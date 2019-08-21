@@ -1,38 +1,34 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "AddAllSideSetsByNormals.h"
 #include "Parser.h"
 #include "InputParameters.h"
 #include "MooseMesh.h"
 
-#include "libmesh/fe_base.h"
+// libMesh includes
 #include "libmesh/mesh_generation.h"
 #include "libmesh/mesh.h"
 #include "libmesh/string_to_enum.h"
 #include "libmesh/quadrature_gauss.h"
 #include "libmesh/point_locator_base.h"
-#include "libmesh/elem.h"
-
-registerMooseObjectReplaced("MooseApp",
-                            AddAllSideSetsByNormals,
-                            "11/30/2019 00:00",
-                            AllSideSetsByNormalsGenerator);
 
 template <>
 InputParameters
 validParams<AddAllSideSetsByNormals>()
 {
   InputParameters params = validParams<AddSideSetsBase>();
-
-  params.addClassDescription("Adds sidesets to the entire mesh based on unique normals");
-
   return params;
 }
 
@@ -63,7 +59,12 @@ AddAllSideSetsByNormals::modify()
 
   // We'll need to loop over all of the elements to find ones that match this normal.
   // We can't rely on flood catching them all here...
-  for (const auto & elem : _mesh_ptr->getMesh().element_ptr_range())
+  MeshBase::const_element_iterator el = _mesh_ptr->getMesh().elements_begin();
+  const MeshBase::const_element_iterator end_el = _mesh_ptr->getMesh().elements_end();
+  for (; el != end_el; ++el)
+  {
+    const Elem * elem = *el;
+
     for (unsigned int side = 0; side < elem->n_sides(); ++side)
     {
       if (elem->neighbor_ptr(side))
@@ -83,15 +84,16 @@ AddAllSideSetsByNormals::modify()
           }
 
         if (item)
-          flood(elem, normals[0], item->first);
+          flood(*el, normals[0], item->first);
         else
         {
           BoundaryID id = getNextBoundaryID();
           (*boundary_map)[id] = normals[0];
-          flood(elem, normals[0], id);
+          flood(*el, normals[0], id);
         }
       }
     }
+  }
 
   finalize();
 

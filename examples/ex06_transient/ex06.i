@@ -15,7 +15,6 @@
     variable = diffused
   [../]
 
-  # Include our time derivative here
   [./euler]
     type = ExampleTimeDerivative
     variable = diffused
@@ -39,12 +38,11 @@
   [../]
 []
 
-# Transient (time-dependent) details for simulations go here:
 [Executioner]
-  type = Transient   # Here we use the Transient Executioner (instead of steady)
+  type = Transient   # Here we use the Transient Executioner
   solve_type = 'PJFNK'
-  num_steps = 75 # Run for 75 time steps, solving the system each step.
-  dt = 1 # each time step will have duration "1"
+  num_steps = 75
+  dt = 1
 []
 
 [Outputs]

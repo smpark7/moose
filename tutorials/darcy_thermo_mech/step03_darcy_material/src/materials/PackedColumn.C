@@ -1,16 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 #include "PackedColumn.h"
-#include "Function.h"
-
-registerMooseObject("DarcyThermoMechApp", PackedColumn);
 
 template <>
 InputParameters
@@ -18,15 +19,12 @@ validParams<PackedColumn>()
 {
   InputParameters params = validParams<Material>();
 
-  // Parameter for radius of the spheres used to interpolate permeability.
-  params.addParam<FunctionName>("radius",
-                                "1.0",
-                                "The radius of the steel spheres (mm) that are packed in the "
-                                "column for computing permeability.");
-  params.addParam<Real>(
-      "viscosity",
-      7.98e-4,
-      "The viscosity ($\\mu$) of the fluid in Pa, the default is for water at 30 degrees C.");
+  // Add a parameter to get the radius of the spheres in the column (used later to interpolate
+  // permeability).
+  params.addParam<Real>("sphere_radius",
+                        1.0,
+                        "The radius of the steel spheres that are packed in the "
+                        "column.  Used to interpolate _permeability.");
 
   return params;
 }
@@ -34,11 +32,11 @@ validParams<PackedColumn>()
 PackedColumn::PackedColumn(const InputParameters & parameters)
   : Material(parameters),
 
-    // Get the parameters from the input file
-    _radius(getFunction("radius")),
-    _input_viscosity(getParam<Real>("viscosity")),
+    // Get the one parameter from the input file
+    _sphere_radius(getParam<Real>("sphere_radius")),
 
-    // Declare two material properties by getting a reference from the MOOSE Material system
+    // Declare two material properties.  This returns references that we
+    // hold onto as member variables
     _permeability(declareProperty<Real>("permeability")),
     _viscosity(declareProperty<Real>("viscosity"))
 {
@@ -48,15 +46,15 @@ PackedColumn::PackedColumn(const InputParameters & parameters)
 
   // Set the x,y data on the LinearInterpolation object.
   _permeability_interpolation.setData(sphere_sizes, permeability);
+
+  // The _sphere_radius is a constant, so we can compute the
+  // interpolated permeability once as well.
+  _interpolated_permeability = _permeability_interpolation.sample(_sphere_radius);
 }
 
 void
 PackedColumn::computeQpProperties()
 {
-  Real value = _radius.value(_t, _q_point[_qp]);
-  mooseAssert(value >= 1 && value <= 3,
-              "The radius range must be in the range [1, 3], but " << value << " provided.");
-
-  _viscosity[_qp] = _input_viscosity;
-  _permeability[_qp] = _permeability_interpolation.sample(value);
+  _viscosity[_qp] = 7.98e-4; // (Pa*s) Water at 30 degrees C (Wikipedia)
+  _permeability[_qp] = _interpolated_permeability;
 }

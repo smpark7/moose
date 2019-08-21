@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "gtest/gtest.h"
 
@@ -34,7 +39,7 @@ TEST_F(SyntaxTest, errorChecks)
 {
   try
   {
-    _syntax.registerTaskName("first", "FakeSystem", true);
+    _syntax.registerTaskName("first", true);
     FAIL() << "missing expected error";
   }
   catch (const std::exception & e)
@@ -47,7 +52,7 @@ TEST_F(SyntaxTest, errorChecks)
 
   try
   {
-    _syntax.registerTaskName("second_mo", "FakeSystem", false);
+    _syntax.registerTaskName("second_mo", false);
     FAIL() << "missing expected error";
   }
   catch (const std::exception & e)
@@ -90,8 +95,8 @@ TEST_F(SyntaxTest, general)
   EXPECT_TRUE(_syntax.hasTask("second"));
   EXPECT_FALSE(_syntax.hasTask("third"));
 
-  EXPECT_FALSE(_syntax.shouldAutoBuild("first"));
-  EXPECT_TRUE(_syntax.shouldAutoBuild("second_mo"));
+  EXPECT_FALSE(_syntax.isActionRequired("first"));
+  EXPECT_TRUE(_syntax.isActionRequired("second_mo"));
 
   // TODO: test this
   _syntax.replaceActionSyntax("MooseSystem", "NewBlock", "first");
@@ -102,17 +107,4 @@ TEST_F(SyntaxTest, deprecated)
   _syntax.deprecateActionSyntax("TopBlock");
 
   EXPECT_TRUE(_syntax.isDeprecatedSyntax("TopBlock"));
-
-  const std::string message = _syntax.deprecatedActionSyntaxMessage("TopBlock");
-  EXPECT_EQ(message, "\"[TopBlock]\" is deprecated.");
-}
-
-TEST_F(SyntaxTest, deprecatedCustomMessage)
-{
-  _syntax.deprecateActionSyntax("TopBlock", "Replace [TopBlock] with [NewBlock].");
-
-  EXPECT_TRUE(_syntax.isDeprecatedSyntax("TopBlock"));
-
-  const std::string message = _syntax.deprecatedActionSyntaxMessage("TopBlock");
-  EXPECT_EQ(message, "Replace [TopBlock] with [NewBlock].");
 }

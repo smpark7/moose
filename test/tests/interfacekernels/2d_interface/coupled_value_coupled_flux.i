@@ -63,11 +63,12 @@
 
 [InterfaceKernels]
   [./interface]
-    type = PenaltyInterfaceDiffusion
+    type = InterfaceDiffusion
     variable = u
     neighbor_var = v
     boundary = master0_interface
-    penalty = 1e6
+    D = 4
+    D_neighbor = 2
   [../]
 []
 
@@ -81,6 +82,12 @@
     type = VacuumBC
     variable = v
     boundary = 'left_to_1 bottom_to_1'
+  [../]
+  [./middle]
+    type = MatchedValueBC
+    variable = v
+    boundary = 'master0_interface'
+    v = u
   [../]
 []
 

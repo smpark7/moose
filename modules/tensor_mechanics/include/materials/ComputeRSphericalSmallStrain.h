@@ -1,20 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPUTERSPHERICALSMALLSTRAIN_H
+#define COMPUTERSPHERICALSMALLSTRAIN_H
 
 #include "ComputeSmallStrain.h"
-
-class ComputeRSphericalSmallStrain;
-
-template <>
-InputParameters validParams<ComputeRSphericalSmallStrain>();
 
 /**
  * ComputeRSphericalSmallStrain defines a strain tensor, assuming small strains,
@@ -27,6 +20,8 @@ class ComputeRSphericalSmallStrain : public ComputeSmallStrain
 public:
   ComputeRSphericalSmallStrain(const InputParameters & parameters);
 
+protected:
   virtual void computeProperties() override;
 };
 
+#endif // COMPUTERSPHERICALSMALLSTRAIN_H

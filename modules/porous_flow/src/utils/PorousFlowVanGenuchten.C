@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowVanGenuchten.h"
 #include "libmesh/utility.h"
@@ -60,8 +58,9 @@ d2EffectiveSaturation(Real p, Real alpha, Real m)
 }
 
 Real
-capillaryPressure(Real seff, Real alpha, Real m, Real pc_max)
+capillaryPressure(Real seff, Real m, Real p0, Real pc_max)
 {
+  Real pc = 0.0;
   if (seff >= 1.0)
     return 0.0;
   else if (seff <= 0.0)
@@ -69,45 +68,56 @@ capillaryPressure(Real seff, Real alpha, Real m, Real pc_max)
   else
   {
     Real a = std::pow(seff, -1.0 / m) - 1.0;
-    return std::min(std::pow(a, 1.0 - m) / alpha, pc_max);
+    if (a > 0.0)
+      pc = -p0 * std::pow(a, 1.0 - m);
   }
+  return std::max(pc, pc_max);
 }
 
 Real
-dCapillaryPressure(Real seff, Real alpha, Real m, Real pc_max)
+dCapillaryPressure(Real seff, Real m, Real p0, Real pc_max)
 {
+  Real dpc = 0.0;
+  Real pc = 0.0;
+
   if (seff <= 0.0 || seff >= 1.0)
     return 0.0;
   else
   {
     Real a = std::pow(seff, -1.0 / m) - 1.0;
-    // Return 0 if pc > pc_max
-    if (std::pow(a, 1.0 - m) / alpha > pc_max)
-      return 0.0;
-    else
-      return (m - 1.0) * std::pow(a, -m) * std::pow(seff, -1.0 - 1.0 / m) / m / alpha;
-  }
-}
-
-Real
-d2CapillaryPressure(Real seff, Real alpha, Real m, Real pc_max)
-{
-  if (seff <= 0.0 || seff >= 1.0)
-    return 0.0;
-  else
-  {
-    Real a = std::pow(seff, -1.0 / m) - 1.0;
-    // Return 0 if pc > pc_max
-    if (std::pow(a, 1.0 - m) / alpha > pc_max)
-      return 0.0;
-    else
+    if (a > 0.0)
     {
-      Real d2pc = -std::pow(a, -1.0 - m) * std::pow(seff, -2.0 - 2.0 / m) +
-                  ((1.0 + m) / m) * std::pow(a, -m) * std::pow(seff, -1.0 / m - 2.0);
-      d2pc *= (1.0 - m) / m / alpha;
-      return d2pc;
+      pc = -p0 * std::pow(a, 1.0 - m);
+      if (pc > pc_max)
+        dpc = p0 * (1.0 - m) * std::pow(a, -m) * std::pow(seff, -1.0 - 1.0 / m) / m;
     }
   }
+  return dpc;
+}
+
+Real
+d2CapillaryPressure(Real seff, Real m, Real p0, Real pc_max)
+{
+  Real pc = 0.0;
+  Real d2pc = 0.0;
+
+  if (seff <= 0.0 || seff >= 1.0)
+    return 0.0;
+  else
+  {
+    Real a = std::pow(seff, -1.0 / m) - 1.0;
+    if (a > 0.0)
+    {
+      pc = -p0 * std::pow(a, 1.0 - m);
+      if (pc > pc_max)
+      {
+        d2pc = std::pow(a, -1.0 - m) * std::pow(seff, -2.0 - 2.0 / m) -
+               ((1.0 + m) / m) * std::pow(a, -m) * std::pow(seff, -1.0 / m - 2.0);
+        d2pc *= p0 * (1.0 - m) / m;
+      }
+    }
+  }
+  return d2pc;
 }
 
 Real
@@ -155,52 +165,5 @@ d2RelativePermeability(Real seff, Real m)
 
   return -0.25 * std::pow(seff, -1.5) * Utility::pow<2>(b) + 2.0 * std::pow(seff, -0.5) * b * db +
          2.0 * std::sqrt(seff) * db * db + 2.0 * std::sqrt(seff) * b * d2b;
-}
-
-Real
-relativePermeabilityNW(Real seff, Real m)
-{
-  if (seff <= 0.0)
-    return 0.0;
-  else if (seff >= 1.0)
-    return 1.0;
-
-  const Real a = std::pow(1.0 - seff, 1.0 / m);
-  const Real b = std::pow(1.0 - a, 2.0 * m);
-
-  return std::sqrt(seff) * b;
-}
-
-Real
-dRelativePermeabilityNW(Real seff, Real m)
-{
-  // Guard against division by zero
-  if (seff <= 0.0 || seff >= 1.0)
-    return 0.0;
-
-  const Real a = std::pow(1.0 - seff, 1.0 / m);
-  const Real da = -1.0 / m * a / (1.0 - seff);
-  const Real b = std::pow(1.0 - a, 2.0 * m);
-  const Real db = -2.0 * m * b / (1.0 - a) * da;
-
-  return 0.5 * std::pow(seff, -0.5) * b + std::sqrt(seff) * db;
-}
-
-Real
-d2RelativePermeabilityNW(Real seff, Real m)
-{
-  // Guard against division by zero
-  if (seff <= 0.0 || seff >= 1.0)
-    return 0.0;
-
-  const Real a = std::pow(1.0 - seff, 1.0 / m);
-  const Real da = -1.0 / m * a / (1.0 - seff);
-  const Real d2a = 1.0 / m * (1.0 / m - 1) * std::pow(1.0 - seff, 1.0 / m - 2.0);
-  const Real b = std::pow(1.0 - a, 2.0 * m);
-  const Real db = -2.0 * m * b / (1.0 - a) * da;
-  const Real d2b =
-      -2.0 * m * (db / (1.0 - a) * da + b * Utility::pow<2>(da / (1.0 - a)) + b / (1.0 - a) * d2a);
-
-  return -0.25 * std::pow(seff, -1.5) * b + std::pow(seff, -0.5) * db + std::sqrt(seff) * d2b;
 }
 }

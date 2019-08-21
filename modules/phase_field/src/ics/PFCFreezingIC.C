@@ -1,22 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PFCFreezingIC.h"
 #include "MooseRandom.h"
-
-registerMooseObject("PhaseFieldApp", PFCFreezingIC);
 
 template <>
 InputParameters
 validParams<PFCFreezingIC>()
 {
-  InputParameters params = validParams<RandomICBase>();
+  InputParameters params = validParams<InitialCondition>();
   params.addRequiredParam<Real>("x1",
                                 "The x coordinate of the lower left-hand corner of the frozen box");
   params.addRequiredParam<Real>("y1",
@@ -38,11 +34,13 @@ validParams<PFCFreezingIC>()
   params.addParam<MooseEnum>(
       "crystal_structure", crystal_structures, "The type of crystal structure");
 
+  params.addParam<unsigned int>("seed", 0, "Seed value for the random number generator");
+
   return params;
 }
 
 PFCFreezingIC::PFCFreezingIC(const InputParameters & parameters)
-  : RandomICBase(parameters),
+  : InitialCondition(parameters),
     _x1(getParam<Real>("x1")),
     _y1(getParam<Real>("y1")),
     _z1(getParam<Real>("z1")),
@@ -65,6 +63,8 @@ PFCFreezingIC::PFCFreezingIC(const InputParameters & parameters)
   for (unsigned int i = 0; i < LIBMESH_DIM; i++)
     mooseAssert(_range(i) >= 0.0, "x1, y1 or z1 is not less than x2, y2 or z2");
 
+  MooseRandom::seed(getParam<unsigned int>("seed"));
+
   if (_range(1) == 0.0)
     _icdim = 1;
   else if (_range(2) < 1.0e-10 * _range(0))
@@ -79,7 +79,7 @@ PFCFreezingIC::value(const Point & p)
   // If out of bounds, set random value
   for (unsigned int i = 0; i < LIBMESH_DIM; i++)
     if (p(i) < _bottom_left(i) || p(i) > _top_right(i))
-      return _min + _val_range * generateRandom();
+      return _min + _val_range * MooseRandom::rand();
 
   // If in bounds, set sinusoid IC to make atoms
   Real val = 0.0;

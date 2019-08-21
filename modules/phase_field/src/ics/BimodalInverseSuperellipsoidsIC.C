@@ -1,19 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "BimodalInverseSuperellipsoidsIC.h"
 
 // MOOSE includes
 #include "MooseMesh.h"
 #include "MooseVariable.h"
-
-registerMooseObject("PhaseFieldApp", BimodalInverseSuperellipsoidsIC);
 
 template <>
 InputParameters
@@ -35,8 +31,7 @@ void
 BimodalInverseSuperellipsoidsIC::initialSetup()
 {
   if (_size_variation_type == 2 && _size_variation > 0.0)
-    paramError("size_variation",
-               "If size_variation > 0.0, you must pass in a size_variation_type in "
+    mooseError("If size_variation > 0.0, you must pass in a size_variation_type in "
                "BimodalInverseSuperellipsoidsIC");
 
   BimodalSuperellipsoidsIC::initialSetup();

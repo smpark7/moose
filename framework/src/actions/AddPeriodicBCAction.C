@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "AddPeriodicBCAction.h"
 
@@ -16,14 +21,11 @@
 #include "GeneratedMesh.h"
 #include "InputParameters.h"
 #include "MooseMesh.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "NonlinearSystem.h"
-#include "RelationshipManager.h"
 
+// LibMesh includes
 #include "libmesh/periodic_boundary.h" // translation PBCs provided by libmesh
-
-registerMooseAction("MooseApp", AddPeriodicBCAction, "add_periodic_bc");
-registerMooseAction("MooseApp", AddPeriodicBCAction, "add_geometric_rm");
 
 template <>
 InputParameters
@@ -67,12 +69,10 @@ AddPeriodicBCAction::setPeriodicVars(PeriodicBoundaryBase & p,
 
   for (const auto & var_name : *var_names_ptr)
   {
-    if (!nl.hasScalarVariable(var_name))
-    {
-      unsigned int var_num = nl.getVariable(0, var_name).number();
-      p.set_variable(var_num);
-      _mesh->addPeriodicVariable(var_num, p.myboundary, p.pairedboundary);
-    }
+    unsigned int var_num = nl.getVariable(0, var_name).number();
+
+    p.set_variable(var_num);
+    _mesh->addPeriodicVariable(var_num, p.myboundary, p.pairedboundary);
   }
 }
 
@@ -151,93 +151,63 @@ AddPeriodicBCAction::autoTranslationBoundaries()
 void
 AddPeriodicBCAction::act()
 {
-  if (_current_task == "add_geometric_rm")
+  NonlinearSystemBase & nl = _problem->getNonlinearSystemBase();
+  _mesh = &_problem->mesh();
+  auto displaced_problem = _problem->getDisplacedProblem();
+
+  if (autoTranslationBoundaries())
+    return;
+
+  if (_pars.isParamValid("translation"))
   {
-    auto rm_params = _factory.getValidParams("ElementSideNeighborLayers");
+    RealVectorValue translation = getParam<RealVectorValue>("translation");
 
-    rm_params.set<std::string>("for_whom") = "PeriodicBCs";
-    rm_params.set<MooseMesh *>("mesh") = Action::_mesh.get();
-    rm_params.set<Moose::RelationshipManagerType>("rm_type") =
-        Moose::RelationshipManagerType::GEOMETRIC | Moose::RelationshipManagerType::ALGEBRAIC;
+    PeriodicBoundary p(translation);
+    p.myboundary = _mesh->getBoundaryID(getParam<BoundaryName>("primary"));
+    p.pairedboundary = _mesh->getBoundaryID(getParam<BoundaryName>("secondary"));
+    setPeriodicVars(p, getParam<std::vector<VariableName>>("variable"));
 
-    // We can't attach this relationship manager early because
-    // the PeriodicBoundaries object needs to exist!
-    rm_params.set<bool>("attach_geometric_early") = false;
+    _problem->addGhostedBoundary(p.myboundary);
+    _problem->addGhostedBoundary(p.pairedboundary);
 
-    if (rm_params.areAllRequiredParamsValid())
-    {
-      auto rm_obj = _factory.create<RelationshipManager>(
-          "ElementSideNeighborLayers", "periodic_bc_ghosting_" + name(), rm_params);
-
-      if (!_app.addRelationshipManager(rm_obj))
-        _factory.releaseSharedObjects(*rm_obj);
-    }
-    else
-      mooseError("Invalid initialization of ElementSideNeighborLayers");
+    nl.dofMap().add_periodic_boundary(p);
+    if (displaced_problem)
+      displaced_problem->nlSys().dofMap().add_periodic_boundary(p);
   }
-
-  if (_current_task == "add_periodic_bc")
+  else if (getParam<std::vector<std::string>>("transform_func") != std::vector<std::string>())
   {
-    NonlinearSystemBase & nl = _problem->getNonlinearSystemBase();
-    _mesh = &_problem->mesh();
-    auto displaced_problem = _problem->getDisplacedProblem();
+    std::vector<std::string> inv_fn_names =
+        getParam<std::vector<std::string>>("inv_transform_func");
+    std::vector<std::string> fn_names = getParam<std::vector<std::string>>("transform_func");
 
-    if (autoTranslationBoundaries())
-      return;
+    // If the user provided a forward transformation, he must also provide an inverse -- we can't
+    // form the inverse of an arbitrary function automatically...
+    if (inv_fn_names == std::vector<std::string>())
+      mooseError("You must provide an inv_transform_func for FunctionPeriodicBoundary!");
 
-    if (_pars.isParamValid("translation"))
-    {
-      RealVectorValue translation = getParam<RealVectorValue>("translation");
+    FunctionPeriodicBoundary pb(*_problem, fn_names);
+    pb.myboundary = _mesh->getBoundaryID(getParam<BoundaryName>("primary"));
+    pb.pairedboundary = _mesh->getBoundaryID(getParam<BoundaryName>("secondary"));
+    setPeriodicVars(pb, getParam<std::vector<VariableName>>("variable"));
 
-      PeriodicBoundary p(translation);
-      p.myboundary = _mesh->getBoundaryID(getParam<BoundaryName>("primary"));
-      p.pairedboundary = _mesh->getBoundaryID(getParam<BoundaryName>("secondary"));
-      setPeriodicVars(p, getParam<std::vector<VariableName>>("variable"));
+    FunctionPeriodicBoundary ipb(*_problem, inv_fn_names);
+    ipb.myboundary = _mesh->getBoundaryID(getParam<BoundaryName>("secondary")); // these are swapped
+    ipb.pairedboundary =
+        _mesh->getBoundaryID(getParam<BoundaryName>("primary")); // these are swapped
+    setPeriodicVars(ipb, getParam<std::vector<VariableName>>("variable"));
 
-      _problem->addGhostedBoundary(p.myboundary);
-      _problem->addGhostedBoundary(p.pairedboundary);
+    _problem->addGhostedBoundary(ipb.myboundary);
+    _problem->addGhostedBoundary(ipb.pairedboundary);
 
-      nl.dofMap().add_periodic_boundary(p);
-      if (displaced_problem)
-        displaced_problem->nlSys().dofMap().add_periodic_boundary(p);
-    }
-    else if (getParam<std::vector<std::string>>("transform_func") != std::vector<std::string>())
-    {
-      std::vector<std::string> inv_fn_names =
-          getParam<std::vector<std::string>>("inv_transform_func");
-      std::vector<std::string> fn_names = getParam<std::vector<std::string>>("transform_func");
-
-      // If the user provided a forward transformation, he must also provide an inverse -- we can't
-      // form the inverse of an arbitrary function automatically...
-      if (inv_fn_names == std::vector<std::string>())
-        mooseError("You must provide an inv_transform_func for FunctionPeriodicBoundary!");
-
-      FunctionPeriodicBoundary pb(*_problem, fn_names);
-      pb.myboundary = _mesh->getBoundaryID(getParam<BoundaryName>("primary"));
-      pb.pairedboundary = _mesh->getBoundaryID(getParam<BoundaryName>("secondary"));
-      setPeriodicVars(pb, getParam<std::vector<VariableName>>("variable"));
-
-      FunctionPeriodicBoundary ipb(*_problem, inv_fn_names);
-      ipb.myboundary =
-          _mesh->getBoundaryID(getParam<BoundaryName>("secondary")); // these are swapped
-      ipb.pairedboundary =
-          _mesh->getBoundaryID(getParam<BoundaryName>("primary")); // these are swapped
-      setPeriodicVars(ipb, getParam<std::vector<VariableName>>("variable"));
-
-      _problem->addGhostedBoundary(ipb.myboundary);
-      _problem->addGhostedBoundary(ipb.pairedboundary);
-
-      // Add the pair of periodic boundaries to the dof map
-      nl.dofMap().add_periodic_boundary(pb, ipb);
-      if (displaced_problem)
-        displaced_problem->nlSys().dofMap().add_periodic_boundary(pb, ipb);
-    }
-    else
-    {
-      mooseError(
-          "You have to specify either 'auto_direction', 'translation' or 'trans_func' in your "
-          "period boundary section '" +
-          _name + "'");
-    }
+    // Add the pair of periodic boundaries to the dof map
+    nl.dofMap().add_periodic_boundary(pb, ipb);
+    if (displaced_problem)
+      displaced_problem->nlSys().dofMap().add_periodic_boundary(pb, ipb);
+  }
+  else
+  {
+    mooseError("You have to specify either 'auto_direction', 'translation' or 'trans_func' in your "
+               "period boundary section '" +
+               _name + "'");
   }
 }

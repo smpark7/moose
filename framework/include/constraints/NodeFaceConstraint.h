@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef NODEFACECONSTRAINT_H
+#define NODEFACECONSTRAINT_H
 
 // MOOSE includes
 #include "Constraint.h"
@@ -36,8 +42,7 @@ InputParameters validParams<NodeFaceConstraint>();
  * This is common for contact algorithms and other constraints.
  */
 class NodeFaceConstraint : public Constraint,
-                           public NeighborCoupleableMooseVariableDependencyIntermediateInterface,
-                           public NeighborMooseVariableInterface<Real>
+                           public NeighborCoupleableMooseVariableDependencyIntermediateInterface
 {
 public:
   NodeFaceConstraint(const InputParameters & parameters);
@@ -95,11 +100,6 @@ public:
    * The variable on the Master side of the domain.
    */
   virtual MooseVariable & masterVariable() { return _master_var; }
-
-  /**
-   * The variable number that this object operates on.
-   */
-  MooseVariable & variable() { return _var; }
 
   // TODO: Make this protected or add an accessor
   // Do the same for all the other public members
@@ -214,18 +214,16 @@ protected:
   /// Boundary ID for the master surface
   unsigned int _master;
 
-  MooseVariable & _var;
-
   const MooseArray<Point> & _master_q_point;
-  const QBase * const & _master_qrule;
+  QBase *& _master_qrule;
 
 public:
   PenetrationLocator & _penetration_locator;
 
 protected:
   /// current node being processed
-  const Node * const & _current_node;
-  const Elem * const & _current_master;
+  const Node *& _current_node;
+  const Elem *& _current_master;
 
   /// Value of the unknown variable this BC is action on
   const VariableValue & _u_slave;
@@ -275,3 +273,4 @@ public:
   DenseMatrix<Number> _Kee;
 };
 
+#endif

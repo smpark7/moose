@@ -1,195 +1,114 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-// STL includes
-#include <iterator>
-
-// MOOSE includes
 #include "Sampler.h"
-#include "MooseRandom.h"
 #include "Distribution.h"
+#include <limits>
 
 template <>
 InputParameters
 validParams<Sampler>()
 {
   InputParameters params = validParams<MooseObject>();
-  params += validParams<SetupInterface>();
-  params += validParams<DistributionInterface>();
-  params.addClassDescription("A base class for distribution sampling.");
-
-  ExecFlagEnum & exec_enum = params.set<ExecFlagEnum>("execute_on", true);
-  exec_enum.addAvailableFlags(EXEC_PRE_MULTIAPP_SETUP);
-
+  params += validParams<RandomInterface>();
+  params.addParam<bool>("reseed", false, "Reseed for each new sample if this value is true");
+  params.addRequiredParam<std::vector<std::string>>(
+      "perturb_parameters", "The names of the parameters that you want to perturb");
   params.addRequiredParam<std::vector<DistributionName>>(
-      "distributions", "The names of distributions that you want to sample.");
-  params.addParam<unsigned int>("seed", 0, "Random number generator initial seed");
+      "distributions",
+      "The names of distributions that you want to use to perturb the given parameters");
   params.registerBase("Sampler");
   return params;
 }
 
 Sampler::Sampler(const InputParameters & parameters)
   : MooseObject(parameters),
-    SetupInterface(this),
+    RandomInterface(parameters,
+                    *parameters.get<FEProblemBase *>("_fe_problem_base"),
+                    parameters.get<THREAD_ID>("_tid"),
+                    false),
     DistributionInterface(this),
-    _distribution_names(getParam<std::vector<DistributionName>>("distributions")),
-    _seed(getParam<unsigned int>("seed")),
-    _total_rows(0)
+    Restartable(parameters, "Samplers"),
+    _tid(getParam<THREAD_ID>("_tid")),
+    _reseed_for_new_sample(getParam<bool>("reseed")),
+    _dist_names(getParam<std::vector<DistributionName>>("distributions")),
+    _var_names(getParam<std::vector<std::string>>("perturb_parameters")),
+    _current_sample(0),
+    _failed_runs(true)
 {
-  for (const DistributionName & name : _distribution_names)
-    _distributions.push_back(&getDistributionByName(name));
-  setNumberOfRequiedRandomSeeds(1);
-}
-
-void
-Sampler::execute()
-{
-  // Get the samples then save the state so that subsequent calls to getSamples returns the same
-  // random numbers until this execute command is called again.
-  std::vector<DenseMatrix<Real>> data = getSamples();
-  _generator.saveState();
-  reinit(data);
-}
-
-void
-Sampler::reinit(const std::vector<DenseMatrix<Real>> & data)
-{
-  // Update offsets and total number of rows
-  _total_rows = 0;
-  _offsets.clear();
-  _offsets.reserve(data.size() + 1);
-  _offsets.push_back(_total_rows);
-  for (const DenseMatrix<Real> & mat : data)
+  _var_dist_map.clear();
+  _probability_weight.clear();
+  _var_value_hist.clear();
+  if (_var_names.size() != _dist_names.size())
+    mooseError("The size of perturb_parameters (",
+               _var_names.size(),
+               ") != the size of distributions (",
+               _dist_names.size(),
+               ").");
+  if (!_var_names.empty())
   {
-    _total_rows += mat.m();
-    _offsets.push_back(_total_rows);
+    for (unsigned int i = 0; i < _var_names.size(); ++i)
+    {
+      _var_dist_map[_var_names[i]] = &getDistributionByName(_dist_names[i]);
+      _var_value_map[_var_names[i]] = 0.0;
+      _var_value_hist[_var_names[i]] = std::vector<Real>();
+    }
   }
-
-  // Update parallel information
-  MooseUtils::linearPartitionItems(
-      _total_rows, n_processors(), processor_id(), _local_rows, _local_row_begin, _local_row_end);
 }
 
-std::vector<DenseMatrix<Real>>
-Sampler::getSamples()
+void
+Sampler::generateSamples()
 {
-  _generator.restoreState();
-  sampleSetUp();
-  std::vector<DenseMatrix<Real>> output = sample();
-  sampleTearDown();
+}
 
-  if (_sample_names.empty())
+std::vector<std::string>
+Sampler::getSampledVariableNames()
+{
+  return _var_names;
+}
+
+std::vector<Real>
+Sampler::getSampledValues(const std::vector<std::string> & variableNames)
+{
+  std::vector<Real> vals;
+  for (auto & var_name : variableNames)
   {
-    _sample_names.resize(output.size());
-    for (MooseIndex(output) i = 0; i < output.size(); ++i)
-      _sample_names[i] = "sample_" + std::to_string(i);
+    Real val = getSampledValue(var_name);
+    vals.push_back(val);
   }
-  mooseAssert(output.size() == _sample_names.size(),
-              "The number of sample names must match the number of samples returned.");
-
-  mooseAssert(output.size() > 0,
-              "It is not acceptable to return an empty vector of sample matrices.");
-
-  return output;
+  return vals;
 }
 
-double
-Sampler::rand(const unsigned int index)
+Real
+Sampler::getSampledValue(const std::string & variableName)
 {
-  mooseAssert(index < _generator.size(), "The seed number index does not exists.");
-  return _generator.rand(index);
+  std::map<std::string, Real>::iterator it;
+  it = _var_value_map.find(variableName);
+  if (it == _var_value_map.end())
+    mooseError(
+        "Could not find the parameter: ", variableName, " in the list of perturbed parameters!");
+  return it->second;
 }
 
-void
-Sampler::setNumberOfRequiedRandomSeeds(const std::size_t & number)
+std::vector<Real>
+Sampler::getProbabilityWeights()
 {
-  if (number == 0)
-    mooseError("The number of seeds must be larger than zero.");
-
-  // Seed the "master" seed generator
-  _seed_generator.seed(0, _seed);
-
-  // See the "slave" generator that will be used for the random number generation
-  for (std::size_t i = 0; i < number; ++i)
-    _generator.seed(i, _seed_generator.randl(0));
-
-  _generator.saveState();
+  return _probability_weight;
 }
 
-void
-Sampler::setSampleNames(const std::vector<std::string> & names)
+bool
+Sampler::checkRuns()
 {
-  _sample_names = names;
-
-  // Use assert because to check the size a getSamples call is required, which you don't
-  // want to do if you don't need it.
-  mooseAssert(getSamples().size() == _sample_names.size(),
-              "The number of sample names must match the number of samples returned.");
-}
-
-Sampler::Location
-Sampler::getLocation(dof_id_type global_index)
-{
-  if (_offsets.empty())
-    reinit(getSamples());
-
-  mooseAssert(_offsets.size() > 1,
-              "The getSamples method returned an empty vector, if you are seeing this you have "
-              "done something to bypass another assert in the 'getSamples' method that should "
-              "prevent this message.");
-
-  // The lower_bound method returns the first value "which does not compare less than" the value and
-  // upper_bound performs "which compares greater than." The upper_bound -1 method is used here
-  // because lower_bound will provide the wrong index, but the method here will provide the correct
-  // index, see the Sampler.GetLocation test in moose/unit/src/Sampler.C for an example.
-  std::vector<unsigned int>::iterator iter =
-      std::upper_bound(_offsets.begin(), _offsets.end(), global_index) - 1;
-  return Sampler::Location(std::distance(_offsets.begin(), iter), global_index - *iter);
-}
-
-dof_id_type
-Sampler::getTotalNumberOfRows()
-{
-  if (_total_rows == 0)
-    reinit(getSamples());
-  return _total_rows;
-}
-
-/**
- * Return the number of rows local to this processor.
- */
-dof_id_type
-Sampler::getLocalNumerOfRows()
-{
-  if (_total_rows == 0)
-    reinit(getSamples());
-  return _local_rows;
-}
-
-/**
- * Return the beginning local row index for this processor
- */
-dof_id_type
-Sampler::getLocalRowBegin()
-{
-  if (_total_rows == 0)
-    reinit(getSamples());
-  return _local_row_begin;
-}
-
-/**
- * Return the ending local row index for this processor
- */
-dof_id_type
-Sampler::getLocalRowEnd()
-{
-  if (_total_rows == 0)
-    reinit(getSamples());
-  return _local_row_end;
+  return _failed_runs;
 }

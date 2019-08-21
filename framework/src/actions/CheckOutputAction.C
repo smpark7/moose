@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "CheckOutputAction.h"
@@ -13,12 +18,7 @@
 #include "MooseApp.h"
 #include "Console.h"
 #include "CommonOutputAction.h"
-#include "MooseVariableFEBase.h"
-#include "MooseVariableScalar.h"
-#include "AuxiliarySystem.h"
-#include "NonlinearSystemBase.h"
-
-registerMooseAction("MooseApp", CheckOutputAction, "check_output");
+#include "AddVariableAction.h"
 
 template <>
 InputParameters
@@ -44,40 +44,26 @@ CheckOutputAction::act()
 void
 CheckOutputAction::checkVariableOutput(const std::string & task)
 {
-  if (_problem.get() == nullptr)
-    return;
-
-  if (task == "add_variable")
+  if (_awh.hasActions(task))
   {
-    const auto & field_vars = _problem->getNonlinearSystemBase().getVariables(/*tid =*/0);
-    for (const auto & var : field_vars)
+    // Loop through the actions for the given task
+    const auto & actions = _awh.getActionListByName(task);
+    for (const auto & act : actions)
     {
-      std::set<OutputName> outputs = var->getOutputs();
-      _app.getOutputWarehouse().checkOutputs(outputs);
-    }
+      // Cast the object to AddVariableAction so that that
+      // OutputInterface::buildOutputHideVariableList may be called
+      AddVariableAction * ptr = dynamic_cast<AddVariableAction *>(act);
 
-    const auto & scalar_vars = _problem->getNonlinearSystemBase().getScalarVariables(/*tid =*/0);
-    for (const auto & var : scalar_vars)
-    {
-      std::set<OutputName> outputs = var->getOutputs();
-      _app.getOutputWarehouse().checkOutputs(outputs);
-    }
-  }
+      // If the cast fails move to the next action, this is the case with NodalNormals which is also
+      // associated with
+      // the "add_aux_variable" task.
+      if (ptr == NULL)
+        continue;
 
-  else if (task == "add_aux_variable")
-  {
-    const auto & field_vars = _problem->getAuxiliarySystem().getVariables(/*tid =*/0);
-    for (const auto & var : field_vars)
-    {
-      std::set<OutputName> outputs = var->getOutputs();
-      _app.getOutputWarehouse().checkOutputs(outputs);
-    }
-
-    const auto & scalar_vars = _problem->getAuxiliarySystem().getScalarVariables(/*tid =*/0);
-    for (const auto & var : scalar_vars)
-    {
-      std::set<OutputName> outputs = var->getOutputs();
-      _app.getOutputWarehouse().checkOutputs(outputs);
+      // Create the hide list for the action
+      std::set<std::string> names_set;
+      names_set.insert(ptr->name());
+      ptr->buildOutputHideVariableList(names_set);
     }
   }
 }
@@ -113,7 +99,7 @@ CheckOutputAction::checkConsoleOutput()
   std::vector<Console *> console_ptrs = _app.getOutputWarehouse().getOutputs<Console>();
   unsigned int num_screen_outputs = 0;
   for (const auto & console : console_ptrs)
-    if (console->getParamTempl<bool>("output_screen"))
+    if (console->getParam<bool>("output_screen"))
       num_screen_outputs++;
 
   if (num_screen_outputs > 1)
@@ -132,17 +118,26 @@ CheckOutputAction::checkPerfLogOutput()
   bool has_console = false;
   std::vector<Console *> ptrs = _app.getOutputWarehouse().getOutputs<Console>();
   for (const auto & console : ptrs)
-    if (console->getParamTempl<bool>("output_screen"))
+    if (console->getParam<bool>("output_screen"))
     {
       has_console = true;
       break;
     }
 
   // If a Console outputter is found then all the correct handling of performance logs are
-  // handled within the object(s), so do nothing
+  //   handled within the object(s), so do nothing
   if (!has_console)
   {
     Moose::perf_log.disable_logging();
+    Moose::setup_perf_log.disable_logging();
     libMesh::perflog.disable_logging();
+  }
+
+  // If the --timing option is used from the command-line, enable all logging
+  if (_app.getParam<bool>("timing"))
+  {
+    Moose::perf_log.enable_logging();
+    Moose::setup_perf_log.enable_logging();
+    libMesh::perflog.enable_logging();
   }
 }

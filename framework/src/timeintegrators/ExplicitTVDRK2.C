@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ExplicitTVDRK2.h"
 #include "NonlinearSystemBase.h"
 #include "FEProblem.h"
 #include "PetscSupport.h"
-
-registerMooseObject("MooseApp", ExplicitTVDRK2);
 
 template <>
 InputParameters
@@ -28,9 +31,9 @@ ExplicitTVDRK2::ExplicitTVDRK2(const InputParameters & parameters)
     _stage(1),
     _residual_old(_nl.addVector("residual_old", false, GHOSTED))
 {
-  mooseInfo("ExplicitTVDRK2 and other multistage TimeIntegrators are known not to work with "
-            "Materials/AuxKernels that accumulate 'state' and should be used with caution.");
 }
+
+ExplicitTVDRK2::~ExplicitTVDRK2() {}
 
 void
 ExplicitTVDRK2::preSolve()
@@ -47,22 +50,22 @@ ExplicitTVDRK2::computeTimeDerivatives()
   // Since advanceState() is called in between stages 2 and 3, this
   // changes the meaning of "_solution_old".  In the second stage,
   // "_solution_older" is actually the original _solution_old.
-  if (!_sys.solutionUDot())
-    mooseError("ExplicitTVDRK2: Time derivative of solution (`u_dot`) is not stored. Please set "
-               "uDotRequested() to true in FEProblemBase befor requesting `u_dot`.");
-
-  NumericVector<Number> & u_dot = *_sys.solutionUDot();
-  u_dot = *_solution;
-  computeTimeDerivativeHelper(u_dot, _solution_old, _solution_older);
+  _u_dot = *_solution;
+  if (_stage < 3)
+  {
+    _u_dot -= _solution_old;
+    _u_dot *= 1. / _dt;
+  }
+  else
+  {
+    _u_dot.scale(2.);
+    _u_dot -= _solution_old;
+    _u_dot -= _solution_older;
+    _u_dot *= 0.5 / _dt;
+  }
 
   _du_dot_du = 1. / _dt;
-  u_dot.close();
-}
-
-void
-ExplicitTVDRK2::computeADTimeDerivatives(DualReal & ad_u_dot, const dof_id_type & dof) const
-{
-  computeTimeDerivativeHelper(ad_u_dot, _solution_old(dof), _solution_older(dof));
+  _u_dot.close();
 }
 
 void
@@ -71,10 +74,6 @@ ExplicitTVDRK2::solve()
   Real time_new = _fe_problem.time();
   Real time_old = _fe_problem.timeOld();
   Real time_stage2 = time_old + _dt;
-
-  // Reset numbers of iterations
-  _n_nonlinear_iterations = 0;
-  _n_linear_iterations = 0;
 
   // There is no work to do for the first stage (Y_1 = y_n).  The
   // first solve therefore happens in the second stage.  Note that the
@@ -86,12 +85,6 @@ ExplicitTVDRK2::solve()
   _fe_problem.timeOld() = time_old;
   _fe_problem.time() = time_stage2;
   _fe_problem.getNonlinearSystemBase().system().solve();
-  _n_nonlinear_iterations += getNumNonlinearIterationsLastSolve();
-  _n_linear_iterations += getNumLinearIterationsLastSolve();
-
-  // Abort time step immediately on stage failure - see TimeIntegrator doc page
-  if (!_fe_problem.converged())
-    return;
 
   // Advance solutions old->older, current->old.  Also moves Material
   // properties and other associated state forward in time.
@@ -105,19 +98,17 @@ ExplicitTVDRK2::solve()
   _fe_problem.timeOld() = time_stage2;
   _fe_problem.time() = time_new;
   _fe_problem.getNonlinearSystemBase().system().solve();
-  _n_nonlinear_iterations += getNumNonlinearIterationsLastSolve();
-  _n_linear_iterations += getNumLinearIterationsLastSolve();
 
   // Reset time at beginning of step to its original value
   _fe_problem.timeOld() = time_old;
 }
 
 void
-ExplicitTVDRK2::postResidual(NumericVector<Number> & residual)
+ExplicitTVDRK2::postStep(NumericVector<Number> & residual)
 {
   if (_stage == 1)
   {
-    // If postResidual() is called before solve(), _stage==1 and we don't
+    // If postStep() is called before solve(), _stage==1 and we don't
     // need to do anything.
   }
   else if (_stage == 2)
@@ -160,6 +151,5 @@ ExplicitTVDRK2::postResidual(NumericVector<Number> & residual)
     residual.close();
   }
   else
-    mooseError(
-        "ExplicitTVDRK2::postResidual(): _stage = ", _stage, ", only _stage = 1-3 is allowed.");
+    mooseError("ExplicitTVDRK2::postStep(): _stage = ", _stage, ", only _stage = 1-3 is allowed.");
 }

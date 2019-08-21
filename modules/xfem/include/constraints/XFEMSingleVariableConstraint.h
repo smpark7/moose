@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef XFEMEQUALVALUECONSTRAINT_H
+#define XFEMEQUALVALUECONSTRAINT_H
 
 // MOOSE includes
 #include "ElemElemConstraint.h"
@@ -15,10 +14,6 @@
 
 // Forward Declarations
 class XFEMSingleVariableConstraint;
-
-class XFEM;
-
-class Function;
 
 template <>
 InputParameters validParams<XFEMSingleVariableConstraint>();
@@ -30,28 +25,32 @@ public:
   virtual ~XFEMSingleVariableConstraint();
 
 protected:
-  virtual void reinitConstraintQuadrature(const ElementPairInfo & element_pair_info) override;
+  /**
+   * Set information needed for constraint integration
+   */
+  virtual void reinitConstraintQuadrature(const ElementPairInfo & element_pair_info);
 
-  virtual Real computeQpResidual(Moose::DGResidualType type) override;
+  /**
+   *  Compute the residual for one of the constraint quadrature points.
+   */
+  virtual Real computeQpResidual(Moose::DGResidualType type);
 
-  virtual Real computeQpJacobian(Moose::DGJacobianType type) override;
+  /**
+   *  Compute the Jacobian for one of the constraint quadrature points.
+   */
+  virtual Real computeQpJacobian(Moose::DGJacobianType type);
 
   /// Vector normal to the internal interface
   Point _interface_normal;
 
-  /// Stabilization parameter in Nitsche's formulation and penalty factor in the
-  /// Penalty Method
+  /// Stabilization parameter in Nitsche's formulation
   Real _alpha;
 
-  /// Change in variable value at the interface
-  const Function & _jump;
+  /// Vector normal to the internal interface
+  Real _jump;
 
-  /// Change in flux of variable value at the interface
-  const Function & _jump_flux;
-
-  /// Use penalty formulation
-  bool _use_penalty;
-
-  /// Pointer to the XFEM controller object
-  std::shared_ptr<XFEM> _xfem;
+  /// Vector normal to the internal interface
+  Real _jump_flux;
 };
+
+#endif /* XFEMEQUALVALUECONSTRAINT_H_ */

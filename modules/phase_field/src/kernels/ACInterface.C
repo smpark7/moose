@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ACInterface.h"
-
-registerMooseObject("PhaseFieldApp", ACInterface);
 
 template <>
 InputParameters
@@ -46,11 +41,10 @@ ACInterface::ACInterface(const InputParameters & parameters)
   // Get mobility and kappa derivatives and coupled variable gradients
   for (unsigned int i = 0; i < _nvar; ++i)
   {
-    MooseVariable * ivar = _coupled_standard_moose_vars[i];
+    MooseVariable * ivar = _coupled_moose_vars[i];
     const VariableName iname = ivar->name();
     if (iname == _var.name())
-      paramError("args",
-                 "The kernel variable should not be specified in the coupled `args` parameter.");
+      mooseError("The kernel variable should not be specified in the coupled `args` parameter.");
 
     _dLdarg[i] = &getMaterialPropertyDerivative<Real>("mob_name", iname);
     _dkappadarg[i] = &getMaterialPropertyDerivative<Real>("kappa_name", iname);
@@ -83,7 +77,7 @@ ACInterface::gradL()
 }
 
 RealGradient
-ACInterface::nablaLPsi()
+ACInterface::kappaNablaLPsi()
 {
   // sum is the product rule gradient \f$ \nabla (L\psi) \f$
   RealGradient sum = _L[_qp] * _grad_test[_i][_qp];
@@ -91,13 +85,7 @@ ACInterface::nablaLPsi()
   if (_variable_L)
     sum += gradL() * _test[_i][_qp];
 
-  return sum;
-}
-
-RealGradient
-ACInterface::kappaNablaLPsi()
-{
-  return _kappa[_qp] * nablaLPsi();
+  return _kappa[_qp] * sum;
 }
 
 Real

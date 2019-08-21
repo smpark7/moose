@@ -1,18 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowVolumetricStrain.h"
 #include "MooseMesh.h"
 
+// libmesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowVolumetricStrain);
 
 template <>
 InputParameters
@@ -30,7 +27,6 @@ validParams<PorousFlowVolumetricStrain>()
                         "displaced mesh");
   params.addClassDescription(
       "Compute volumetric strain and the volumetric_strain rate, for use in PorousFlow.");
-  params.set<std::string>("pf_material_type") = "volumetric_strain";
   params.set<bool>("stateful_displacements") = true;
   params.set<bool>("at_nodes") = false;
   return params;
@@ -53,7 +49,8 @@ PorousFlowVolumetricStrain::PorousFlowVolumetricStrain(const InputParameters & p
         declareProperty<std::vector<RealGradient>>("dPorousFlow_total_volumetric_strain_qp_dvar"))
 {
   if (_ndisp != _mesh.dimension())
-    paramError("displacements", "The number of variables supplied must match the mesh dimension.");
+    mooseError("PorousFlowVolumetricStrain: The number of variables supplied in 'displacements' "
+               "must match the mesh dimension.");
 
   // fetch coupled variables and gradients (as stateful properties if necessary)
   for (unsigned int i = 0; i < _ndisp; ++i)
@@ -98,9 +95,10 @@ PorousFlowVolumetricStrain::computeQpProperties()
   A -= Fbar; // A = grad_disp - grad_disp_old
 
   RankTwoTensor total_strain_increment = 0.5 * (A + A.transpose());
-  const Real andy = (_consistent ? 1.0 + (*_grad_disp_old[0])[_qp](0) +
-                                       (*_grad_disp_old[1])[_qp](1) + (*_grad_disp_old[2])[_qp](2)
-                                 : 1.0);
+  const Real andy = (_consistent
+                         ? 1.0 + (*_grad_disp_old[0])[_qp](0) + (*_grad_disp_old[1])[_qp](1) +
+                               (*_grad_disp_old[2])[_qp](2)
+                         : 1.0);
   _vol_strain_rate_qp[_qp] = total_strain_increment.trace() / _dt / andy;
 
   // prepare the derivatives with zeroes
@@ -109,7 +107,7 @@ PorousFlowVolumetricStrain::computeQpProperties()
   for (unsigned i = 0; i < _ndisp; ++i)
     if (_dictator.isPorousFlowVariable(_disp_var_num[i]))
     {
-      // the i_th displacement is a PorousFlow variable
+      // the i_th displacement is a porous-flow variable
       const unsigned int pvar = _dictator.porousFlowVariableNum(_disp_var_num[i]);
       _dvol_strain_rate_qp_dvar[_qp][pvar](i) = 1.0 / _dt / andy;
       _dvol_total_strain_qp_dvar[_qp][pvar](i) = 1.0;

@@ -14,9 +14,9 @@
 [Kernels]
   active = 'diff'
 
-  # Test missing required param (type in this case)
+  # Test missing required param (variable in this case)
   [./diff]
-    variable = u
+    type = Diffusion
   [../]
 []
 
@@ -41,6 +41,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

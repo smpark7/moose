@@ -1,21 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
+#ifndef ITERATIONADAPTIVEDT_H
+#define ITERATIONADAPTIVEDT_H
 
 #include "TimeStepper.h"
 #include "LinearInterpolation.h"
 #include "PostprocessorInterface.h"
 
 class Function;
-class PiecewiseBase;
-class PiecewiseLinear;
+class Piecewise;
 
 /**
  * Adjust the timestep based on the number of iterations.
@@ -46,12 +50,11 @@ protected:
   virtual Real computeInitialDT() override;
   virtual Real computeDT() override;
   virtual Real computeFailedDT() override;
-  virtual bool converged() const override;
 
   void computeAdaptiveDT(Real & dt, bool allowToGrow = true, bool allowToShrink = true);
   Real computeInterpolationDT();
   void limitDTByFunction(Real & limitedDT);
-  void limitDTToPostprocessorValue(Real & limitedDT) const;
+  void limitDTToPostprocessorValue(Real & limitedDT);
 
   Real & _dt_old;
 
@@ -73,10 +76,8 @@ protected:
   /// if specified, the postprocessor value is an upper limit for the time step length
   const PostprocessorValue * _pps_value;
 
-  const Function * _timestep_limiting_function;
-  const PiecewiseBase * _piecewise_timestep_limiting_function;
-  const PiecewiseLinear * _piecewise_linear_timestep_limiting_function;
-
+  Function * _timestep_limiting_function;
+  Piecewise * _piecewise_timestep_limiting_function;
   /// time point defined in the piecewise function
   std::vector<Real> _times;
 
@@ -86,15 +87,15 @@ protected:
 
   std::set<Real> _tfunc_times;
 
-  /// PiecewiseBase linear definition of time stepping
+  /// Piecewise linear definition of time stepping
   LinearInterpolation _time_ipol;
   /// true if we want to use piecewise-defined time stepping
   const bool _use_time_ipol;
 
   /// grow the timestep by this factor
-  const Real & _growth_factor;
+  const Real _growth_factor;
   /// cut the timestep by by this factor
-  const Real & _cutback_factor;
+  const Real _cutback_factor;
 
   /// Number of nonlinear iterations in previous solve
   unsigned int & _nl_its;
@@ -103,12 +104,9 @@ protected:
 
   bool & _cutback_occurred;
   bool _at_function_point;
-
-  /// Indicates whether we need to reject a time step much larger than its ideal size
-  bool _reject_large_step;
-  /// Threshold used to detect whether we need to reject a step
-  double _large_step_rejection_threshold;
 };
 
 template <>
 InputParameters validParams<IterationAdaptiveDT>();
+
+#endif /* ITERATIONADAPTIVEDT_H */

@@ -78,9 +78,9 @@
     execute_on = 'INITIAL TIMESTEP_END'
   [../]
   [./walltime]
-    type = PerfGraphData
-    section_name = "Root"
-    data_type = total
+    type = PerformanceData
+    event = ALIVE
+    execute_on = 'INITIAL TIMESTEP_END'
   [../]
 []
 
@@ -99,5 +99,5 @@
 [Outputs]
   csv = true
   execute_on = 'INITIAL TIMESTEP_END FINAL'
-  perf_graph = true
+  print_perf_log = true
 []

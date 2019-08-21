@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "gtest/gtest.h"
 
@@ -24,8 +29,8 @@ TEST(Euler2RGBTest, test)
   } samples[nsamples] = {
       // symmetries 43 62 42 32 22 2 0
       {0.1, 1.5, 0.7, 1, 43, {6225789, 16738084, 5635933}},
-      {2.1, 2.5, 1.4, 1, 43, {2251519, 10534399, 9240454}},
-      {5.9, 0.5, 4.4, 1, 43, {7536546, 3112447, 16776397}},
+      {2.1, 2.5, 1.4, 1, 43, {2052351, 10534399, 9240454}},
+      {5.9, 0.5, 4.4, 1, 43, {9437124, 3112447, 16776397}},
 
       {0.1, 1.5, 0.7, 1, 62, {5422335, 16729118, 4521910}},
       {2.1, 2.5, 1.4, 1, 62, {16711664, 9043825, 16756345}},

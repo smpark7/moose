@@ -18,7 +18,7 @@
 
 [Kernels]
   [./heat]
-    type = MatDiffusionTest
+    type = MatDiffusion
     variable = u
     prop_name = thermal_conductivity
   [../]
@@ -63,6 +63,7 @@
 [Executioner]
   type = Transient
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   start_time = 0.0

@@ -1,3 +1,13 @@
+###########################################################
+# This is a test of the Control Logic System. This test
+# uses the RealFunctionControl to change a Kernel
+# coefficient based on an analytical function at the end
+# of each timestep.
+#
+# @Requirement F8.10
+###########################################################
+
+
 [Mesh]
   type = GeneratedMesh
   dim = 2
@@ -38,6 +48,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   num_steps = 10
   dt = 0.1

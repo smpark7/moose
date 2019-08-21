@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "RateDepSmearIsoCrackModel.h"
-
-registerMooseObject("SolidMechanicsApp", RateDepSmearIsoCrackModel);
 
 template <>
 InputParameters
@@ -33,7 +28,7 @@ RateDepSmearIsoCrackModel::RateDepSmearIsoCrackModel(const InputParameters & par
     _kfail(getParam<Real>("k_fail")),
     _upper_lim_damage(getParam<Real>("upper_limit_damage")),
     _energy(declareProperty<Real>("energy")),
-    _energy_old(getMaterialPropertyOld<Real>("energy"))
+    _energy_old(declarePropertyOld<Real>("energy"))
 {
 
   if (_nstate != 2)
@@ -41,14 +36,18 @@ RateDepSmearIsoCrackModel::RateDepSmearIsoCrackModel(const InputParameters & par
 }
 
 void
-RateDepSmearIsoCrackModel::initQpStatefulProperties()
+RateDepSmearIsoCrackModel::initStatefulProperties(unsigned int n_points)
 {
-  RateDepSmearCrackModel::initQpStatefulProperties();
 
-  _intvar[_qp][1] = const_cast<MaterialProperty<std::vector<Real>> &>(_intvar_old)[_qp][1] =
-      _crit_energy;
+  RateDepSmearCrackModel::initStatefulProperties(n_points);
 
-  _energy[_qp] = 0.0;
+  for (unsigned int qp = 0; qp < n_points; qp++)
+  {
+    _intvar[qp][1] = _intvar_old[qp][1] = _crit_energy;
+
+    _energy[qp] = 0.0;
+    _energy_old[qp] = 0.0;
+  }
 }
 
 void

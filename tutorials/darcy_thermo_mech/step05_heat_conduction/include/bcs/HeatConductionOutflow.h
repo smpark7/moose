@@ -1,22 +1,26 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef HEATCONDUCTIONOUTFLOW_H
+#define HEATCONDUCTIONOUTFLOW_H
 
-// Include the base class so it can be extended
-#include "ADIntegratedBC.h"
+#include "IntegratedBC.h"
 
-// Forward declare the class being created and the validParams function
-template <ComputeStage>
 class HeatConductionOutflow;
 
-declareADValidParams(HeatConductionOutflow);
+template <>
+InputParameters validParams<HeatConductionOutflow>();
 
 /**
  * An IntegratedBC representing the "No BC" boundary condition for
@@ -31,8 +35,7 @@ declareADValidParams(HeatConductionOutflow);
  * boundary condition.", International Journal for Numerical Methods
  * in Fluids, vol. 24, no. 4, 1997, pp. 393-411.
  */
-template <ComputeStage compute_stage>
-class HeatConductionOutflow : public ADIntegratedBC<compute_stage>
+class HeatConductionOutflow : public IntegratedBC
 {
 public:
   HeatConductionOutflow(const InputParameters & parameters);
@@ -41,10 +44,16 @@ protected:
   /**
    * This is called to integrate the residual across the boundary.
    */
-  virtual ADReal computeQpResidual() override;
+  virtual Real computeQpResidual() override;
+
+  /**
+   * Optional (but recommended!) to compute the derivative of the
+   * residual with respect to _this_ variable.
+   */
+  virtual Real computeQpJacobian() override;
 
   /// Thermal conductivity of the material
-  const ADMaterialProperty(Real) & _thermal_conductivity;
-
-  usingIntegratedBCMembers;
+  const MaterialProperty<Real> & _thermal_conductivity;
 };
+
+#endif // HEATCONDUCTIONOUTFLOW_H

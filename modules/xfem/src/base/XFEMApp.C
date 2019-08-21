@@ -1,111 +1,101 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "XFEMApp.h"
-#include "XFEMAppTypes.h"
 #include "SolidMechanicsApp.h"
 #include "TensorMechanicsApp.h"
 #include "Moose.h"
 #include "AppFactory.h"
 #include "MooseSyntax.h"
 
+#include "XFEMVolFracAux.h"
+#include "XFEMCutPlaneAux.h"
+#include "XFEMMarkerAux.h"
+#include "XFEMMarkerUserObject.h"
+#include "XFEMMaterialTensorMarkerUserObject.h"
+#include "XFEMAction.h"
+#include "XFEMSingleVariableConstraint.h"
+#include "XFEMPressure.h"
+
 template <>
 InputParameters
 validParams<XFEMApp>()
 {
   InputParameters params = validParams<MooseApp>();
-  params.set<bool>("automatic_automatic_scaling") = false;
   return params;
 }
-registerKnownLabel("XFEMApp");
-
 XFEMApp::XFEMApp(const InputParameters & parameters) : MooseApp(parameters)
 {
   srand(processor_id());
-  XFEMApp::registerAll(_factory, _action_factory, _syntax);
+
+  Moose::registerObjects(_factory);
+  SolidMechanicsApp::registerObjects(_factory);
+  TensorMechanicsApp::registerObjects(_factory);
+  XFEMApp::registerObjects(_factory);
+
+  Moose::associateSyntax(_syntax, _action_factory);
+  SolidMechanicsApp::associateSyntax(_syntax, _action_factory);
+  TensorMechanicsApp::associateSyntax(_syntax, _action_factory);
+  XFEMApp::associateSyntax(_syntax, _action_factory);
 }
 
 XFEMApp::~XFEMApp() {}
 
-static void
-associateSyntaxInner(Syntax & syntax, ActionFactory & /*action_factory*/)
+// External entry point for dynamic application loading
+extern "C" void
+XFEMApp__registerApps()
 {
-  registerTask("setup_xfem", false);
-  syntax.addDependency("setup_xfem", "setup_adaptivity");
-  registerSyntax("XFEMAction", "XFEM");
+  XFEMApp::registerApps();
 }
-
-void
-XFEMApp::registerAll(Factory & f, ActionFactory & af, Syntax & s)
-{
-  Registry::registerObjectsTo(f, {"XFEMApp"});
-  Registry::registerActionsTo(af, {"XFEMApp"});
-  associateSyntaxInner(s, af);
-
-  SolidMechanicsApp::registerAll(f, af, s);
-  TensorMechanicsApp::registerAll(f, af, s);
-
-  auto & factory = f; // for registerExecFlags macro
-  registerExecFlag(EXEC_XFEM_MARK);
-}
-
 void
 XFEMApp::registerApps()
 {
   registerApp(XFEMApp);
 }
 
-void
-XFEMApp::registerObjectDepends(Factory & factory)
+// External entry point for dynamic object registration
+extern "C" void
+XFEMApp__registerObjects(Factory & factory)
 {
-  mooseDeprecated("use registerAll instead of registerObjectsDepends");
-  SolidMechanicsApp::registerObjects(factory);
-  TensorMechanicsApp::registerObjects(factory);
+  XFEMApp::registerObjects(factory);
 }
-
 void
 XFEMApp::registerObjects(Factory & factory)
 {
-  mooseDeprecated("use registerAll instead of registerObjects");
-  Registry::registerObjectsTo(factory, {"XFEMApp"});
+  // AuxKernels
+  registerAux(XFEMVolFracAux);
+  registerAux(XFEMCutPlaneAux);
+  registerAux(XFEMMarkerAux);
+
+  // Constraints
+  registerConstraint(XFEMSingleVariableConstraint);
+
+  // UserObjects
+  registerUserObject(XFEMMarkerUserObject);
+  registerUserObject(XFEMMaterialTensorMarkerUserObject);
+
+  // DiracKernels
+  registerDiracKernel(XFEMPressure);
 }
 
-void
-XFEMApp::associateSyntaxDepends(Syntax & syntax, ActionFactory & action_factory)
+// External entry point for dynamic syntax association
+extern "C" void
+XFEMApp__associateSyntax(Syntax & syntax, ActionFactory & action_factory)
 {
-  mooseDeprecated("use registerAll instead of associateSyntaxDepends");
-  SolidMechanicsApp::associateSyntax(syntax, action_factory);
-  TensorMechanicsApp::associateSyntax(syntax, action_factory);
+  XFEMApp::associateSyntax(syntax, action_factory);
 }
-
 void
 XFEMApp::associateSyntax(Syntax & syntax, ActionFactory & action_factory)
 {
-  mooseDeprecated("use registerAll instead of associateSyntax");
-  Registry::registerActionsTo(action_factory, {"XFEMApp"});
-  associateSyntaxInner(syntax, action_factory);
-}
+  registerTask("setup_xfem", false);
+  registerAction(XFEMAction, "setup_xfem");
+  syntax.addDependency("setup_xfem", "setup_adaptivity");
+  registerAction(XFEMAction, "add_aux_variable");
+  registerAction(XFEMAction, "add_aux_kernel");
 
-void
-XFEMApp::registerExecFlags(Factory & factory)
-{
-  mooseDeprecated("use registerAll instead of registerExecFlags");
-  registerExecFlag(EXEC_XFEM_MARK);
-}
-
-extern "C" void
-XFEMApp__registerAll(Factory & f, ActionFactory & af, Syntax & s)
-{
-  XFEMApp::registerAll(f, af, s);
-}
-extern "C" void
-XFEMApp__registerApps()
-{
-  XFEMApp::registerApps();
+  registerSyntax("XFEMAction", "XFEM");
 }

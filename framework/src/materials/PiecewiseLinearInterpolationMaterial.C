@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "PiecewiseLinearInterpolationMaterial.h"
 
 // MOOSE includes
-#include "MooseVariableFE.h"
-
-registerMooseObject("MooseApp", PiecewiseLinearInterpolationMaterial);
+#include "MooseVariable.h"
 
 template <>
 InputParameters
@@ -39,9 +42,7 @@ PiecewiseLinearInterpolationMaterial::PiecewiseLinearInterpolationMaterial(
   : DerivativeMaterialInterface<Material>(parameters),
     _prop_name(getParam<std::string>("property")),
     _coupled_var(coupledValue("variable")),
-    _scale_factor(getParam<Real>("scale_factor")),
-    _property(declareProperty<Real>(_prop_name)),
-    _dproperty(declarePropertyDerivative<Real>(_prop_name, getVar("variable", 0)->name()))
+    _scale_factor(getParam<Real>("scale_factor"))
 {
   std::vector<Real> x;
   std::vector<Real> y;
@@ -88,11 +89,15 @@ PiecewiseLinearInterpolationMaterial::PiecewiseLinearInterpolationMaterial(
   {
     mooseError("In PiecewiseLinearInterpolationMaterial ", _name, ": ", e.what());
   }
+
+  _property = &declareProperty<Real>(_prop_name);
+  const VariableName & vname = getVar("variable", 0)->name();
+  _dproperty = &declarePropertyDerivative<Real>(_prop_name, vname);
 }
 
 void
 PiecewiseLinearInterpolationMaterial::computeQpProperties()
 {
-  _property[_qp] = _scale_factor * _linear_interp->sample(_coupled_var[_qp]);
-  _dproperty[_qp] = _scale_factor * _linear_interp->sampleDerivative(_coupled_var[_qp]);
+  (*_property)[_qp] = _scale_factor * _linear_interp->sample(_coupled_var[_qp]);
+  (*_dproperty)[_qp] = _scale_factor * _linear_interp->sampleDerivative(_coupled_var[_qp]);
 }

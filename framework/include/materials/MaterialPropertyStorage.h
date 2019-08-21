@@ -1,18 +1,23 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MATERIALPROPERTYSTORAGE_H
+#define MATERIALPROPERTYSTORAGE_H
 
 #include "Moose.h"
-#include "HashMap.h"
-#include "DataIO.h"
 #include "MaterialProperty.h"
+#include "HashMap.h"
 
 // Forward declarations
 class Material;
@@ -23,7 +28,6 @@ class QpMap;
 namespace libMesh
 {
 class QBase;
-class Elem;
 }
 
 /**
@@ -76,8 +80,8 @@ public:
    * @param input_child_side - the side on the child where material properties will be prolonged
    */
   void prolongStatefulProps(const std::vector<std::vector<QpMap>> & refinement_map,
-                            const QBase & qrule,
-                            const QBase & qrule_face,
+                            QBase & qrule,
+                            QBase & qrule_face,
                             MaterialPropertyStorage & parent_material_props,
                             MaterialData & child_material_data,
                             const Elem & elem,
@@ -99,8 +103,8 @@ public:
    */
   void restrictStatefulProps(const std::vector<std::pair<unsigned int, QpMap>> & coarsening_map,
                              const std::vector<const Elem *> & coarsened_element_children,
-                             const QBase & qrule,
-                             const QBase & qrule_face,
+                             QBase & qrule,
+                             QBase & qrule_face,
                              MaterialData & material_data,
                              const Elem & elem,
                              int input_side = -1);
@@ -126,7 +130,7 @@ public:
    * properties are
    * reused for computing current properties. This is called when solve succeeded.
    */
-  void shift(const FEProblemBase & fe_problem);
+  void shift();
 
   /**
    * Copy material properties from elem_from to elem_to. Thread safe.
@@ -242,10 +246,9 @@ public:
 
 protected:
   // indexing: [element][side]->material_properties
-  std::unique_ptr<HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>> _props_elem;
-  std::unique_ptr<HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>> _props_elem_old;
-  std::unique_ptr<HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>>>
-      _props_elem_older;
+  HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>> * _props_elem;
+  HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>> * _props_elem_old;
+  HashMap<const Elem *, HashMap<unsigned int, MaterialProperties>> * _props_elem_older;
 
   /// mapping from property name to property ID
   /// NOTE: this is static so the property numbering is global within the simulation (not just FEProblemBase - should be useful when we will use material properties from
@@ -302,3 +305,4 @@ dataLoad(std::istream & stream, MaterialPropertyStorage & storage, void * contex
     dataLoad(stream, storage.propsOlder(), context);
 }
 
+#endif /* MATERIALPROPERTYSTORAGE_H */

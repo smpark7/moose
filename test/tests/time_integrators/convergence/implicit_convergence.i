@@ -50,7 +50,7 @@
   [../]
 
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -92,5 +92,4 @@
 [Outputs]
   execute_on = 'initial timestep_end'
   exodus = true
-  csv = true
 []

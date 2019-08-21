@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // Standard includes
 #include <math.h>
@@ -19,7 +24,7 @@
 #include "InfixIterator.h"
 #include "MooseApp.h"
 #include "MooseUtils.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "Postprocessor.h"
 #include "Restartable.h"
 #include "VectorPostprocessor.h"
@@ -122,11 +127,6 @@ AdvancedOutput::AdvancedOutput(const InputParameters & parameters) : FileOutput(
 {
   _is_advanced = true;
   _advanced_execute_on = OutputOnWarehouse(_execute_on, parameters);
-  // Set nodal output variables if they appear in valid parameters
-  if (isParamValid("elemental_as_nodal"))
-    _elemental_as_nodal = getParam<bool>("elemental_as_nodal");
-  if (isParamValid("scalar_as_nodal"))
-    _scalar_as_nodal = getParam<bool>("scalar_as_nodal");
 }
 
 void
@@ -147,7 +147,7 @@ AdvancedOutput::initialSetup()
   // If 'elemental_as_nodal = true' the elemental variable names must be appended to the
   // nodal variable names. Thus, when libMesh::EquationSystem::build_solution_vector is called
   // it will create the correct nodal variable from the elemental
-  if (isParamValid("elemental_as_nodal") && _elemental_as_nodal)
+  if (isParamValid("elemental_as_nodal") && getParam<bool>("elemental_as_nodal"))
   {
     OutputData & nodal = _execute_data["nodal"];
     OutputData & elemental = _execute_data["elemental"];
@@ -157,7 +157,7 @@ AdvancedOutput::initialSetup()
   }
 
   // Similarly as above, if 'scalar_as_nodal = true' append the elemental variable lists
-  if (isParamValid("scalar_as_nodal") && _scalar_as_nodal)
+  if (isParamValid("scalar_as_nodal") && getParam<bool>("scalar_as_nodal"))
   {
     OutputData & nodal = _execute_data["nodal"];
     OutputData & scalar = _execute_data["scalars"];
@@ -387,39 +387,12 @@ AdvancedOutput::initAvailableLists()
   {
     if (_problem_ptr->hasVariable(var_name))
     {
-      MooseVariableFEBase & var = _problem_ptr->getVariable(
-          0, var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_ANY);
+      MooseVariable & var = _problem_ptr->getVariable(0, var_name);
       const FEType type = var.feType();
-      for (unsigned int i = 0; i < var.count(); ++i)
-      {
-        VariableName vname = var_name;
-        if (var.count() > 1)
-          vname = SubProblem::arrayVariableComponent(var_name, i);
-
-        if (type.order == CONSTANT)
-          _execute_data["elemental"].available.insert(vname);
-        else if (type.family == NEDELEC_ONE || type.family == LAGRANGE_VEC)
-        {
-          switch (_es_ptr->get_mesh().spatial_dimension())
-          {
-            case 0:
-            case 1:
-              _execute_data["nodal"].available.insert(vname);
-              break;
-            case 2:
-              _execute_data["nodal"].available.insert(vname + "_x");
-              _execute_data["nodal"].available.insert(vname + "_y");
-              break;
-            case 3:
-              _execute_data["nodal"].available.insert(vname + "_x");
-              _execute_data["nodal"].available.insert(vname + "_y");
-              _execute_data["nodal"].available.insert(vname + "_z");
-              break;
-          }
-        }
-        else
-          _execute_data["nodal"].available.insert(vname);
-      }
+      if (type.order == CONSTANT)
+        _execute_data["elemental"].available.insert(var_name);
+      else
+        _execute_data["nodal"].available.insert(var_name);
     }
 
     else if (_problem_ptr->hasScalarVariable(var_name))
@@ -428,23 +401,20 @@ AdvancedOutput::initAvailableLists()
 }
 
 void
-AdvancedOutput::initExecutionTypes(const std::string & name, ExecFlagEnum & input)
+AdvancedOutput::initExecutionTypes(const std::string & name, MultiMooseEnum & input)
 {
   // Build the input paramemter name
   std::string param_name = "execute_";
   param_name += name + "_on";
 
   // The parameters exists and has been set by the user
-  if (_pars.have_parameter<ExecFlagEnum>(param_name) && isParamValid(param_name))
-    input = getParam<ExecFlagEnum>(param_name);
+  if (_pars.have_parameter<MultiMooseEnum>(param_name) && isParamValid(param_name))
+    input = getParam<MultiMooseEnum>(param_name);
 
   // If the parameter does not exists; set it to a state where no valid entries exists so nothing
   // gets executed
-  else if (!_pars.have_parameter<ExecFlagEnum>(param_name))
-  {
-    input = _execute_on;
-    input.clear();
-  }
+  else if (!_pars.have_parameter<MultiMooseEnum>(param_name))
+    input = AdvancedOutput::getExecuteOptions();
 }
 
 void
@@ -465,39 +435,12 @@ AdvancedOutput::initShowHideLists(const std::vector<VariableName> & show,
   {
     if (_problem_ptr->hasVariable(var_name))
     {
-      MooseVariableFEBase & var = _problem_ptr->getVariable(
-          0, var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_ANY);
+      MooseVariable & var = _problem_ptr->getVariable(0, var_name);
       const FEType type = var.feType();
-      for (unsigned int i = 0; i < var.count(); ++i)
-      {
-        VariableName vname = var_name;
-        if (var.count() > 1)
-          vname = SubProblem::arrayVariableComponent(var_name, i);
-
-        if (type.order == CONSTANT)
-          _execute_data["elemental"].show.insert(vname);
-        else if (type.family == NEDELEC_ONE || type.family == LAGRANGE_VEC)
-        {
-          switch (_es_ptr->get_mesh().spatial_dimension())
-          {
-            case 0:
-            case 1:
-              _execute_data["nodal"].show.insert(vname);
-              break;
-            case 2:
-              _execute_data["nodal"].show.insert(vname + "_x");
-              _execute_data["nodal"].show.insert(vname + "_y");
-              break;
-            case 3:
-              _execute_data["nodal"].show.insert(vname + "_x");
-              _execute_data["nodal"].show.insert(vname + "_y");
-              _execute_data["nodal"].show.insert(vname + "_z");
-              break;
-          }
-        }
-        else
-          _execute_data["nodal"].show.insert(vname);
-      }
+      if (type.order == CONSTANT)
+        _execute_data["elemental"].show.insert(var_name);
+      else
+        _execute_data["nodal"].show.insert(var_name);
     }
     else if (_problem_ptr->hasScalarVariable(var_name))
       _execute_data["scalars"].show.insert(var_name);
@@ -514,39 +457,12 @@ AdvancedOutput::initShowHideLists(const std::vector<VariableName> & show,
   {
     if (_problem_ptr->hasVariable(var_name))
     {
-      MooseVariableFEBase & var = _problem_ptr->getVariable(
-          0, var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_ANY);
+      MooseVariable & var = _problem_ptr->getVariable(0, var_name);
       const FEType type = var.feType();
-      for (unsigned int i = 0; i < var.count(); ++i)
-      {
-        VariableName vname = var_name;
-        if (var.count() > 1)
-          vname = SubProblem::arrayVariableComponent(var_name, i);
-
-        if (type.order == CONSTANT)
-          _execute_data["elemental"].hide.insert(vname);
-        else if (type.family == NEDELEC_ONE || type.family == LAGRANGE_VEC)
-        {
-          switch (_es_ptr->get_mesh().spatial_dimension())
-          {
-            case 0:
-            case 1:
-              _execute_data["nodal"].hide.insert(vname);
-              break;
-            case 2:
-              _execute_data["nodal"].hide.insert(vname + "_x");
-              _execute_data["nodal"].hide.insert(vname + "_y");
-              break;
-            case 3:
-              _execute_data["nodal"].hide.insert(vname + "_x");
-              _execute_data["nodal"].hide.insert(vname + "_y");
-              _execute_data["nodal"].hide.insert(vname + "_z");
-              break;
-          }
-        }
-        else
-          _execute_data["nodal"].hide.insert(vname);
-      }
+      if (type.order == CONSTANT)
+        _execute_data["elemental"].hide.insert(var_name);
+      else
+        _execute_data["nodal"].hide.insert(var_name);
     }
     else if (_problem_ptr->hasScalarVariable(var_name))
       _execute_data["scalars"].hide.insert(var_name);
@@ -622,22 +538,19 @@ AdvancedOutput::initOutputList(OutputData & data)
 void
 AdvancedOutput::addValidParams(InputParameters & params, const MultiMooseEnum & types)
 {
-  ExecFlagEnum empty_execute_on = MooseUtils::getDefaultExecFlagEnum();
-  empty_execute_on.addAvailableFlags(EXEC_FAILED);
-
   // Nodal output
   if (types.contains("nodal"))
   {
-    params.addParam<ExecFlagEnum>(
-        "execute_nodal_on", empty_execute_on, "Control the output of nodal variables");
+    params.addParam<MultiMooseEnum>(
+        "execute_nodal_on", getExecuteOptions(), "Control the output of nodal variables");
     params.addParamNamesToGroup("execute_nodal_on", "Variables");
   }
 
   // Elemental output
   if (types.contains("elemental"))
   {
-    params.addParam<ExecFlagEnum>(
-        "execute_elemental_on", empty_execute_on, "Control the output of elemental variables");
+    params.addParam<MultiMooseEnum>(
+        "execute_elemental_on", getExecuteOptions(), "Control the output of elemental variables");
     params.addParamNamesToGroup("execute_elemental_on", "Variables");
 
     // Add material output control, which are output via elemental variables
@@ -653,8 +566,8 @@ AdvancedOutput::addValidParams(InputParameters & params, const MultiMooseEnum & 
   // Scalar variable output
   if (types.contains("scalar"))
   {
-    params.addParam<ExecFlagEnum>(
-        "execute_scalars_on", empty_execute_on, "Control the output of scalar variables");
+    params.addParam<MultiMooseEnum>(
+        "execute_scalars_on", getExecuteOptions(), "Control the output of scalar variables");
     params.addParamNamesToGroup("execute_scalars_on", "Variables");
   }
 
@@ -676,34 +589,35 @@ AdvancedOutput::addValidParams(InputParameters & params, const MultiMooseEnum & 
   // Postprocessors
   if (types.contains("postprocessor"))
   {
-    params.addParam<ExecFlagEnum>(
-        "execute_postprocessors_on", empty_execute_on, "Control of when postprocessors are output");
+    params.addParam<MultiMooseEnum>("execute_postprocessors_on",
+                                    getExecuteOptions(),
+                                    "Control of when postprocessors are output");
     params.addParamNamesToGroup("execute_postprocessors_on", "Variables");
   }
 
   // Vector Postprocessors
   if (types.contains("vector_postprocessor"))
   {
-    params.addParam<ExecFlagEnum>("execute_vector_postprocessors_on",
-                                  empty_execute_on,
-                                  "Enable/disable the output of VectorPostprocessors");
+    params.addParam<MultiMooseEnum>("execute_vector_postprocessors_on",
+                                    getExecuteOptions(),
+                                    "Enable/disable the output of VectorPostprocessors");
     params.addParamNamesToGroup("execute_vector_postprocessors_on", "Variables");
   }
 
   // Input file
   if (types.contains("input"))
   {
-    params.addParam<ExecFlagEnum>(
-        "execute_input_on", empty_execute_on, "Enable/disable the output of the input file");
+    params.addParam<MultiMooseEnum>(
+        "execute_input_on", getExecuteOptions(), "Enable/disable the output of the input file");
     params.addParamNamesToGroup("execute_input_on", "Variables");
   }
 
   // System Information
   if (types.contains("system_information"))
   {
-    params.addParam<ExecFlagEnum>("execute_system_information_on",
-                                  empty_execute_on,
-                                  "Control when the output of the simulation information occurs");
+    params.addParam<MultiMooseEnum>("execute_system_information_on",
+                                    getExecuteOptions(),
+                                    "Control when the output of the simulation information occurs");
     params.addParamNamesToGroup("execute_system_information_on", "Variables");
   }
 }

@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef FUNCTION_H
+#define FUNCTION_H
 
 #include "MooseObject.h"
 #include "SetupInterface.h"
@@ -65,7 +71,7 @@ public:
    * \param p The Point in space (x,y,z)
    * \return A scalar of the function evaluated at the time and location
    */
-  virtual Real value(Real t, const Point & p) const;
+  virtual Real value(Real t, const Point & p);
 
   /**
    * Override this to evaluate the vector function at a point (t,x,y,z), by default
@@ -74,16 +80,7 @@ public:
    * \param p The Point in space (x,y,z)
    * \return A vector of the function evaluated at the time and location
    */
-  virtual RealVectorValue vectorValue(Real t, const Point & p) const;
-
-  /**
-   * Override this to evaluate the curl of the vector function at a point (t,x,y,z),
-   * by default this returns a zero vector, you must override it.
-   * \param t The time
-   * \param p The Point in space (x,y,z)
-   * \return A vector of the curl of the function evaluated at the time and location
-   */
-  virtual RealVectorValue vectorCurl(Real t, const Point & p) const;
+  virtual RealVectorValue vectorValue(Real t, const Point & p);
 
   /**
    * Function objects can optionally provide a gradient at a point. By default
@@ -92,7 +89,7 @@ public:
    * \param p The Point in space (x,y,z)
    * \return A gradient of the function evaluated at the time and location
    */
-  virtual RealGradient gradient(Real t, const Point & p) const;
+  virtual RealGradient gradient(Real t, const Point & p);
 
   /**
    * Get the time derivative of the function
@@ -100,11 +97,13 @@ public:
    * \param p The point in space (x,y,z)
    * \return The time derivative of the function at the specified time and location
    */
-  virtual Real timeDerivative(Real t, const Point & p) const;
+  virtual Real timeDerivative(Real t, const Point & p);
 
   // Not defined
-  virtual Real integral() const;
+  virtual Real integral();
 
   // Not defined
-  virtual Real average() const;
+  virtual Real average();
 };
+
+#endif // FUNCTION_H

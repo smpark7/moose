@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "FindValueOnLine.h"
 
@@ -13,8 +18,6 @@
 #include "MooseMesh.h"
 #include "MooseUtils.h"
 #include "MooseVariable.h"
-
-registerMooseObject("MooseApp", FindValueOnLine);
 
 template <>
 InputParameters
@@ -45,7 +48,7 @@ FindValueOnLine::FindValueOnLine(const InputParameters & parameters)
     _target(getParam<Real>("target")),
     _depth(getParam<unsigned int>("depth")),
     _tol(getParam<Real>("tol")),
-    _coupled_var(*getVar("v", 0)),
+    _coupled_var(getVar("v", 0)),
     _position(0.0),
     _mesh(_subproblem.mesh()),
     _point_vec(1)
@@ -90,7 +93,7 @@ FindValueOnLine::execute()
 
   bool found_it = false;
   Real value = 0;
-  for (unsigned int i = 0; i < _depth; ++i)
+  for (auto i = decltype(_depth)(0); i < _depth; ++i)
   {
     // find midpoint
     s = (s_left + s_right) / 2.0;
@@ -150,7 +153,7 @@ FindValueOnLine::getValueAtPoint(const Point & p)
       // element is local
       _point_vec[0] = p;
       _subproblem.reinitElemPhys(elem, _point_vec, 0);
-      value = _coupled_var.sln()[0];
+      value = _coupled_var->sln()[0];
     }
   }
 

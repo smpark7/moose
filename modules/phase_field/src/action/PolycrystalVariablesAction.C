@@ -1,46 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "PolycrystalVariablesAction.h"
-#include "AddVariableAction.h"
-#include "Conversion.h"
 #include "Factory.h"
 #include "FEProblem.h"
-#include "NonlinearSystemBase.h"
 
 #include "libmesh/string_to_enum.h"
-
-registerMooseAction("PhaseFieldApp", PolycrystalVariablesAction, "add_variable");
-registerMooseAction("PhaseFieldApp", PolycrystalVariablesAction, "copy_nodal_vars");
-registerMooseAction("PhaseFieldApp", PolycrystalVariablesAction, "check_copy_nodal_vars");
 
 template <>
 InputParameters
 validParams<PolycrystalVariablesAction>()
 {
   InputParameters params = validParams<Action>();
-  params.addClassDescription("Set up order parameter variables for a polycrystal simulation");
-  // Get MooseEnums for the possible order/family options for this variable
-  MooseEnum families(AddVariableAction::getNonlinearVariableFamilies());
-  MooseEnum orders(AddVariableAction::getNonlinearVariableOrders());
-  params.addParam<MooseEnum>("family",
-                             families,
-                             "Specifies the family of FE "
-                             "shape function to use for the order parameters");
-  params.addParam<MooseEnum>("order",
-                             orders,
-                             "Specifies the order of the FE "
-                             "shape function to use for the order parameters");
-  params.addParam<bool>(
-      "initial_from_file",
-      false,
-      "Take the initial condition of all polycrystal variables from the mesh file");
+  params.addClassDescription("Set up order parameter variables for a polycrystal sample");
+  params.addParam<std::string>(
+      "family", "LAGRANGE", "Specifies the family of FE shape functions to use for this variable");
+  params.addParam<std::string>(
+      "order", "FIRST", "Specifies the order of the FE shape function to use for this variable");
   params.addParam<Real>("scaling", 1.0, "Specifies a scaling factor to apply to this variable");
   params.addRequiredParam<unsigned int>("op_num",
                                         "specifies the number of order parameters to create");
@@ -58,38 +37,25 @@ PolycrystalVariablesAction::PolycrystalVariablesAction(const InputParameters & p
 void
 PolycrystalVariablesAction::act()
 {
-  // take initial values from file?
-  bool initial_from_file = getParam<bool>("initial_from_file");
+#ifdef DEBUG
+  Moose::err << "Inside the PolycrystalVariablesAction Object\n"
+             << "VariableBase: " << _var_name_base << "\torder: " << getParam<std::string>("order")
+             << "\tfamily: " << getParam<std::string>("family") << std::endl;
+#endif
 
   // Loop through the number of order parameters
   for (unsigned int op = 0; op < _op_num; op++)
   {
     // Create variable names
-    std::string var_name = _var_name_base + Moose::stringify(op);
+    std::string var_name = _var_name_base;
+    std::stringstream out;
+    out << op;
+    var_name.append(out.str());
 
-    // Add the variable
-    if (_current_task == "add_variable")
-    {
-      auto fe_type = AddVariableAction::feType(_pars);
-      auto type = AddVariableAction::determineType(fe_type, 1);
-      auto var_params = _factory.getValidParams(type);
-
-      var_params.applySpecificParameters(_pars, {"order", "family"});
-      var_params.set<std::vector<Real>>("scaling") = {_pars.get<Real>("scaling")};
-      _problem->addVariable(type, var_name, var_params);
-    }
-
-    // Setup initial from file if requested
-    if (initial_from_file)
-    {
-      if (_current_task == "check_copy_nodal_vars")
-        _app.setFileRestart() = true;
-
-      if (_current_task == "copy_nodal_vars")
-      {
-        auto * system = &_problem->getNonlinearSystemBase();
-        system->addVariableToCopy(var_name, var_name, "LATEST");
-      }
-    }
+    _problem->addVariable(
+        var_name,
+        FEType(Utility::string_to_enum<Order>(getParam<std::string>("order")),
+               Utility::string_to_enum<FEFamily>(getParam<std::string>("family"))),
+        getParam<Real>("scaling"));
   }
 }

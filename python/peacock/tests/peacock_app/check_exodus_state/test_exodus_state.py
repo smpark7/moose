@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 from PyQt5 import QtCore, QtWidgets
 from peacock.utils import Testing
 
@@ -29,7 +20,6 @@ class TestExodusState(Testing.PeacockAppImageTestCase):
         # Run and check that basic results show up
         self.execute()
         self.selectTab(exodus)
-        Testing.process_events(1)
         self.assertImage("testDefault.png")
 
         # Select the mesh
@@ -71,33 +61,6 @@ class TestExodusState(Testing.PeacockAppImageTestCase):
         self.selectTab(execute)
         self.assertFalse(self._window._timers['initialize'].isActive())
         self.assertFalse(self._window._timers['update'].isActive())
-
-    def testColorbarState(self):
-        """
-        Test that re-running the simulation maintains colorbar state.
-        """
-        # The tabs to switch between
-        exodus = self._app.main_widget.tab_plugin.ExodusViewer
-        execute = self._app.main_widget.tab_plugin.ExecuteTabPlugin
-        cbar_plugin = exodus.currentWidget().ColorbarPlugin
-
-        # Run and check that basic results show up
-        self.execute()
-        self.selectTab(exodus)
-        Testing.process_events(1)
-
-        # Disable colorbar
-        cbar_plugin.ColorBarToggle.setCheckState(QtCore.Qt.Unchecked)
-        cbar_plugin.ColorBarToggle.clicked.emit(True)
-        self.assertImage("testColorbarOff.png", allowed=0.98)
-
-        # Re-run and check results again
-        self.selectTab(execute)
-        self.execute()
-        self.selectTab(exodus)
-        Testing.process_events(1)
-        self.assertImage("testColorbarOff.png", allowed=0.98)
-
 
 if __name__ == '__main__':
     Testing.run_tests()

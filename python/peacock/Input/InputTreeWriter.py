@@ -1,27 +1,22 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
+import cStringIO
 
-import hit
-
-def addInactive(hit_parent, parent, children):
+def mergeWriteFirstLists(first, complete):
     """
-    If there are any inactive blocks, add them
+    Add in elements from the list "complete" to the end
+    of the "first" if they are not already in "first"
+    Input:
+        first[list]: These elements will be first in the returned list
+        complete[list]: These elements will come after first
+    Return:
+        list: The elements in "complete" with elements in "first" first.
     """
-    inactive = []
-    for child in children:
-        entry = parent.children.get(child, None)
-        if entry and entry.checkInactive():
-            inactive.append(entry.name)
-    if inactive:
-        hit_parent.addChild(hit.NewField("inactive", "String", "'%s'" % ' '.join(inactive)))
+    l = first[:]
+    for x in complete:
+        if x not in l:
+            l.append(x)
+    return l
 
-def inputTreeToString(root):
+def inputTreeToString(root, sep="  "):
     """
     Main access point to write an InputTree to a string.
     Input:
@@ -29,43 +24,70 @@ def inputTreeToString(root):
     Return:
         str: The input file
     """
-    children = root.getChildNames()
-    hit_node = hit.NewSection("")
+    output = cStringIO.StringIO()
     if root.comments:
-        commentNode(hit_node, root.comments, False)
-    addInactive(hit_node, root, children)
+        commentString(output, root.comments, 0, sep)
+    children = mergeWriteFirstLists(root.children_write_first, root.children_list)
     last_child = children[-1]
     for child in children:
         entry = root.children.get(child, None)
-        if entry and entry.wantsToSave():
-            addNode(hit_node, entry)
-            if child != last_child:
-                hit_node.addChild(hit.NewBlank())
+        if entry and entry.included:
+            writeToString(output, entry, 0, sep, child == last_child)
+    return output.getvalue()
 
-    return hit_node.render()
-
-def addNode(parent_hit_node, entry):
+def writeToString(output, entry, indent, sep="  ", is_last=False):
     """
-    Adds a node and its children to the HIT tree.
+    Write out this node and its children(recursively) to input file format.
     Input:
-        parent_hit_node[hit.Node]: Parent to add children to
-        entry[BlockInfo]: The block to add
+        curr_str[str]: Current input file
+        indent[int]: indent level
+    Return:
+        str: input file
     """
-    name = entry.name
-    hit_node = hit.NewSection(name)
-    parent_hit_node.addChild(hit_node)
-    if entry.comments:
-        commentNode(hit_node, entry.comments, False)
-    nodeParamsString(hit_node, entry)
-    children = entry.getChildNames()
-    addInactive(hit_node, entry, children)
+    nodeHeaderString(output, entry, indent, sep)
+    nodeParamsString(output, entry, indent+1, sep)
+    children = mergeWriteFirstLists(entry.children_write_first, entry.children_list)
     for child in children:
         child_entry = entry.children.get(child, None)
-        if child_entry and child_entry.wantsToSave():
-            addNode(hit_node, child_entry)
+        if child_entry and child_entry.included:
+            writeToString(output, child_entry, indent+1, sep)
+    nodeCloseString(output, entry, indent, sep, is_last)
 
-def nodeParamsString(hit_parent, entry, ignore_type=False):
-    params = entry.getParamNames()
+def nodeHeaderString(output, entry, indent, sep):
+    """
+    While writing the input file, start a new section.
+    Input:
+        curr_str[str]: Current input file
+        indent[int]: Current indent level
+    Return:
+        str: input file
+    """
+    str_indent = sep*indent
+    if entry.parent.path != '/':
+        output.write("%s[./%s]\n" % (str_indent, entry.name))
+    else:
+        output.write("[%s]\n" % entry.name)
+    if entry.comments:
+        commentString(output, entry.comments, indent+1, sep)
+
+def nodeCloseString(output, entry, indent, sep, is_last):
+    """
+    While writing the input file, close a section
+    Input:
+        curr_str[str]: Current input file
+        indent[int]: Current indent level
+    Return:
+        str: input file
+    """
+    if entry.parent.path != '/':
+        output.write("%s[../]\n" % (sep*indent))
+    elif is_last:
+        output.write("[]\n")
+    else:
+        output.write("[]\n\n")
+
+def nodeParamsString(output, entry, indent, sep, ignore_type=False):
+    params = mergeWriteFirstLists(entry.parameters_write_first, entry.parameters_list)
     for name in params:
         if ignore_type and name == "type":
             continue
@@ -74,29 +96,32 @@ def nodeParamsString(hit_parent, entry, ignore_type=False):
         if not val and name != 'active': # we generally don't want to write out empty strings
             continue
         comments = info.comments
-        if info.hasChanged() or info.user_added or info.set_in_input_file:
-            hit_param = hit.NewField(info.name, info.hitType(), val)
-            hit_parent.addChild(hit_param)
-            if comments:
-                commentNode(hit_param, comments, True)
+        if info.value != info.default or info.user_added or info.set_in_input_file:
+            paramToString(output, info.name, val, comments, indent, sep)
 
     type_info = entry.parameters.get("type")
     if entry.types and type_info:
         type_name = type_info.value
         type_entry = entry.types.get(type_name)
         if type_entry:
-            nodeParamsString(hit_parent, type_entry, ignore_type=True)
+            nodeParamsString(output, type_entry, indent, sep, ignore_type=True)
 
-def commentNode(hit_parent, comments, is_inline):
+def commentString(output, comments, indent, sep):
     c_list = comments
     if isinstance(comments, str):
         c_list = [comments]
     for c in c_list:
         lines = c.split("\n")
         for line in lines:
-            if line:
-                line = "# %s" % line
-            else:
-                line = "#"
-            hit_comment = hit.NewComment(line, is_inline)
-            hit_parent.addChild(hit_comment)
+          if not line:
+            output.write("%s#\n" % (sep*indent))
+          else:
+            output.write("%s# %s\n" % (sep*indent, line))
+
+def paramToString(output, name, val, comments, indent, sep):
+    output.write("%s%s = %s" % (sep*indent, name, val))
+
+    if comments:
+        commentString(output, comments, indent, sep)
+    else:
+        output.write("\n")

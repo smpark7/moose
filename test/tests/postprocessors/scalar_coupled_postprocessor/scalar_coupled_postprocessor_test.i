@@ -58,9 +58,7 @@
 []
 
 [Executioner]
-  type = Transient
-  dt = 1
-  num_steps = 1
+  type = Steady
   solve_type = JFNK
   l_max_its = 30
   l_tol = 1e-6

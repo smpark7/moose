@@ -78,11 +78,10 @@
 [Postprocessors]
   [./num_vars]
     type = NumVars
-    system = 'NL'
   [../]
   [./num_aux]
     type = NumVars
-    system = 'AUX'
+    system = auxiliary
   [../]
 []
 

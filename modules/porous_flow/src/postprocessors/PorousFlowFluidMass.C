@@ -1,19 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowFluidMass.h"
 
+// MOOSE includes
 #include "MooseVariable.h"
 
+// libMesh includes for qrule
 #include "libmesh/quadrature.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowFluidMass);
 
 template <>
 InputParameters
@@ -38,7 +36,7 @@ validParams<PorousFlowFluidMass>()
                                     "phase_index can be entered");
   params.addParam<unsigned int>("kernel_variable_number",
                                 0,
-                                "The PorousFlow variable number (according to the dictator) of "
+                                "The PorousFlow variable number (according to the dictatory) of "
                                 "the fluid-mass kernel.  This is required only in the unusual "
                                 "situation where a variety of different finite-element "
                                 "interpolation schemes are employed in the simulation");
@@ -60,60 +58,62 @@ PorousFlowFluidMass::PorousFlowFluidMass(const InputParameters & parameters)
         getMaterialProperty<std::vector<std::vector<Real>>>("PorousFlow_mass_frac_nodal")),
     _saturation_threshold(getParam<Real>("saturation_threshold")),
     _var(getParam<unsigned>("kernel_variable_number") < _dictator.numVariables()
-             ? _dictator.getCoupledStandardMooseVars()[getParam<unsigned>("kernel_variable_number")]
+             ? _dictator.getCoupledMooseVars()[getParam<unsigned>("kernel_variable_number")]
              : nullptr)
 {
   const unsigned int num_phases = _dictator.numPhases();
   const unsigned int num_components = _dictator.numComponents();
 
-  // Check that the number of components entered is not greater than the total number of components
+  /// Check that the number of components entered is not greater than the total number of components
   if (_fluid_component >= num_components)
-    paramError(
-        "fluid_component",
-        "The Dictator proclaims that the number of components in this simulation is ",
-        num_components,
-        " whereas you have used a component index of ",
-        _fluid_component,
-        ". Remember that indexing starts at 0. The Dictator does not take such mistakes lightly.");
+    mooseError("The Dictator proclaims that the number of components in this simulation is ",
+               num_components,
+               " whereas you have used the Postprocessor PorousFlowFluidMass with component = ",
+               _fluid_component,
+               ".  The Dictator does not take such mistakes lightly.");
 
-  // Check that the number of phases entered is not more than the total possible phases
+  /// Check that the number of phases entered is not more than the total possible phases
   if (_phase_index.size() > num_phases)
-    paramError("phase",
-               "The Dictator decrees that the number of phases in this simulation is ",
+    mooseError("The Dictator decrees that the number of phases in this simulation is ",
                num_phases,
                " but you have entered ",
                _phase_index.size(),
-               " phases.");
+               " phases in the Postprocessor ",
+               _name);
 
-  // Check that kernel_variable_number is OK
+  /// Check that kernel_variable_number is OK
   if (getParam<unsigned>("kernel_variable_number") >= _dictator.numVariables())
-    paramError("kernel_variable_number",
-               "The Dictator pronounces that the number of PorousFlow variables is ",
-               _dictator.numVariables(),
-               ", however you have used ",
-               getParam<unsigned>("kernel_variable_number"),
-               ". This is an error");
+    mooseError(
+        "PorousFlowFluidMass: The dictator pronounces that the number of porous-flow variables is ",
+        _dictator.numVariables(),
+        ", however you have used kernel_variable_number = ",
+        getParam<unsigned>("kernel_variable_number"),
+        ".  This is an error");
 
-  // Also check that the phase indices entered are not greater than the number of phases
-  // to avoid a segfault. Note that the input parser takes care of negative inputs so we
-  // don't need to guard against them
+  /**
+   * Also check that the phase indices entered are not greater than the number of phases
+   * to avoid a segfault. Note that the input parser takes care of negative inputs so we
+   * don't need to guard against them
+   */
   if (!_phase_index.empty())
   {
     unsigned int max_phase_num = *std::max_element(_phase_index.begin(), _phase_index.end());
     if (max_phase_num > num_phases - 1)
-      paramError("phase",
-                 "The Dictator proclaims that the phase index ",
+      mooseError("The Dictator proclaims that the phase index ",
                  max_phase_num,
+                 " in the Postprocessor ",
+                 _name,
                  " is greater than the largest phase index possible, which is ",
                  num_phases - 1);
   }
 
-  // Using saturation_threshold only makes sense for a specific phase_index
+  /// Using saturation_threshold only makes sense for a specific phase_index
   if (_saturation_threshold < 1.0 && _phase_index.size() != 1)
-    paramError("saturation_threshold",
-               "A single phase_index must be entered when prescribing a saturation_threshold");
+    mooseError("A single phase_index must be entered when prescribing a saturation_threshold in "
+               "the Postprocessor ",
+               _name);
 
-  // If _phase_index is empty, create vector of all phase numbers to calculate mass over all phases
+  /// If _phase_index is empty, create vector of all phase numbers to calculate mass over all phases
   if (_phase_index.empty())
     for (unsigned int i = 0; i < num_phases; ++i)
       _phase_index.push_back(i);
@@ -124,12 +124,13 @@ PorousFlowFluidMass::computeIntegral()
 {
   Real sum = 0;
 
-  // The use of _test in the loops below mean that the
-  // integral is exactly the same as the one computed
-  // by the PorousFlowMassTimeDerivative Kernel.  Because that
-  // Kernel is lumped, this Postprocessor also needs to
-  // be lumped.  Hence the use of the "nodal" Material
-  // Properties
+  /** The use of _test in the loops below mean that the
+   * integral is exactly the same as the one computed
+   * by the PorousFlowMassTimeDerivative Kernel.  Because that
+   * Kernel is lumped, this Postprocessor also needs to
+   * be lumped.  Hence the use of the "nodal" Material
+   * Properties
+   */
   const VariableTestValue & test = _var->phi();
 
   for (unsigned node = 0; node < test.size(); ++node)

@@ -44,7 +44,7 @@
   [../]
 
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -68,6 +68,7 @@
 [Executioner]
   type = Transient
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   dt = 0.2

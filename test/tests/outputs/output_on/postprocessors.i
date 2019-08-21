@@ -39,14 +39,14 @@
 
 [Postprocessors]
   [./sum]
-    type = PerfGraphData
-    section_name = "Root"
-    data_type = total
+    type = PerformanceData
+    event = 'alive'
     execute_on = 'initial nonlinear timestep_end'
   [../]
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   num_steps = 2
   dt = 0.1

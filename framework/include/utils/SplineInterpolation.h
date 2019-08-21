@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef SPLINEINTERPOLATION_H
+#define SPLINEINTERPOLATION_H
 
 #include "SplineInterpolationBase.h"
 #include <string>
@@ -58,6 +64,18 @@ public:
   Real sample2ndDerivative(Real x) const;
 
   /**
+   * This function will dump GNUPLOT input files that can be run to show the data points and
+   * function fits
+   */
+  void dumpSampleFile(std::string base_name,
+                      std::string x_label = "X",
+                      std::string y_label = "Y",
+                      float xmin = 0,
+                      float xmax = 0,
+                      float ymin = 0,
+                      float ymax = 0);
+
+  /**
    * This function returns the size of the array holding the points, i.e. the number of sample
    * points
    */
@@ -79,3 +97,4 @@ protected:
   static int _file_number;
 };
 
+#endif // LINEARINTERPOLATION_H

@@ -1,16 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "GrainBoundaryArea.h"
 #include "MooseUtils.h"
-
-registerMooseObject("PhaseFieldApp", GrainBoundaryArea);
 
 template <>
 InputParameters
@@ -44,7 +40,7 @@ GrainBoundaryArea::GrainBoundaryArea(const InputParameters & parameters)
     mooseError("Neither grains_per_side nor op_range may be zero.");
 
   // Loop over variables (ops)
-  for (MooseIndex(_op_num) op_index = 0; op_index < _op_num; ++op_index)
+  for (auto op_index = decltype(_op_num)(0); op_index < _op_num; ++op_index)
     _grads[op_index] = &coupledGradient("v", op_index);
 }
 

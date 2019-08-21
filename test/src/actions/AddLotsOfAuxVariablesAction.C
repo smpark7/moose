@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "AddLotsOfAuxVariablesAction.h"
@@ -17,6 +22,7 @@
 #include "Conversion.h"
 #include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/libmesh.h"
 #include "libmesh/exodusII_io.h"
 #include "libmesh/equation_systems.h"
@@ -31,8 +37,6 @@
 
 // class static initialization
 const Real AddLotsOfAuxVariablesAction::_abs_zero_tol = 1e-12;
-
-registerMooseAction("MooseTestApp", AddLotsOfAuxVariablesAction, "meta_action");
 
 template <>
 InputParameters
@@ -62,24 +66,34 @@ AddLotsOfAuxVariablesAction::AddLotsOfAuxVariablesAction(const InputParameters &
 void
 AddLotsOfAuxVariablesAction::act()
 {
-  auto fe_type = AddVariableAction::feType(_pars);
-  auto type = AddVariableAction::determineType(fe_type, 1);
-  auto var_params = _factory.getValidParams(type);
-
-  var_params.set<MooseEnum>("family") = getParam<MooseEnum>("family");
-  var_params.set<MooseEnum>("order") = getParam<MooseEnum>("order");
-  if (isParamValid("block"))
-    var_params.set<std::vector<SubdomainName>>("block") =
-        getParam<std::vector<SubdomainName>>("block");
-
-  bool scalar_var = fe_type.family == SCALAR;
 
   unsigned int number = getParam<unsigned int>("number");
   for (unsigned int cur_num = 0; cur_num < number; cur_num++)
   {
     std::string var_name = name() + Moose::stringify(cur_num);
+    FEType fe_type(Utility::string_to_enum<Order>(getParam<MooseEnum>("order")),
+                   Utility::string_to_enum<FEFamily>(getParam<MooseEnum>("family")));
 
-    _problem->addAuxVariable(type, var_name, var_params);
+    std::set<SubdomainID> blocks;
+    std::vector<SubdomainName> block_param = getParam<std::vector<SubdomainName>>("block");
+    for (std::vector<SubdomainName>::iterator it = block_param.begin(); it != block_param.end();
+         ++it)
+    {
+      SubdomainID blk_id = _problem->mesh().getSubdomainID(*it);
+      blocks.insert(blk_id);
+    }
+
+    bool scalar_var = false; // true if adding scalar variable
+
+    if (fe_type.family == SCALAR)
+    {
+      _problem->addAuxScalarVariable(var_name, fe_type.order);
+      scalar_var = true;
+    }
+    else if (blocks.empty())
+      _problem->addAuxVariable(var_name, fe_type);
+    else
+      _problem->addAuxVariable(var_name, fe_type, &blocks);
 
     // Set initial condition
     Real initial = getParam<Real>("initial_condition");

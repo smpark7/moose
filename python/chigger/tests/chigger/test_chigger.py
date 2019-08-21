@@ -1,14 +1,18 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 #pylint: disable=missing-docstring
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#################################################################
+#                   DO NOT MODIFY THIS HEADER                   #
+#  MOOSE - Multiphysics Object Oriented Simulation Environment  #
+#                                                               #
+#            (c) 2010 Battelle Energy Alliance, LLC             #
+#                      ALL RIGHTS RESERVED                      #
+#                                                               #
+#           Prepared by Battelle Energy Alliance, LLC           #
+#             Under Contract No. DE-AC07-05ID14517              #
+#              With the U. S. Department of Energy              #
+#                                                               #
+#              See COPYRIGHT for full restrictions              #
+#################################################################
 import os
 import subprocess
 import unittest
@@ -42,7 +46,7 @@ class TestChiggerCommandUtility(unittest.TestCase):
         pattern = os.path.join('..', 'field_data', 'gold', 'plot_current_*.png')
         out = self.execute('img2mov', pattern, '-o', 'output.mov', '--dry-run', '-j', '4', '--duration', '30')
         gold = 'ffmpeg -pattern_type glob -framerate 0 -i ../field_data/gold/plot_current_*.png ' \
-               '-b:v 10M -pix_fmt yuv420p -q:v 1 -threads 4 -framerate 0 output.mov'
+               '-c:v mpeg2video -b:v 10M -pix_fmt yuv420p -q:v 1 -threads 4 -framerate 0 output.mov'
         self.assertIn(gold, out)
 
 if __name__ == '__main__':

@@ -54,7 +54,7 @@
   [../]
 
   [./ffn_u]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = force_fn
   [../]
@@ -118,6 +118,7 @@
 
   [./avg_v]
     type = AverageElementSize
+    variable = v
     outputs = none
   [../]
 []
@@ -125,6 +126,7 @@
 [Executioner]
   type = Transient
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   dt = 0.1

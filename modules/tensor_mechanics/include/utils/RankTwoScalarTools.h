@@ -1,22 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef RANKTWOSCALARTOOLS_H
+#define RANKTWOSCALARTOOLS_H
 
 // MOOSE includes
 #include "MooseTypes.h"
 
 // Forward declarations
 class MooseEnum;
-template <typename>
-class RankTwoTensorTempl;
-typedef RankTwoTensorTempl<Real> RankTwoTensor;
+class RankTwoTensor;
 
 namespace libMesh
 {
@@ -95,15 +91,13 @@ Real L2norm(const RankTwoTensor & r2tensor);
  * The volumentric strain is the change in volume over the original volume. In
  * this method the squared and cubic terms are included so that the calculation
  * is valid for both small and finite strains.
- * @param strain Total logarithmic strain
- * @return volumetric strain (delta V / V)
  */
 Real volumetricStrain(const RankTwoTensor & strain);
 
 /*
- * The first invariant of a tensor is the sum of the diagonal component; defined
- * in L. Malvern, Introduction to the Mechanics of a Continuous Mediam (1969) pg 89.
- */
+* The first invariant of a tensor is the sum of the diagonal component; defined
+* in L. Malvern, Introduction to the Mechanics of a Continuous Mediam (1969) pg 89.
+*/
 Real firstInvariant(const RankTwoTensor & r2tensor);
 
 /*
@@ -112,7 +106,7 @@ Real firstInvariant(const RankTwoTensor & r2tensor);
  * Note that the Hjelmstad version of the second invariant is the negative of
  * the second invariant given in L. Malvern, Introduction to the Mechanics of a
  * Continuous Medium (1969) pg 89.
- */
+*/
 Real secondInvariant(const RankTwoTensor & r2tensor);
 
 /*
@@ -124,37 +118,30 @@ Real thirdInvariant(const RankTwoTensor & r2tensor);
 /*
  * The max Principal method returns the largest principal value for a symmetric
  * tensor, using the calcEigenValues method.
- * param r2tensor RankTwoTensor from which to extract the principal value
- * param direction Direction corresponding to the principal value
  */
-Real maxPrincipal(const RankTwoTensor & r2tensor, Point & direction);
+Real maxPrincipal(const RankTwoTensor & r2tensor);
+Real maxPrinciple(const RankTwoTensor & r2tensor);
 
 /*
  * The mid Principal method calculates the second largest principal value for a
- * tensor.
- * param r2tensor RankTwoTensor from which to extract the principal value
- * param direction Direction corresponding to the principal value
+ * tensor.  This method is valid only for 3D problems and will return an error
+ * if called in 2D problems.
  */
-Real midPrincipal(const RankTwoTensor & r2tensor, Point & direction);
+Real midPrincipal(const RankTwoTensor & r2tensor);
+Real midPrinciple(const RankTwoTensor & r2tensor);
 
 /*
  * The min Principal stress returns the smallest principal value from a symmetric
  * tensor.
- * param r2tensor RankTwoTensor from which to extract the principal value
- * param direction Direction corresponding to the principal value
  */
-Real minPrincipal(const RankTwoTensor & r2tensor, Point & direction);
+Real minPrincipal(const RankTwoTensor & r2tensor);
+Real minPrinciple(const RankTwoTensor & r2tensor);
 
 /*
  * This method is called by the *Principal methods to calculate the eigenvalues
- * and eigenvectors of a symmetric tensor and return the desired value based on
- * vector position.
- * param r2tensor The RankTwoTensor from which to extract eigenvalues/vectors
- * param index The index of the principal value
- * param direction The eigenvector corresponding to the computed eigenvalue
+ * of a symmetric tensor and return the desired value based on vector position.
  */
-Real
-calcEigenValuesEigenVectors(const RankTwoTensor & r2tensor, unsigned int index, Point & eigenvec);
+Real calcEigenValues(const RankTwoTensor & r2tensor, unsigned int index);
 
 /*
  * The axial stress is the scalar component of the stress tensor in an user-defined
@@ -193,7 +180,7 @@ Real hoopStress(const RankTwoTensor & stress,
  * @param point2 The end point of the rotation axis
  * @param curr_point The point corresponding to the stress (pass in & _q_point[_qp])
  * @param direction The direction vector in which the scalar stress value is calculated.
- */
+*/
 Real radialStress(const RankTwoTensor & stress,
                   const Point & point1,
                   const Point & point2,
@@ -224,16 +211,6 @@ Real directionValueTensor(const RankTwoTensor & r2tensor, Point & direction);
  * Triaxiality is the ratio of the hydrostatic stress to the von Mises stress.
  */
 Real triaxialityStress(const RankTwoTensor & stress);
-
-/*
- * maxShear is the maximum shear stress defined as the maximum principal
- * stress minus the minimum principal stress.
- */
-Real maxShear(const RankTwoTensor & stress);
-
-/*
- * stressIntensity is defined as two times the maximum shear stress.
- */
-Real stressIntensity(const RankTwoTensor & stress);
 }
 
+#endif // RANKTWOSCALARTOOLS_H

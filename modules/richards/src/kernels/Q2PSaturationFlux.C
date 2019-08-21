@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "Q2PSaturationFlux.h"
 
@@ -14,12 +12,11 @@
 #include "MooseVariable.h"
 #include "SystemBase.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
 
 // C++ includes
 #include <iostream>
-
-registerMooseObject("RichardsApp", Q2PSaturationFlux);
 
 template <>
 InputParameters
@@ -46,7 +43,7 @@ Q2PSaturationFlux::Q2PSaturationFlux(const InputParameters & parameters)
     _density(getUserObject<RichardsDensity>("fluid_density")),
     _pp(coupledValue("porepressure_variable")),
     _grad_pp(coupledGradient("porepressure_variable")),
-    _pp_nodal(coupledDofValues("porepressure_variable")),
+    _pp_nodal(coupledNodalValue("porepressure_variable")),
     _pp_var(coupled("porepressure_variable")),
     _relperm(getUserObject<RichardsRelPerm>("fluid_relperm")),
     _viscosity(getParam<Real>("fluid_viscosity")),
@@ -78,8 +75,8 @@ Q2PSaturationFlux::prepareNodalValues()
     density = _density.density(_pp_nodal[nodenum]);      // fluid density at the node
     ddensity_dp = _density.ddensity(_pp_nodal[nodenum]); // d(fluid density)/dP at the node
     relperm = _relperm.relperm(
-        _var.dofValues()[nodenum]); // relative permeability of the fluid at node nodenum
-    drelperm_ds = _relperm.drelperm(_var.dofValues()[nodenum]); // d(relperm)/dsat
+        _var.nodalSln()[nodenum]); // relative permeability of the fluid at node nodenum
+    drelperm_ds = _relperm.drelperm(_var.nodalSln()[nodenum]); // d(relperm)/dsat
 
     // calculate the mobility and its derivatives wrt P and S
     _mobility[nodenum] = density * relperm / _viscosity;
@@ -110,9 +107,9 @@ Q2PSaturationFlux::computeJacobian()
 }
 
 void
-Q2PSaturationFlux::computeOffDiagJacobian(MooseVariableFEBase & jvar)
+Q2PSaturationFlux::computeOffDiagJacobian(unsigned int jvar)
 {
-  upwind(false, true, jvar.number());
+  upwind(false, true, jvar);
 }
 
 Real

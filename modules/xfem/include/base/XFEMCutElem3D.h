@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef XFEMCUTELEM3D_H
+#define XFEMCUTELEM3D_H
 
 #include "XFEMCutElem.h"
 #include "EFAElement3D.h"
@@ -24,17 +23,7 @@ class Node;
 class XFEMCutElem3D : public XFEMCutElem
 {
 public:
-  /**
-   * Constructor initializes XFEMCutElem3D object
-   * @param elem The element on which XFEMCutElem3D is built
-   * @param CEMelem The EFAFragment3D object that belongs to XFEMCutElem3D
-   * @param n_qpoints The number of quadrature points
-   * @param n_sides The number of sides which the element has
-   */
-  XFEMCutElem3D(Elem * elem,
-                const EFAElement3D * const CEMelem,
-                unsigned int n_qpoints,
-                unsigned int n_sides);
+  XFEMCutElem3D(Elem * elem, const EFAElement3D * const CEMelem, unsigned int n_qpoints);
   ~XFEMCutElem3D();
 
 private:
@@ -43,7 +32,6 @@ private:
 
 public:
   virtual void computePhysicalVolumeFraction();
-  virtual void computePhysicalFaceAreaFraction(unsigned int side);
   virtual void computeMomentFittingWeights();
   virtual Point getCutPlaneOrigin(unsigned int plane_id, MeshBase * displaced_mesh = NULL) const;
   virtual Point getCutPlaneNormal(unsigned int plane_id, MeshBase * displaced_mesh = NULL) const;
@@ -59,3 +47,4 @@ public:
                                    MeshBase * displaced_mesh = NULL) const;
 };
 
+#endif

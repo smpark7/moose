@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NumDOFs.h"
 #include "SubProblem.h"
 
 #include "libmesh/system.h"
-
-registerMooseObject("MooseApp", NumDOFs);
 
 template <>
 InputParameters
@@ -20,21 +23,18 @@ validParams<NumDOFs>()
 {
   InputParameters params = validParams<GeneralPostprocessor>();
   MooseEnum system_enum("NL AUX ALL", "ALL");
-  params.addParam<MooseEnum>("system",
-                             system_enum,
-                             "The system(s) for which you want to retrieve the number of DOFs (NL, "
-                             "AUX, ALL). Default == ALL");
-
-  params.addClassDescription(
-      "Return the number of Degrees of freedom from either the NL, Aux or both systems.");
+  params.addParam<MooseEnum>(
+      "system",
+      system_enum,
+      "The system(s) to retrieve the number of DOFs from (NL, AUX, ALL). Default == ALL");
   return params;
 }
 
 NumDOFs::NumDOFs(const InputParameters & parameters)
   : GeneralPostprocessor(parameters),
     _system_enum(parameters.get<MooseEnum>("system").getEnum<SystemEnum>()),
-    _system_pointer(nullptr),
-    _es_pointer(nullptr)
+    _system_pointer(NULL),
+    _es_pointer(NULL)
 {
   switch (_system_enum)
   {

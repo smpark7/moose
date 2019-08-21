@@ -1,20 +1,26 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NonlocalIntegratedBC.h"
 #include "Assembly.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "Problem.h"
 #include "SubProblem.h"
 #include "SystemBase.h"
 #include "MooseMesh.h"
 
+// libmesh includes
 #include "libmesh/threads.h"
 #include "libmesh/quadrature.h"
 
@@ -66,23 +72,22 @@ NonlocalIntegratedBC::computeJacobian()
 }
 
 void
-NonlocalIntegratedBC::computeJacobianBlock(MooseVariableFEBase & jvar)
+NonlocalIntegratedBC::computeJacobianBlock(unsigned int jvar)
 {
-  size_t jvar_num = jvar.number();
-  if (jvar_num == _var.number())
+  if (jvar == _var.number())
     computeJacobian();
   else
   {
-    MooseVariableFEBase & jv = _sys.getVariable(_tid, jvar_num);
-    DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar_num);
+    MooseVariable & jv = _sys.getVariable(_tid, jvar);
+    DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar);
 
-    for (_j = 0; _j < jvar.phiFaceSize();
+    for (_j = 0; _j < _phi.size();
          _j++) // looping order for _i & _j are reversed for performance improvement
     {
-      getUserObjectJacobian(jvar_num, jv.dofIndices()[_j]);
+      getUserObjectJacobian(jvar, jv.dofIndices()[_j]);
       for (_i = 0; _i < _test.size(); _i++)
         for (_qp = 0; _qp < _qrule->n_points(); _qp++)
-          ke(_i, _j) += _JxW[_qp] * _coord[_qp] * computeQpOffDiagJacobian(jvar_num);
+          ke(_i, _j) += _JxW[_qp] * _coord[_qp] * computeQpOffDiagJacobian(jvar);
     }
   }
 }
@@ -123,7 +128,7 @@ NonlocalIntegratedBC::computeNonlocalOffDiagJacobian(unsigned int jvar)
     computeNonlocalJacobian();
   else
   {
-    MooseVariableFEBase & jv = _sys.getVariable(_tid, jvar);
+    MooseVariable & jv = _sys.getVariable(_tid, jvar);
     DenseMatrix<Number> & keg = _assembly.jacobianBlockNonlocal(_var.number(), jvar);
     // compiling set of global IDs for the local DOFs on the element
     std::set<dof_id_type> local_dofindices(jv.dofIndices().begin(), jv.dofIndices().end());

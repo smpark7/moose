@@ -1,16 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWPOROSITYHMBIOTMODULUS_H
+#define POROUSFLOWPOROSITYHMBIOTMODULUS_H
 
-#include "PorousFlowPorosity.h"
+#include "PorousFlowPorosityHM.h"
 
+// Forward Declarations
 class PorousFlowPorosityHMBiotModulus;
 
 template <>
@@ -22,10 +22,10 @@ InputParameters validParams<PorousFlowPorosityHMBiotModulus>();
  * Even though a constant BiotModulus is not strictly correct, many
  * analytical solutions of poroelasticity theory assume this, so
  * PorousFlowPorosityHMBiotModulus is useful for comparing with those solutions.
- * Otherwise it shouldn't generally be used because PorousFlowPorosity
+ * Otherwise it shouldn't generally be used because PorousFlowPorosityHM
  * is physically more correct.
  */
-class PorousFlowPorosityHMBiotModulus : public PorousFlowPorosity
+class PorousFlowPorosityHMBiotModulus : public PorousFlowPorosityHM
 {
 public:
   PorousFlowPorosityHMBiotModulus(const InputParameters & parameters);
@@ -33,25 +33,26 @@ public:
 protected:
   virtual void computeQpProperties() override;
 
-  /// Old value of porosity
+  /// old value of porosity
   const MaterialProperty<Real> & _porosity_old;
 
-  /// Constant biot modulus
+  /// constant biot modulus
   const Real _biot_modulus;
 
-  /// Constant fluid bulk modulus
+  /// constant fluid bulk modulus
   const Real _fluid_bulk_modulus;
 
-  /// Old value of effective fluid pressure
+  /// old value of effective fluid pressure
   const MaterialProperty<Real> & _pf_old;
 
-  /// Old value of total volumetric strain
+  /// old value of total volumetric strain
   const MaterialProperty<Real> & _vol_strain_qp_old;
 
-  /// Volumetric strain rate
+  /// volumetric strain rate
   const MaterialProperty<Real> & _vol_strain_rate_qp;
 
   /// d(volumetric strain rate)/d(PorousFlow variable)
   const MaterialProperty<std::vector<RealGradient>> & _dvol_strain_rate_qp_dvar;
 };
 
+#endif // POROUSFLOWPOROSITYHMBIOTMODULUS_H

@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef COMPUTEPOLYCRYSTALELASTICITYTENSOR_H
+#define COMPUTEPOLYCRYSTALELASTICITYTENSOR_H
 
 #include "ComputeElasticityTensorBase.h"
 #include "GrainDataTracker.h"
@@ -15,9 +14,6 @@
 // Forward Declarations
 class ComputePolycrystalElasticityTensor;
 class EulerAngleProvider;
-
-template <>
-InputParameters validParams<ComputePolycrystalElasticityTensor>();
 
 /**
  * Compute an evolving elasticity tensor coupled to a grain growth phase field model.
@@ -49,3 +45,4 @@ protected:
   const Real _JtoeV;
 };
 
+#endif // COMPUTEPOLYCRYSTALELASTICITYTENSOR_H

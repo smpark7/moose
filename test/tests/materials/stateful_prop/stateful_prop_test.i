@@ -19,7 +19,7 @@
 
 [Kernels]
   [./heat]
-    type = MatDiffusionTest
+    type = MatDiffusion
     variable = u
     prop_name = thermal_conductivity
     prop_state = 'old'                  # Use the "Old" value to compute conductivity
@@ -79,6 +79,7 @@
 [Executioner]
   type = Transient
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
   l_max_its = 10
   start_time = 0.0
@@ -89,5 +90,4 @@
 [Outputs]
   file_base = out
   exodus = true
-  csv = true
 []

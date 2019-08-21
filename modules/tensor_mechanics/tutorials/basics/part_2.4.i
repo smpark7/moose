@@ -17,11 +17,56 @@
   second_order = true
 []
 
-[Modules/TensorMechanics/Master]
-  [./block1]
-    strain = FINITE
-    add_variables = true
-    generate_output = 'stress_yy strain_yy vonmises_stress'
+[Variables]
+  [./disp_r]
+    order = SECOND
+  [../]
+  [./disp_z]
+    order = SECOND
+  [../]
+[]
+
+[Kernels]
+  [./TensorMechanics]
+    use_displaced_mesh = true
+  [../]
+[]
+
+[AuxVariables]
+  [./stress_zz]
+    family = MONOMIAL
+    order = CONSTANT
+  [../]
+  [./strain_zz]
+    family = MONOMIAL
+    order = CONSTANT
+  [../]
+  [./VM_stress]
+    family = MONOMIAL
+    order = CONSTANT
+  [../]
+[]
+
+[AuxKernels]
+  [./stress_zz]
+    type = RankTwoAux
+    variable = stress_zz
+    rank_two_tensor = stress
+    index_i = 1
+    index_j = 1
+  [../]
+  [./strain_zz]
+    type = RankTwoAux
+    variable = strain_zz
+    rank_two_tensor = total_strain
+    index_i = 1
+    index_j = 1
+  [../]
+  [./VM_stress]
+    type = RankTwoScalarAux
+    variable = VM_stress
+    rank_two_tensor = stress
+    scalar_type = VonMisesStress
   [../]
 []
 
@@ -30,6 +75,9 @@
     type = ComputeIsotropicElasticityTensor
     youngs_modulus = 2.1e5
     poissons_ratio = 0.3
+  [../]
+  [./strain]
+    type = ComputeAxisymmetricRZFiniteStrain
   [../]
   [./stress]
     type = ComputeMultiPlasticityStress
@@ -97,19 +145,19 @@
 [Postprocessors]
   [./ave_stress_bottom]
     type = SideAverageValue
-    variable = stress_yy
+    variable = stress_zz
     boundary = bottom
   [../]
   [./ave_strain_bottom]
     type = SideAverageValue
-    variable = strain_yy
+    variable = strain_zz
     boundary = bottom
   [../]
 []
 
 [Outputs]
   exodus = true
-  perf_graph = true
+  print_perf_log = true
   csv = true
   print_linear_residuals = false
 []

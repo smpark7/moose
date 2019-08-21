@@ -1,21 +1,20 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowSink.h"
 
+// MOOSE includes
 #include "MooseVariable.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
 
+// C++ includes
 #include <iostream>
-
-registerMooseObject("PorousFlowApp", PorousFlowSink);
 
 template <>
 InputParameters
@@ -73,7 +72,6 @@ validParams<PorousFlowSink>()
       "for spatially or temporally varying sinks.  Without any use_*, this "
       "function is measured in kg.m^-2.s^-1 (or J.m^-2.s^-1 for the case "
       "with only heat and no fluids)");
-  params.addClassDescription("Applies a flux sink to a boundary.");
   return params;
 }
 
@@ -119,103 +117,101 @@ PorousFlowSink::PorousFlowSink(const InputParameters & parameters)
     _permeability(_has_mobility
                       ? &getMaterialProperty<RealTensorValue>("PorousFlow_permeability_qp")
                       : nullptr),
-    _dpermeability_dvar(_has_mobility ? &getMaterialProperty<std::vector<RealTensorValue>>(
-                                            "dPorousFlow_permeability_qp_dvar")
-                                      : nullptr),
+    _dpermeability_dvar(
+        _has_mobility
+            ? &getMaterialProperty<std::vector<RealTensorValue>>("dPorousFlow_permeability_qp_dvar")
+            : nullptr),
     _dpermeability_dgradvar(_has_mobility
                                 ? &getMaterialProperty<std::vector<std::vector<RealTensorValue>>>(
                                       "dPorousFlow_permeability_qp_dgradvar")
                                 : nullptr),
-    _fluid_density_node(_has_mobility ? &getMaterialProperty<std::vector<Real>>(
-                                            "PorousFlow_fluid_phase_density_nodal")
-                                      : nullptr),
-    _dfluid_density_node_dvar(_has_mobility ? &getMaterialProperty<std::vector<std::vector<Real>>>(
-                                                  "dPorousFlow_fluid_phase_density_nodal_dvar")
-                                            : nullptr),
+    _fluid_density_node(
+        _has_mobility
+            ? &getMaterialProperty<std::vector<Real>>("PorousFlow_fluid_phase_density_nodal")
+            : nullptr),
+    _dfluid_density_node_dvar(_has_mobility
+                                  ? &getMaterialProperty<std::vector<std::vector<Real>>>(
+                                        "dPorousFlow_fluid_phase_density_nodal_dvar")
+                                  : nullptr),
     _fluid_viscosity(_has_mobility
                          ? &getMaterialProperty<std::vector<Real>>("PorousFlow_viscosity_nodal")
                          : nullptr),
-    _dfluid_viscosity_dvar(_has_mobility ? &getMaterialProperty<std::vector<std::vector<Real>>>(
-                                               "dPorousFlow_viscosity_nodal_dvar")
-                                         : nullptr),
-    _relative_permeability(_has_relperm ? &getMaterialProperty<std::vector<Real>>(
-                                              "PorousFlow_relative_permeability_nodal")
-                                        : nullptr),
+    _dfluid_viscosity_dvar(_has_mobility
+                               ? &getMaterialProperty<std::vector<std::vector<Real>>>(
+                                     "dPorousFlow_viscosity_nodal_dvar")
+                               : nullptr),
+    _relative_permeability(
+        _has_relperm
+            ? &getMaterialProperty<std::vector<Real>>("PorousFlow_relative_permeability_nodal")
+            : nullptr),
     _drelative_permeability_dvar(_has_relperm
                                      ? &getMaterialProperty<std::vector<std::vector<Real>>>(
                                            "dPorousFlow_relative_permeability_nodal_dvar")
                                      : nullptr),
-    _mass_fractions(_has_mass_fraction ? &getMaterialProperty<std::vector<std::vector<Real>>>(
-                                             "PorousFlow_mass_frac_nodal")
-                                       : nullptr),
+    _mass_fractions(
+        _has_mass_fraction
+            ? &getMaterialProperty<std::vector<std::vector<Real>>>("PorousFlow_mass_frac_nodal")
+            : nullptr),
     _dmass_fractions_dvar(_has_mass_fraction
                               ? &getMaterialProperty<std::vector<std::vector<std::vector<Real>>>>(
                                     "dPorousFlow_mass_frac_nodal_dvar")
                               : nullptr),
-    _enthalpy(_has_enthalpy ? &getMaterialPropertyByName<std::vector<Real>>(
-                                  "PorousFlow_fluid_phase_enthalpy_nodal")
-                            : nullptr),
-    _denthalpy_dvar(_has_enthalpy ? &getMaterialPropertyByName<std::vector<std::vector<Real>>>(
-                                        "dPorousFlow_fluid_phase_enthalpy_nodal_dvar")
-                                  : nullptr),
-    _internal_energy(_has_internal_energy ? &getMaterialPropertyByName<std::vector<Real>>(
-                                                "PorousFlow_fluid_phase_internal_energy_nodal")
-                                          : nullptr),
+    _enthalpy(
+        _has_enthalpy
+            ? &getMaterialPropertyByName<std::vector<Real>>("PorousFlow_fluid_phase_enthalpy_nodal")
+            : nullptr),
+    _denthalpy_dvar(_has_enthalpy
+                        ? &getMaterialPropertyByName<std::vector<std::vector<Real>>>(
+                              "dPorousFlow_fluid_phase_enthalpy_nodal_dvar")
+                        : nullptr),
+    _internal_energy(_has_internal_energy
+                         ? &getMaterialPropertyByName<std::vector<Real>>(
+                               "PorousFlow_fluid_phase_internal_energy_nodal")
+                         : nullptr),
     _dinternal_energy_dvar(_has_internal_energy
                                ? &getMaterialPropertyByName<std::vector<std::vector<Real>>>(
                                      "dPorousFlow_fluid_phase_internal_energy_nodal_dvar")
                                : nullptr),
-    _thermal_conductivity(_has_thermal_conductivity ? &getMaterialProperty<RealTensorValue>(
-                                                          "PorousFlow_thermal_conductivity_qp")
-                                                    : nullptr),
+    _thermal_conductivity(
+        _has_thermal_conductivity
+            ? &getMaterialProperty<RealTensorValue>("PorousFlow_thermal_conductivity_qp")
+            : nullptr),
     _dthermal_conductivity_dvar(_has_thermal_conductivity
                                     ? &getMaterialProperty<std::vector<RealTensorValue>>(
                                           "dPorousFlow_thermal_conductivity_qp_dvar")
-                                    : nullptr),
-    _perm_derivs(_dictator.usePermDerivs())
+                                    : nullptr)
 {
   if (_involves_fluid && _ph >= _dictator.numPhases())
-    paramError("fluid_phase",
-               "The Dictator proclaims that the maximum phase index in this simulation is ",
-               _dictator.numPhases() - 1,
-               " whereas you have used ",
+    mooseError("PorousFlowSink: The Dictator declares that the number of fluid phases is ",
+               _dictator.numPhases(),
+               ", but you have set the fluid_phase to ",
                _ph,
-               ". Remember that indexing starts at 0. You must try harder.");
-
+               ".  You must try harder.");
   if (!_involves_fluid && (_use_mass_fraction || _use_mobility || _use_relperm || _use_enthalpy ||
                            _use_internal_energy))
     mooseError("PorousFlowSink: To use_mass_fraction, use_mobility, use_relperm, use_enthalpy or "
                "use_internal_energy, you must provide a fluid phase number");
-
   if (_use_mass_fraction && _sp >= _dictator.numComponents())
-    paramError("mass_fraction_component",
-               "The Dictator declares that the maximum fluid component index is ",
-               _dictator.numComponents() - 1,
-               ", but you have set mass_fraction_component to ",
+    mooseError("PorousFlowSink: The Dictator declares that the number of fluid components is ",
+               _dictator.numComponents(),
+               ", but you have set the mass_fraction_component to ",
                _sp,
-               ". Remember that indexing starts at 0. Please be assured that the Dictator has "
-               "noted your error.");
-
+               ".  Please be assured that the Dictator has noted your error.");
   if (_use_mass_fraction && !_has_mass_fraction)
     mooseError("PorousFlowSink: You have used the use_mass_fraction flag, but you have no "
                "mass_fraction Material");
-
   if (_use_mobility && !_has_mobility)
     mooseError("PorousFlowSink: You have used the use_mobility flag, but there are not the "
                "required Materials for this");
-
   if (_use_relperm && !_has_relperm)
     mooseError(
         "PorousFlowSink: You have used the use_relperm flag, but you have no relperm Material");
-
   if (_use_enthalpy && !_has_enthalpy)
     mooseError(
         "PorousFlowSink: You have used the use_enthalpy flag, but you have no enthalpy Material");
-
   if (_use_internal_energy && !_has_internal_energy)
     mooseError("PorousFlowSink: You have used the use_internal_energy flag, but you have no "
                "internal_energy Material");
-
   if (_use_thermal_conductivity && !_has_thermal_conductivity)
     mooseError("PorousFlowSink: You have used the use_thermal_conductivity flag, but you have no "
                "thermal_conductivity Material");
@@ -278,18 +274,12 @@ PorousFlowSink::jac(unsigned int jvar) const
   {
     const Real k = ((*_permeability)[_qp] * _normals[_qp]) * _normals[_qp];
     const Real mob = (*_fluid_density_node)[_i][_ph] * k / (*_fluid_viscosity)[_i][_ph];
+    RealTensorValue ktprime = (*_dpermeability_dvar)[_qp][pvar] * _phi[_j][_qp];
+    for (unsigned i = 0; i < LIBMESH_DIM; ++i)
+      ktprime += (*_dpermeability_dgradvar)[_qp][i][pvar] * _grad_phi[_j][_qp](i);
+    const Real kprime = (ktprime * _normals[_qp]) * _normals[_qp];
 
-    Real mobprime = 0.0;
-    if (_perm_derivs)
-    {
-      RealTensorValue ktprime = (*_dpermeability_dvar)[_qp][pvar] * _phi[_j][_qp];
-      for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
-        ktprime += (*_dpermeability_dgradvar)[_qp][i][pvar] * _grad_phi[_j][_qp](i);
-      const Real kprime = (ktprime * _normals[_qp]) * _normals[_qp];
-
-      mobprime += (*_fluid_density_node)[_i][_ph] * kprime / (*_fluid_viscosity)[_i][_ph];
-    }
-
+    Real mobprime = (*_fluid_density_node)[_i][_ph] * kprime / (*_fluid_viscosity)[_i][_ph];
     mobprime +=
         (_i != _j
              ? 0.0

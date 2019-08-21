@@ -1,21 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWVOLUMETRICSTRAIN_H
+#define POROUSFLOWVOLUMETRICSTRAIN_H
 
 #include "PorousFlowMaterialVectorBase.h"
 #include "RankTwoTensor.h"
-
-class PorousFlowVolumetricStrain;
-
-template <>
-InputParameters validParams<PorousFlowVolumetricStrain>();
 
 /**
  * PorousFlowVolumetricStrain computes volumetric strains, and derivatives thereof
@@ -32,19 +26,19 @@ protected:
   /// If true then the strain rate will include terms that ensure mass is conserved when doing integrals over the displaced mesh
   const bool _consistent;
 
-  /// Number of displacements supplied (1 in 1D, 2 in 2D, 3 in 3D)
+  /// number of displacements supplied (1 in 1D, 2 in 2D, 3 in 3D)
   const unsigned int _ndisp;
 
-  /// Displacement variable values at the quad point
+  /// displacement variable values at the quad point
   std::vector<const VariableValue *> _disp;
 
-  /// MOOSE variable number of the displacements variables provided
+  /// moose variable number of the displacements variables provided
   std::vector<unsigned int> _disp_var_num;
 
-  /// Gradient of the displacements
+  /// gradient of the displacements
   std::vector<const VariableGradient *> _grad_disp;
 
-  /// Old value of gradient of the displacements
+  /// old value of gradient of the displacements
   std::vector<const VariableGradient *> _grad_disp_old;
 
   /// The volumetric strain rate at the quadpoints
@@ -68,3 +62,4 @@ protected:
   MaterialProperty<std::vector<RealGradient>> & _dvol_total_strain_qp_dvar;
 };
 
+#endif // POROUSFLOWVOLUMETRICSTRAIN_H

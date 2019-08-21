@@ -1,6 +1,9 @@
 [Mesh]
   file = 1d_2d.e
-  # 1d_2d.e contains QUAD4 and BEAM2 elements.
+  # Mixed-dimension meshes don't seem to work with DistributedMesh.  The
+  # program hangs, I can't get a useful stack trace when I attach to
+  # it.  See also #2130.
+  parallel_type = replicated
 []
 
 [Variables]
@@ -52,6 +55,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

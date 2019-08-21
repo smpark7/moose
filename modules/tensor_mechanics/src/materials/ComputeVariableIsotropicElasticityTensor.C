@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeVariableIsotropicElasticityTensor.h"
-
-registerMooseObject("TensorMechanicsApp", ComputeVariableIsotropicElasticityTensor);
 
 template <>
 InputParameters
@@ -30,6 +25,7 @@ validParams<ComputeVariableIsotropicElasticityTensor>()
 ComputeVariableIsotropicElasticityTensor::ComputeVariableIsotropicElasticityTensor(
     const InputParameters & parameters)
   : ComputeElasticityTensorBase(parameters),
+    _elasticity_tensor_old(declarePropertyOld<RankFourTensor>(_elasticity_tensor_name)),
     _youngs_modulus(getMaterialProperty<Real>("youngs_modulus")),
     _poissons_ratio(getMaterialProperty<Real>("poissons_ratio")),
     _num_args(coupledComponents("args")),
@@ -41,9 +37,6 @@ ComputeVariableIsotropicElasticityTensor::ComputeVariableIsotropicElasticityTens
     _d2elasticity_tensor(_num_args),
     _isotropic_elastic_constants(2)
 {
-  // all tensors created by this class are always isotropic
-  issueGuarantee(_elasticity_tensor_name, Guarantee::ISOTROPIC);
-
   // fetch prerequisite derivatives and build elasticity tensor derivatives and cross-derivatives
   for (unsigned int i = 0; i < _num_args; ++i)
   {
@@ -79,16 +72,16 @@ ComputeVariableIsotropicElasticityTensor::initialSetup()
   for (unsigned int i = 0; i < _num_args; ++i)
   {
     const VariableName & iname = getVar("args", i)->name();
-
-    if (!_fe_problem.isMatPropRequested(
-            derivativePropertyNameFirst(_elasticity_tensor_name, iname)))
+    if (_fe_problem.isMatPropRequested(propertyNameFirst(_elasticity_tensor_name, iname)))
+      mooseError("Derivative of elasticity tensor requested, but not yet implemented");
+    else
       _delasticity_tensor[i] = nullptr;
-
     for (unsigned int j = 0; j < _num_args; ++j)
     {
       const VariableName & jname = getVar("args", j)->name();
-      if (!_fe_problem.isMatPropRequested(
-              derivativePropertyNameSecond(_elasticity_tensor_name, iname, jname)))
+      if (_fe_problem.isMatPropRequested(propertyNameSecond(_elasticity_tensor_name, iname, jname)))
+        mooseError("Second Derivative of elasticity tensor requested, but not yet implemented");
+      else
         _d2elasticity_tensor[i][j] = nullptr;
     }
   }
@@ -102,55 +95,24 @@ ComputeVariableIsotropicElasticityTensor::initQpStatefulProperties()
 void
 ComputeVariableIsotropicElasticityTensor::computeQpElasticityTensor()
 {
-  const Real E = _youngs_modulus[_qp];
-  const Real nu = _poissons_ratio[_qp];
+  // lambda
+  _isotropic_elastic_constants[0] =
+      _youngs_modulus[_qp] * _poissons_ratio[_qp] /
+      ((1.0 + _poissons_ratio[_qp]) * (1.0 - 2.0 * _poissons_ratio[_qp]));
+  // shear modulus
+  _isotropic_elastic_constants[1] = _youngs_modulus[_qp] / (2.0 * (1.0 + _poissons_ratio[_qp]));
 
-  _elasticity_tensor[_qp].fillSymmetricIsotropicEandNu(E, nu);
+  _elasticity_tensor[_qp].fillFromInputVector(_isotropic_elastic_constants,
+                                              RankFourTensor::symmetric_isotropic);
 
   // Define derivatives of the elasticity tensor
   for (unsigned int i = 0; i < _num_args; ++i)
   {
     if (_delasticity_tensor[i])
-    {
-      const Real dE = (*_dyoungs_modulus[i])[_qp];
-      const Real dnu = (*_dpoissons_ratio[i])[_qp];
-
-      const Real dlambda = (E * dnu + dE * nu) / ((1.0 + nu) * (1.0 - 2.0 * nu)) -
-                           E * nu * dnu / ((1.0 + nu) * (1.0 + nu) * (1.0 - 2.0 * nu)) +
-                           2.0 * E * nu * dnu / ((1.0 + nu) * (1.0 - 2.0 * nu) * (1.0 - 2.0 * nu));
-      const Real dG = dE / (2.0 * (1.0 + nu)) - 2.0 * E * dnu / (4.0 * (1.0 + nu) * (1.0 + nu));
-
-      (*_delasticity_tensor[i])[_qp].fillGeneralIsotropic(dlambda, dG, 0.0);
-    }
+      mooseError("Derivative of elasticity tensor requested, but not yet implemented");
 
     for (unsigned int j = i; j < _num_args; ++j)
       if (_d2elasticity_tensor[i][j])
-      {
-        const Real dEi = (*_dyoungs_modulus[i])[_qp];
-        const Real dnui = (*_dpoissons_ratio[i])[_qp];
-
-        const Real dEj = (*_dyoungs_modulus[j])[_qp];
-        const Real dnuj = (*_dpoissons_ratio[j])[_qp];
-
-        const Real d2E = (*_d2youngs_modulus[i][j])[_qp];
-        const Real d2nu = (*_d2poissons_ratio[i][j])[_qp];
-
-        const Real d2lambda =
-            1.0 / ((1.0 + nu) * (2.0 * nu - 1.0)) *
-            (-E * d2nu - nu * d2E - dEi * dnuj - dEj * dnui +
-             (2.0 * E * d2nu * nu + 4.0 * dnui * dnuj * E + 2.0 * dEi * dnuj * nu +
-              2.0 * dEj * dnui * nu) /
-                 (2.0 * nu - 1.0) -
-             8.0 * dnui * dnuj * E * nu / ((2.0 * nu - 1.0) * (2.0 * nu - 1.0)) +
-             (E * d2nu * nu + 2.0 * E * dnui * dnuj + dEi * dnuj * nu + dEj * dnui * nu) /
-                 (nu + 1.0) -
-             4.0 * E * nu * dnui * dnuj / ((1.0 + nu) * (2.0 * nu - 1.0)) -
-             2.0 * E * dnui * dnuj * nu / ((nu + 1.0) * (nu + 1.0)));
-        const Real d2G = 1.0 / (nu + 1.0) *
-                         (0.5 * d2E - (E * d2nu + dEi * dnuj + dEj * dnui) / (2.0 * nu + 2.0) +
-                          dnui * dnuj * E / ((nu + 1.0) * (nu + 1.0)));
-
-        (*_d2elasticity_tensor[i][j])[_qp].fillGeneralIsotropic(d2lambda, d2G, 0.0);
-      }
+        mooseError("Second derivative of elasticity tensor requested, but not yet implemented");
   }
 }

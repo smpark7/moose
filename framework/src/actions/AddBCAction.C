@@ -1,17 +1,20 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "AddBCAction.h"
 #include "FEProblem.h"
 #include "BoundaryCondition.h"
-
-registerMooseAction("MooseApp", AddBCAction, "add_bc");
 
 template <>
 InputParameters
@@ -27,12 +30,5 @@ AddBCAction::AddBCAction(InputParameters params) : MooseObjectAction(params) {}
 void
 AddBCAction::act()
 {
-  if (Registry::isADObj(_type + "<RESIDUAL>"))
-  {
-    _problem->addBoundaryCondition(_type + "<RESIDUAL>", _name + "_residual", _moose_object_pars);
-    _problem->addBoundaryCondition(_type + "<JACOBIAN>", _name + "_jacobian", _moose_object_pars);
-    _problem->haveADObjects(true);
-  }
-  else
-    _problem->addBoundaryCondition(_type, _name, _moose_object_pars);
+  _problem->addBoundaryCondition(_type, _name, _moose_object_pars);
 }

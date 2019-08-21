@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 from peacock.PeacockMainWindow import PeacockMainWindow
 from peacock.utils import Testing
 import argparse, os
@@ -30,7 +21,6 @@ class Tests(Testing.PeacockTester):
         w._showConsole()
         self.assertEqual(w.console.isVisible(), True)
         w.setPythonVariable("foo", "bar")
-        w.tab_plugin.InputFileEditorWithMesh.MeshViewerPlugin._reset()
 
     def testConnections(self):
         w = self.newWidget(args=[])
@@ -40,18 +30,16 @@ class Tests(Testing.PeacockTester):
         runner = w.tab_plugin.ExecuteTabPlugin.ExecuteRunnerPlugin
         self.assertEqual(runner._total_steps, 0)
 
-        w.tab_plugin.InputFileEditorWithMesh.setInputFile("transient.i")
+        w.tab_plugin.InputFileEditorWithMesh.setInputFile("../../common/transient.i")
         w.setTab(w.tab_plugin.ExecuteTabPlugin.tabName())
+        w.tab_plugin.ExecuteTabPlugin.ExecuteOptionsPlugin.setWorkingDir(self.starting_directory)
         self.assertIn("transient.i", w.windowTitle())
 
         self.assertEqual(runner._total_steps, 8)
 
-        runner.runClicked()
-        runner.runner.process.waitForFinished()
+        w.tab_plugin.ExecuteTabPlugin.ExecuteRunnerPlugin.runClicked()
         Testing.process_events(t=2)
         self.assertTrue(os.path.exists("out_transient.e"))
-
-        w.tab_plugin.InputFileEditorWithMesh.MeshViewerPlugin._reset()
 
 
 if __name__ == '__main__':

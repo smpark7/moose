@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWRELATIVEPERMEABILITYFLAC_H
+#define POROUSFLOWRELATIVEPERMEABILITYFLAC_H
 
 #include "PorousFlowRelativePermeabilityBase.h"
 #include "PorousFlowFLACrelperm.h"
@@ -31,7 +30,8 @@ protected:
   virtual Real relativePermeability(Real seff) const override;
   virtual Real dRelativePermeability(Real seff) const override;
 
-  /// Exponent m for the specified phase
+  /// exponent m for the specified phase
   const Real _m;
 };
 
+#endif // POROUSFLOWRELATIVEPERMEABILITYFLAC_H

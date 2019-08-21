@@ -1,27 +1,31 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ELEMENTDAMPER_H
+#define ELEMENTDAMPER_H
 
 // Moose Includes
 #include "Damper.h"
 #include "MaterialPropertyInterface.h"
 #include "MooseTypes.h"
+#include "MooseVariableBase.h"
 
 // Forward Declarations
 class ElementDamper;
 class SubProblem;
 class SystemBase;
-template <typename>
-class MooseVariableFE;
-typedef MooseVariableFE<Real> MooseVariable;
-typedef MooseVariableFE<VectorValue<Real>> VectorMooseVariable;
+class MooseVariable;
 class Assembly;
 
 template <>
@@ -64,22 +68,23 @@ protected:
   MooseVariable & _var;
 
   /// Current element
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
 
   /// Quadrature point index
   unsigned int _qp;
   /// Quadrature points
   const MooseArray<Point> & _q_point;
   /// Quadrature rule
-  const QBase * const & _qrule;
+  QBase *& _qrule;
   /// Transformed Jacobian weights
   const MooseArray<Real> & _JxW;
 
   /// The current Newton increment
-  const VariableValue & _u_increment;
+  VariableValue & _u_increment;
   /// Holds the current solution at the current quadrature point
   const VariableValue & _u;
   /// Holds the current solution gradient at the current quadrature point
   const VariableGradient & _grad_u;
 };
 
+#endif // ELEMENTDAMPER_H

@@ -1,15 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "MovingPlanarFront.h"
-
-registerMooseObject("PorousFlowApp", MovingPlanarFront);
 
 template <>
 InputParameters
@@ -23,10 +19,12 @@ validParams<MovingPlanarFront>()
       "The front is an infinite plane with normal pointing from start_posn to "
       "end_posn.  The front's distance from start_posn is defined by distance.  You "
       "should ensure that distance is positive");
-  params.addParam<Real>(
+  params.addRequiredParam<Real>(
       "active_length",
-      std::numeric_limits<Real>::max(),
-      "Points greater than active_length behind the front will return false_value");
+      "This function will return true_value at a point if: (a) t >= "
+      "activation_time; (b) t < deactivation_time; (c) the point lies in the "
+      "domain between start_posn and the front position; (d) the distance between "
+      "the point and the front position <= active_length.");
   params.addParam<Real>("true_value", 1.0, "Return this value if a point is in the active zone.");
   params.addParam<Real>(
       "false_value", 0.0, "Return this value if a point is not in the active zone.");
@@ -36,21 +34,9 @@ validParams<MovingPlanarFront>()
   params.addParam<Real>("deactivation_time",
                         std::numeric_limits<Real>::max(),
                         "This function will return false_value when t >= deactivation_time");
-  params.addClassDescription(
-      "This function defines the position of a moving front.  The front is "
-      "an infinite plane with normal pointing from start_posn to end_posn.   The front's distance "
-      "from start_posn is defined by 'distance', so if the 'distance' function is time dependent, "
-      "the front's position will change with time.  Roughly speaking, the function returns "
-      "true_value for points lying in between start_posn and start_posn + distance.  Precisely "
-      "speaking, two planes are constructed, both with normal pointing from start_posn to "
-      "end_posn.  The first plane passes through start_posn; the second plane passes through "
-      "end_posn.  Given a point p and time t, this function returns false_value if ANY of the "
-      "following are true: (a) t<activation_time; (b) t>=deactivation_time; (c) p is 'behind' "
-      "start_posn (ie, p lies on one side of the start_posn plane and end_posn lies on the other "
-      "side); (d) p is 'ahead' of the front (ie, p lies one one side of the front and start_posn "
-      "lies on the other side); (e) the distance between p and the front is greater than "
-      "active_length.  Otherwise, the point is 'in the active zone' and the function returns "
-      "true_value.");
+  params.addClassDescription("This function defines the position of a moving front.  The front is "
+                             "an infinite plane with normal pointing from start_posn to end_posn.  "
+                             "The front's distance from start_posn is defined by distance");
   return params;
 }
 
@@ -67,13 +53,13 @@ MovingPlanarFront::MovingPlanarFront(const InputParameters & parameters)
     _deactivation_time(getParam<Real>("deactivation_time")),
     _front_normal(_end_posn - _start_posn)
 {
-  if (_front_normal.norm() == 0)
+  if (_front_normal.size() == 0)
     mooseError("MovingPlanarFront: start_posn and end_posn must be different points");
-  _front_normal /= _front_normal.norm();
+  _front_normal /= _front_normal.size();
 }
 
 Real
-MovingPlanarFront::value(Real t, const Point & p) const
+MovingPlanarFront::value(Real t, const Point & p)
 {
   if (t < _activation_time)
     return _false_value;

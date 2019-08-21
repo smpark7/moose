@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "JsonInputFileFormatter.h"
 #include "MooseUtils.h"
@@ -157,8 +162,6 @@ JsonInputFileFormatter::addParameters(const moosecontrib::Json::Value & params)
     std::string required;
     if (param["required"].asBool())
       required = "(required)";
-    if (def.size() == 0 && required.size() == 0)
-      def = "(no_default)";
     std::string l = name + indent + " = " + def + required;
     if (l.size() > max_len)
       max_len = l.size();

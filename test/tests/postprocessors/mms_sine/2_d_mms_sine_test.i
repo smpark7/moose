@@ -86,6 +86,7 @@
   dt = .1
   num_steps = 5
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

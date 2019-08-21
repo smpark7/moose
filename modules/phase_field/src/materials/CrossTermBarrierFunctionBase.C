@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "CrossTermBarrierFunctionBase.h"
 
 template <>
@@ -39,13 +36,12 @@ CrossTermBarrierFunctionBase::CrossTermBarrierFunctionBase(const InputParameters
 {
   // if Vector W_ij is not the correct size to fill the matrix give error
   if (_num_eta * _num_eta != _W_ij.size())
-    paramError("W_ij",
-               "Size of W_ij does not match (number of etas)^2. Supply W_ij of correct size.");
+    mooseError("Size of W_ij does not match (number of etas)^2. Supply W_ij of correct size.");
 
   // error out if the W_ij diagonal values are not zero
   for (unsigned int i = 0; i < _num_eta; ++i)
     if (_W_ij[_num_eta * i + i] != 0)
-      paramError("W_ij", "Set on-diagonal values of W_ij to zero.");
+      mooseError("Set on-diagonal values of W_ij to zero.");
 
   // declare g derivative properties, fetch eta values
   for (unsigned int i = 0; i < _num_eta; ++i)

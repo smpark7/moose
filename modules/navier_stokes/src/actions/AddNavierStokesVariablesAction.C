@@ -1,12 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "AddNavierStokesVariablesAction.h"
 
 // MOOSE includes
@@ -14,12 +11,9 @@
 #include "FEProblem.h"
 #include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/fe.h"
 #include "libmesh/string_to_enum.h"
-
-registerMooseAction("NavierStokesApp",
-                    AddNavierStokesVariablesAction,
-                    "add_navier_stokes_variables");
 
 template <>
 InputParameters
@@ -77,25 +71,28 @@ AddNavierStokesVariablesAction::act()
     _block_ids.insert(id);
   }
 
-  auto var_type = AddVariableAction::determineType(fe_type, 1);
-  auto base_params = _factory.getValidParams(var_type);
-  base_params.set<MooseEnum>("order") = fe_type.order.get_order();
-  base_params.set<MooseEnum>("family") = Moose::stringify(fe_type.family);
-  if (_block_ids.size() != 0)
-    for (const SubdomainID & id : _block_ids)
-      base_params.set<std::vector<SubdomainName>>("block").push_back(Moose::stringify(id));
-
-  // Add the variables to the FEProblemBase
-  for (unsigned int i = 0; i < _vars.size(); ++i)
+  if (_block_ids.size() == 0)
   {
-    InputParameters var_params(base_params);
-    var_params.set<std::vector<Real>>("scaling") = {_scaling[i]};
-    _problem->addVariable(var_type, _vars[i], var_params);
-  }
+    // Add the variables to the FEProblemBase
+    for (unsigned int i = 0; i < _vars.size(); ++i)
+      _problem->addVariable(_vars[i], fe_type, _scaling[i]);
 
-  // Add Aux variables.  These are all required in order for the code
-  // to run, so they should not be independently selectable by the
-  // user.
-  for (const auto & aux_name : _auxs)
-    _problem->addAuxVariable(var_type, aux_name, base_params);
+    // Add Aux variables.  These are all required in order for the code
+    // to run, so they should not be independently selectable by the
+    // user.
+    for (const auto & aux_name : _auxs)
+      _problem->addAuxVariable(aux_name, fe_type);
+  }
+  else
+  {
+    // Add the variables to the FEProblemBase
+    for (unsigned int i = 0; i < _vars.size(); ++i)
+      _problem->addVariable(_vars[i], fe_type, _scaling[i], &_block_ids);
+
+    // Add Aux variables.  These are all required in order for the code
+    // to run, so they should not be independently selectable by the
+    // user.
+    for (const auto & aux_name : _auxs)
+      _problem->addAuxVariable(aux_name, fe_type, &_block_ids);
+  }
 }

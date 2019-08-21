@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 // Navier-Stokes includes
 #include "NS.h"
@@ -16,8 +14,6 @@
 
 // MOOSE includes
 #include "MooseVariable.h"
-
-registerMooseObject("NavierStokesApp", NSInitialCondition);
 
 template <>
 InputParameters
@@ -49,7 +45,7 @@ NSInitialCondition::NSInitialCondition(const InputParameters & parameters)
 Real
 NSInitialCondition::value(const Point & /*p*/)
 {
-  const Real rho_initial = _fp.rho_from_p_T(_initial_pressure, _initial_temperature);
+  const Real rho_initial = _fp.rho(_initial_pressure, _initial_temperature);
 
   // TODO: The internal energy could be computed by the IdealGasFluidProperties.
   const Real e_initial = _fp.cv() * _initial_temperature;
@@ -63,7 +59,7 @@ NSInitialCondition::value(const Point & /*p*/)
     return e_initial;
 
   if (_var.name() == NS::mach_number)
-    return _initial_velocity.norm() / _fp.c_from_v_e(v_initial, e_initial);
+    return _initial_velocity.norm() / _fp.c(v_initial, e_initial);
 
   if (_var.name() == NS::pressure)
     return _initial_pressure;

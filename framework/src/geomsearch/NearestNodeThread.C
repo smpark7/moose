@@ -1,17 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NearestNodeThread.h"
 #include "MooseMesh.h"
 
+// libmesh includes
 #include "libmesh/threads.h"
-#include "libmesh/node.h"
 
 #include <cmath>
 
@@ -75,10 +80,9 @@ NearestNodeThread::operator()(const NodeIdRange & range)
         if (std::isnan((*cur_node)(0)) || std::isinf((*cur_node)(0)) ||
             std::isnan((*cur_node)(1)) || std::isinf((*cur_node)(1)) ||
             std::isnan((*cur_node)(2)) || std::isinf((*cur_node)(2)))
-          throw MooseException(
-              "Failure in NearestNodeThread because solution contains inf or not-a-number "
-              "entries.  This is likely due to a failed factorization of the Jacobian "
-              "matrix.");
+          mooseError("Failure in NearestNodeThread because solution contains inf or not-a-number "
+                     "entries.  This is likely due to a failed factorization of the Jacobian "
+                     "matrix.");
       }
       mooseError("Unable to find nearest node!");
     }

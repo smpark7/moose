@@ -1,17 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef CONSERVEDACTION_H
+#define CONSERVEDACTION_H
 
 // MOOSE includes
 #include "Action.h"
 
+// libMesh includes
 #include "libmesh/fe_type.h"
 
 // Forward declaration
@@ -25,19 +24,16 @@ class ConservedAction : public Action
 public:
   ConservedAction(const InputParameters & params);
 
-  virtual void act() override;
+  virtual void act();
 
 protected:
   /// Type of solve
   enum class SolveType
   {
     DIRECT,
-    REVERSE_SPLIT,
-    FORWARD_SPLIT
+    SPLIT,
   };
-  /// Name of chemical potential variable for split solves
-  std::string _chempot_name;
-  /// Type of solve to use used in the action
+
   const SolveType _solve_type;
   /// Name of the variable being created
   const NonlinearVariableName _var_name;
@@ -47,3 +43,4 @@ protected:
   const Real _scaling;
 };
 
+#endif // CONSERVEDACTION_H

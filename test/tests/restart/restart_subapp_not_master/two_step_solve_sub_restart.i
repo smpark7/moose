@@ -40,7 +40,7 @@
   [../]
 
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -64,6 +64,7 @@
 
 [Executioner]
   type = Transient
+  start_time = 0.0
   end_time = 2.0
   dt = 1.0
 []

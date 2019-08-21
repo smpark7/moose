@@ -1,5 +1,4 @@
 [Tests]
-  deprecated = True
   [./inside]
     type = Exodiff
     input = subdomain_bounding_box_inside.i

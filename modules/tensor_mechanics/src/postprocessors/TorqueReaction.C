@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "TorqueReaction.h"
 
@@ -13,18 +11,12 @@
 #include "AuxiliarySystem.h"
 #include "MooseVariable.h"
 
-registerMooseObject("TensorMechanicsApp", TorqueReaction);
-
 template <>
 InputParameters
 validParams<TorqueReaction>()
 {
   InputParameters params = validParams<NodalPostprocessor>();
-  params.addClassDescription("TorqueReaction calculates the torque in 2D and 3D"
-                             "about a user-specified axis of rotation centered"
-                             "at a user-specied origin.");
-  params.addRequiredParam<std::vector<AuxVariableName>>("reaction_force_variables",
-                                                        "The reaction variables");
+  params.addRequiredParam<std::vector<AuxVariableName>>("react", "The reaction variables");
   params.addParam<RealVectorValue>(
       "axis_origin", Point(), "Origin of the axis of rotation used to calculate the torque");
   params.addRequiredParam<RealVectorValue>("direction_vector",
@@ -41,12 +33,11 @@ TorqueReaction::TorqueReaction(const InputParameters & parameters)
     _axis_origin(getParam<RealVectorValue>("axis_origin")),
     _direction_vector(getParam<RealVectorValue>("direction_vector"))
 {
-  std::vector<AuxVariableName> reacts =
-      getParam<std::vector<AuxVariableName>>("reaction_force_variables");
+  std::vector<AuxVariableName> reacts = getParam<std::vector<AuxVariableName>>("react");
   _nrt = reacts.size();
 
   for (unsigned int i = 0; i < _nrt; ++i)
-    _react.push_back(&_aux.getFieldVariable<Real>(_tid, reacts[i]).dofValues());
+    _react.push_back(&_aux.getVariable(_tid, reacts[i]).nodalSln());
 }
 
 void

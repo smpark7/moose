@@ -1,90 +1,247 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef NACLFLUIDPROPERTIES_H
+#define NACLFLUIDPROPERTIES_H
 
-#include "SinglePhaseFluidProperties.h"
+#include "SinglePhaseFluidPropertiesPT.h"
 
 class NaClFluidProperties;
 
 template <>
 InputParameters validParams<NaClFluidProperties>();
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-
 /**
  * NaCl fluid properties as a function of pressure (Pa) and temperature (K).
  * Note: only solid state (halite) properties are currently implemented to
  * use in brine formulation
  *
- * Most properties from:
- * Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
+ * From Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
  * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 500 bar, and 0
  * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007)
- *
- * Thermal conductivity from:
- * Urqhart and Bauer, Experimental determination of single-crystal halite
- * thermal conductivity, diffusivity and specific heat from -75 C to 300 C,
- * Int. J. Rock Mech. and Mining Sci., 78 (2015)
- * Note: The function given in this reference doesn't satisfactorily match their
- * experimental data, so the data was refitted using a third order polynomial
- *
- * NaCl critical properties from:
- * From Anderko and Pitzer, Equation of state for pure sodium chloride, Fluid
- * Phase Equil., 79 (1992)
  */
-class NaClFluidProperties : public SinglePhaseFluidProperties
+class NaClFluidProperties : public SinglePhaseFluidPropertiesPT
 {
 public:
   NaClFluidProperties(const InputParameters & parameters);
   virtual ~NaClFluidProperties();
 
+  /**
+   * Fluid name
+   * @return "nacl"
+   */
   virtual std::string fluidName() const override;
 
+  /**
+   * NaCl molar mass
+   * @return molar mass (kg/mol)
+   */
   virtual Real molarMass() const override;
 
-  virtual Real criticalPressure() const override;
+  /**
+   * NaCl critical pressure
+   * From Anderko and Pitzer, Equation of state for pure sodium chloride, Fluid
+   * Phase Equil., 79 (1992)
+   * @return critical pressure (Pa)
+   */
+  virtual Real criticalPressure() const;
 
-  virtual Real criticalTemperature() const override;
+  /**
+   * NaCl critical temperature
+   * From Anderko and Pitzer, Equation of state for pure sodium chloride, Fluid
+   * Phase Equil., 79 (1992)
+   * @return critical temperature (K)
+   */
+  virtual Real criticalTemperature() const;
 
-  virtual Real criticalDensity() const override;
+  /**
+   * NaCl critical density
+   * From Anderko and Pitzer, Equation of state for pure sodium chloride, Fluid
+   * Phase Equil., 79 (1992)
+   * @return critical density (kg/m^3)
+   */
+  virtual Real criticalDensity() const;
 
-  virtual Real triplePointPressure() const override;
+  /**
+   * NaCl density as a function of pressure and temperature
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return density (kg/m^3)
+   */
+  virtual Real rho(Real pressure, Real temperature) const override;
 
-  virtual Real triplePointTemperature() const override;
-
-  virtual Real rho_from_p_T(Real pressure, Real temperature) const override;
-
-  virtual void rho_from_p_T(
+  /**
+   * NaCl density as a function of pressure and temperature, and
+   * derivatives wrt pressure and temperature
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param[out] rho density (kg/m^3)
+   * @param[out] drho_dp derivative of density wrt pressure
+   * @param[out] drho_dT derivative of density wrt temperature
+   */
+  virtual void rho_dpT(
       Real pressure, Real temperature, Real & rho, Real & drho_dp, Real & drho_dT) const override;
 
-  virtual Real e_from_p_T(Real pressure, Real temperature) const override;
+  /**
+   * Internal energy from pressure and temperature
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return internal enerygy (J/kg)
+   */
+  virtual Real e(Real pressure, Real temperature) const override;
 
+  /**
+   * Internal energy and its derivatives wrt pressure and temperature
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param[out] e internal energy (J/kg)
+   * @param[out] de_dp derivative of internal energy wrt pressure
+   * @param[out] de_dT derivative of internal energy wrt temperature
+   */
   virtual void
-  e_from_p_T(Real pressure, Real temperature, Real & e, Real & de_dp, Real & de_dT) const override;
+  e_dpT(Real pressure, Real temperature, Real & e, Real & de_dp, Real & de_dT) const override;
 
-  virtual Real cp_from_p_T(Real pressure, Real temperature) const override;
+  /**
+   * Density and internal energy and their derivatives wrt pressure and temperature
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param[out] rho density (kg/m^3)
+   * @param[out] drho_dp derivative of density wrt pressure
+   * @param[out] drho_dT derivative of density wrt temperature
+   * @param[out] e internal energy (J/kg)
+   * @param[out] de_dp derivative of internal energy wrt pressure
+   * @param[out] de_dT derivative of internal energy wrt temperature
+   */
+  virtual void rho_e_dpT(Real pressure,
+                         Real temperature,
+                         Real & rho,
+                         Real & drho_dp,
+                         Real & drho_dT,
+                         Real & e,
+                         Real & de_dp,
+                         Real & de_dT) const override;
 
-  using SinglePhaseFluidProperties::cp_from_p_T;
+  /**
+   * Speed of sound
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return speed of sound (m/s)
+   */
+  virtual Real c(Real pressure, Real temperature) const override;
 
-  virtual Real cv_from_p_T(Real pressure, Real temperature) const override;
+  /**
+   * Isobaric specific heat capacity
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return cp (J/kg/K)
+   */
+  virtual Real cp(Real pressure, Real temperature) const override;
 
-  virtual Real k_from_p_T(Real pressure, Real temperature) const override;
+  /**
+   * Isochoric specific heat
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return cv (J/kg/K)
+   */
+  virtual Real cv(Real pressure, Real temperature) const override;
 
+  /**
+   * NaCl viscosity
+   *
+   * @param density fluid density (kg/m^3)
+   * @param temperature fluid temperature (K)
+   * @return viscosity (Pa.s)
+   */
+  virtual Real mu(Real density, Real temperature) const override;
+
+  /**
+   * NaCl viscosity and derivatives wrt density and temperature
+   *
+   * @param density fluid density (kg/m^3)
+   * @param temperature fluid temperature (K)
+   * @param[out] mu viscosity (Pa.s)
+   * @param[out] dmu_drho derivative of viscosity wrt density
+   * @param[out] dmu_dT derivative of viscosity wrt temperature
+   */
+  virtual void mu_drhoT(
+      Real density, Real temperature, Real & mu, Real & dmu_drho, Real & dmu_dT) const override;
+
+  /**
+   * Thermal conductivity
+   * From Urqhart and Bauer, Experimental determination of single-crystal halite
+   * thermal conductivity, diffusivity and specific heat from -75 C to 300 C,
+   * Int. J. Rock Mech. and Mining Sci., 78 (2015)
+   * Note: The function given in this reference doesn't satisfactorily match their
+   * experimental data, so the data was refitted using a third order polynomial
+   *
+   * @param density fluid density (kg/m^3)
+   * @param temperature fluid temperature (K)
+   * @return k (W/m/K)
+   */
+  virtual Real k(Real density, Real temperature) const override;
+
+  /**
+   * Specific entropy as a function of pressure and temperature
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return s (J/kg/K)
+   */
+  virtual Real s(Real pressure, Real temperature) const override;
+
+  /**
+   * Enthalpy as a function of pressure and temperature
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return h (J/kg)
+   */
+  virtual Real h(Real pressure, Real temperature) const override;
+
+  /**
+   * Enthalpy and its derivatives wrt pressure and temperature.
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param[out] h (J/kg)
+   * @param[out] dh_dp derivative of enthalpy wrt pressure
+   * @param[out] dh_dT derivative of enthalpy wrt temperature
+   */
   virtual void
-  k_from_p_T(Real pressure, Real temperature, Real & k, Real & dk_dp, Real & dk_dT) const override;
+  h_dpT(Real pressure, Real temperature, Real & h, Real & dh_dp, Real & dh_dT) const override;
 
-  virtual Real h_from_p_T(Real pressure, Real temperature) const override;
+  /**
+   * Thermal expansion coefficient
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @return beta (1/K)
+   */
+  virtual Real beta(Real pressure, Real temperature) const override;
 
-  virtual void
-  h_from_p_T(Real pressure, Real temperature, Real & h, Real & dh_dp, Real & dh_dT) const override;
+  /**
+   * Henry's law constant
+   * Note: not implemented in this fluid property
+   */
+  virtual Real henryConstant(Real temperature) const override;
+
+  /**
+   * Henry's law constant and derivative wrt temperature
+   * Note: not implemented in this fluid property
+   */
+  virtual void henryConstant_dT(Real temperature, Real & Kh, Real & dKh_dT) const override;
 
 protected:
   /// NaCl molar mass (kg/mol)
@@ -101,5 +258,4 @@ protected:
   const Real _T_triple;
 };
 
-#pragma GCC diagnostic pop
-
+#endif /* NACLFLUIDPROPERTIES_H */

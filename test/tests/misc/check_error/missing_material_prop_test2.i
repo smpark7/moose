@@ -4,6 +4,7 @@
 
 [Variables]
   active = 'u'
+
   [./u]
     order = FIRST
     family = LAGRANGE

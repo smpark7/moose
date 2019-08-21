@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ComputeVolumetricDeformGrad.h"
-
-registerMooseObject("TensorMechanicsApp", ComputeVolumetricDeformGrad);
 
 template <>
 InputParameters
@@ -40,8 +35,11 @@ ComputeVolumetricDeformGrad::ComputeVolumetricDeformGrad(const InputParameters &
 void
 ComputeVolumetricDeformGrad::initQpStatefulProperties()
 {
-  _post_deform_grad[_qp].setToIdentity();
-  _volumetric_deform_grad[_qp].setToIdentity();
+  _volumetric_deform_grad[_qp].zero();
+  _volumetric_deform_grad[_qp].addIa(1.0);
+
+  _post_deform_grad[_qp].zero();
+  _post_deform_grad[_qp].addIa(1.0);
 }
 
 void
@@ -54,5 +52,6 @@ ComputeVolumetricDeformGrad::computeQpProperties()
 void
 ComputeVolumetricDeformGrad::createVolumetricDeformGrad()
 {
-  _volumetric_deform_grad[_qp].setToIdentity();
+  _volumetric_deform_grad[_qp].zero();
+  _volumetric_deform_grad[_qp].addIa(1.0);
 }

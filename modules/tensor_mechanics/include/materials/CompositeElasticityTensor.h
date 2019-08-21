@@ -1,22 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef COMPOSITEELASTICITYTENSOR_H
+#define COMPOSITEELASTICITYTENSOR_H
 
 #include "Material.h"
 #include "CompositeTensorBase.h"
 #include "RankFourTensor.h"
-
-class CompositeElasticityTensor;
-
-template <>
-InputParameters validParams<CompositeElasticityTensor>();
 
 /**
  * CompositeElasticityTensor provides a simple RankFourTensor type
@@ -40,3 +33,7 @@ protected:
   MaterialProperty<RankFourTensor> & _M;
 };
 
+template <>
+InputParameters validParams<CompositeElasticityTensor>();
+
+#endif // COMPOSITEELASTICITYTENSOR_H

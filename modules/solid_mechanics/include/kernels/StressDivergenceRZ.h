@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef STRESSDIVERGENCERZ_H
+#define STRESSDIVERGENCERZ_H
 
 #include "Kernel.h"
 
@@ -25,16 +23,15 @@ public:
   StressDivergenceRZ(const InputParameters & parameters);
 
 protected:
-  virtual void computeResidual() override;
-  virtual void computeJacobian() override;
-  virtual void computeOffDiagJacobian(MooseVariableFEBase & jvar) override;
-  using Kernel::computeOffDiagJacobian;
+  virtual void computeResidual();
+  virtual void computeJacobian();
+  virtual void computeOffDiagJacobian(unsigned int jvar);
 
-  virtual Real computeQpResidual() override;
+  virtual Real computeQpResidual();
 
-  virtual Real computeQpJacobian() override;
+  virtual Real computeQpJacobian();
 
-  virtual Real computeQpOffDiagJacobian(unsigned int jvar) override;
+  virtual Real computeQpOffDiagJacobian(unsigned int jvar);
 
   Real calculateJacobian(unsigned int ivar, unsigned int jvar);
 
@@ -55,3 +52,4 @@ private:
   std::vector<std::vector<Real>> _avg_grad_phi;
   bool _volumetric_locking_correction;
 };
+#endif // STRESSDIVERGENCERZ_H

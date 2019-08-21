@@ -72,6 +72,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Steady
   solve_type = PJFNK
 []

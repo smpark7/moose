@@ -103,6 +103,7 @@
   num_steps = 2
 
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

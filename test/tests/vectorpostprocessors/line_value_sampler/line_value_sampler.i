@@ -59,14 +59,6 @@
   [../]
 []
 
-[Postprocessors]
-  [./u_avg]
-    type = ElementAverageValue
-    variable = u
-    execute_on = 'initial timestep_end'
-  [../]
-[]
-
 # Vector Postprocessor System
 [VectorPostprocessors]
   [./line_sample]
@@ -80,6 +72,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Steady
   solve_type = PJFNK
   petsc_options_iname = '-pc_type -pc_hypre_type'

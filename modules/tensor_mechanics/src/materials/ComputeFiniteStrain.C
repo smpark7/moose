@@ -1,15 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "ComputeFiniteStrain.h"
 #include "Assembly.h"
 
+// libmesh includes
 #include "libmesh/quadrature.h"
 #include "libmesh/utility.h"
 
@@ -18,8 +17,6 @@ ComputeFiniteStrain::decompositionType()
 {
   return MooseEnum("TaylorExpansion EigenSolution", "TaylorExpansion");
 }
-
-registerMooseObject("TensorMechanicsApp", ComputeFiniteStrain);
 
 template <>
 InputParameters
@@ -127,9 +124,6 @@ ComputeFiniteStrain::computeQpStrain()
       _rotation_increment[_qp] * _mechanical_strain[_qp] * _rotation_increment[_qp].transpose();
   _total_strain[_qp] =
       _rotation_increment[_qp] * _total_strain[_qp] * _rotation_increment[_qp].transpose();
-
-  if (_global_strain)
-    _total_strain[_qp] += (*_global_strain)[_qp];
 }
 
 void
@@ -141,7 +135,7 @@ ComputeFiniteStrain::computeQpIncrements(RankTwoTensor & total_strain_increment,
     case DecompMethod::TaylorExpansion:
     {
       // inverse of _Fhat
-      const RankTwoTensor invFhat = _Fhat[_qp].inverse();
+      RankTwoTensor invFhat(_Fhat[_qp].inverse());
 
       // A = I - _Fhat^-1
       RankTwoTensor A(RankTwoTensor::initIdentity);
@@ -217,8 +211,8 @@ ComputeFiniteStrain::computeQpIncrements(RankTwoTensor & total_strain_increment,
       N2.vectorOuterProduct(e_vector.column(1), e_vector.column(1));
       N3.vectorOuterProduct(e_vector.column(2), e_vector.column(2));
 
-      const RankTwoTensor Uhat = N1 * lambda1 + N2 * lambda2 + N3 * lambda3;
-      const RankTwoTensor invUhat(Uhat.inverse());
+      RankTwoTensor Uhat = N1 * lambda1 + N2 * lambda2 + N3 * lambda3;
+      RankTwoTensor invUhat(Uhat.inverse());
 
       rotation_increment = _Fhat[_qp] * invUhat;
 

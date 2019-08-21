@@ -1,29 +1,31 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "PiecewiseLinear.h"
-
-registerMooseObject("MooseApp", PiecewiseLinear);
 
 template <>
 InputParameters
 validParams<PiecewiseLinear>()
 {
   InputParameters params = validParams<Piecewise>();
-  params.addClassDescription("Linearly interpolates between pairs of x-y data");
   return params;
 }
 
 PiecewiseLinear::PiecewiseLinear(const InputParameters & parameters) : Piecewise(parameters) {}
 
 Real
-PiecewiseLinear::value(Real t, const Point & p) const
+PiecewiseLinear::value(Real t, const Point & p)
 {
   Real func_value;
   if (_has_axis)
@@ -38,7 +40,7 @@ PiecewiseLinear::value(Real t, const Point & p) const
 }
 
 Real
-PiecewiseLinear::timeDerivative(Real t, const Point & p) const
+PiecewiseLinear::timeDerivative(Real t, const Point & p)
 {
   Real func_value;
   if (_has_axis)
@@ -53,13 +55,13 @@ PiecewiseLinear::timeDerivative(Real t, const Point & p) const
 }
 
 Real
-PiecewiseLinear::integral() const
+PiecewiseLinear::integral()
 {
   return _scale_factor * _linear_interp->integrate();
 }
 
 Real
-PiecewiseLinear::average() const
+PiecewiseLinear::average()
 {
   return integral() /
          (_linear_interp->domain(_linear_interp->getSampleSize() - 1) - _linear_interp->domain(0));

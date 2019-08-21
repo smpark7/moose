@@ -1,14 +1,20 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "LineSegmentTest.h"
 
+// libMesh includes
 #include "libmesh/plane.h"
 
 TEST_F(LineSegmentTest, closestPointTest)
@@ -434,9 +440,7 @@ TEST_F(LineSegmentTest, lineIntersectTest)
   EXPECT_TRUE(t5.intersect(_pos3x, result));
   EXPECT_FALSE(t5.intersect(t4, result));
   EXPECT_TRUE(t5.intersect(_neg3y, result));
-  EXPECT_NEAR(result(0), 0., 1e-16);
-  EXPECT_NEAR(result(1), 0., 1e-16);
-  EXPECT_NEAR(result(2), 0., 1e-16);
+  EXPECT_EQ(result, Point(0, 0, 0));
 
   // Switch some of the a.intersect(b) tests to b.intersect(a) to make sure we get the same result
   EXPECT_FALSE(t2.intersect(t1, result));

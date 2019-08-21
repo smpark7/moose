@@ -47,7 +47,7 @@
     type = PiecewiseLinear
     x = '0 0.008'
     y = '1 2'
-    axis = y
+    axis = 1
   [../]
 []
 
@@ -64,7 +64,6 @@
   variable = v
   function = function_v
 [../]
-[]
 
 [BCs]
   [./top_u]
@@ -80,12 +79,12 @@
     value = 0
   [../]
 []
-
+[]
 [Executioner]
   type = Transient
   solve_type = 'PJFNK'
   petsc_options = '-snes_ksp_ew'
-  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -ksp_gmres_restart'
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package ksp_gmres_restart'
   petsc_options_value = ' lu       superlu_dist                 51'
   line_search = 'none'
   l_max_its = 50
@@ -143,6 +142,7 @@
   file_base = out
   [./console]
     type = Console
+    perf_log = true
     output_linear = true
     max_rows = 10
   [../]

@@ -1,21 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowThermalConductivityIdeal.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowThermalConductivityIdeal);
 
 template <>
 InputParameters
 validParams<PorousFlowThermalConductivityIdeal>()
 {
-  InputParameters params = validParams<PorousFlowThermalConductivityBase>();
+  InputParameters params = validParams<PorousFlowMaterialVectorBase>();
   params.addRequiredParam<RealTensorValue>(
       "dry_thermal_conductivity",
       "The thermal conductivity of the rock matrix when the aqueous saturation is zero");
@@ -34,6 +30,7 @@ validParams<PorousFlowThermalConductivityIdeal>()
                             "The phase number of the aqueous phase.  In simulations without "
                             "fluids, this parameter and the exponent parameter will not be "
                             "used: only the dry_thermal_conductivity will be used.");
+  params.set<bool>("at_nodes") = false;
   params.addClassDescription("This Material calculates rock-fluid combined thermal conductivity by "
                              "using a weighted sum.  Thermal conductivity = "
                              "dry_thermal_conductivity + S^exponent * (wet_thermal_conductivity - "
@@ -43,7 +40,7 @@ validParams<PorousFlowThermalConductivityIdeal>()
 
 PorousFlowThermalConductivityIdeal::PorousFlowThermalConductivityIdeal(
     const InputParameters & parameters)
-  : PorousFlowThermalConductivityBase(parameters),
+  : PorousFlowMaterialVectorBase(parameters),
     _la_dry(getParam<RealTensorValue>("dry_thermal_conductivity")),
     _wet_and_dry_differ(parameters.isParamValid("wet_thermal_conductivity")),
     _la_wet(_wet_and_dry_differ ? getParam<RealTensorValue>("wet_thermal_conductivity")
@@ -54,9 +51,13 @@ PorousFlowThermalConductivityIdeal::PorousFlowThermalConductivityIdeal(
     _saturation_qp(_aqueous_phase
                        ? &getMaterialProperty<std::vector<Real>>("PorousFlow_saturation_qp")
                        : nullptr),
-    _dsaturation_qp_dvar(_aqueous_phase ? &getMaterialProperty<std::vector<std::vector<Real>>>(
-                                              "dPorousFlow_saturation_qp_dvar")
-                                        : nullptr)
+    _dsaturation_qp_dvar(
+        _aqueous_phase
+            ? &getMaterialProperty<std::vector<std::vector<Real>>>("dPorousFlow_saturation_qp_dvar")
+            : nullptr),
+    _la_qp(declareProperty<RealTensorValue>("PorousFlow_thermal_conductivity_qp")),
+    _dla_qp_dvar(
+        declareProperty<std::vector<RealTensorValue>>("dPorousFlow_thermal_conductivity_qp_dvar"))
 {
   if (_aqueous_phase && (_aqueous_phase_number >= _num_phases))
     mooseError("PorousFlowThermalConductivityIdeal: Your aqueous phase number, ",
@@ -64,6 +65,8 @@ PorousFlowThermalConductivityIdeal::PorousFlowThermalConductivityIdeal(
                " must not exceed the number of fluid phases in the system, which is ",
                _num_phases,
                "\n");
+  if (_nodal_material == true)
+    mooseError("PorousFlowThermalConductivity classes are only defined for at_nodes = false");
 }
 
 void

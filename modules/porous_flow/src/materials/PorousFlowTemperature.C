@@ -1,15 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowTemperature.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowTemperature);
 
 template <>
 InputParameters
@@ -17,7 +13,6 @@ validParams<PorousFlowTemperature>()
 {
   InputParameters params = validParams<PorousFlowMaterial>();
   params.addCoupledVar("temperature", 20.0, "Fluid temperature variable");
-  params.addPrivateParam<std::string>("pf_material_type", "temperature");
   params.addClassDescription("Material to provide temperature at the quadpoints or nodes and "
                              "derivatives of it with respect to the PorousFlow variables");
   return params;
@@ -27,7 +22,7 @@ PorousFlowTemperature::PorousFlowTemperature(const InputParameters & parameters)
   : DerivativeMaterialInterface<PorousFlowMaterial>(parameters),
 
     _num_pf_vars(_dictator.numVariables()),
-    _temperature_var(_nodal_material ? coupledDofValues("temperature")
+    _temperature_var(_nodal_material ? coupledNodalValue("temperature")
                                      : coupledValue("temperature")),
     _grad_temperature_var(_nodal_material ? nullptr : &coupledGradient("temperature")),
     _temperature_is_PF(_dictator.isPorousFlowVariable(coupled("temperature"))),
@@ -53,7 +48,7 @@ PorousFlowTemperature::PorousFlowTemperature(const InputParameters & parameters)
 void
 PorousFlowTemperature::initQpStatefulProperties()
 {
-  computeQpProperties();
+  _temperature[_qp] = _temperature_var[_qp];
 }
 
 void

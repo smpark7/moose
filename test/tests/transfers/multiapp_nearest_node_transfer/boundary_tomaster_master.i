@@ -1,6 +1,6 @@
 # Master mesh and sub mesh are same with 4x4 quad8 elements.
 # master mesh has top boundary fixed at u=2 and bottom fixed at u=0
-# sub mesh has top boundary fixed at u = 0 and bottom fixed at u=1
+# sub mesh has top boundary fixed at u = 0 and bottom firxed at u=1
 # The u variable at right boundary of sub mesh is transferred to
 # from_sub variable of master mesh at left boundary
 
@@ -57,6 +57,7 @@
   num_steps = 1
   dt = 1
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'

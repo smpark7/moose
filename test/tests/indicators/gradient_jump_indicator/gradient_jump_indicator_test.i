@@ -60,17 +60,18 @@
 
 # Mesh Indicator System
 [Adaptivity]
-  [Indicators]
-    [error]
+  [./Indicators]
+    [./error]
       type = GradientJumpIndicator
       variable = u
-    []
-  []
+    [../]
+  [../]
 []
 
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 []
 

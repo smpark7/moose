@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "AStableDirk4.h"
@@ -13,8 +18,6 @@
 #include "FEProblem.h"
 #include "PetscSupport.h"
 #include "LStableDirk4.h"
-
-registerMooseObject("MooseApp", AStableDirk4);
 
 template <>
 InputParameters
@@ -31,9 +34,6 @@ AStableDirk4::AStableDirk4(const InputParameters & parameters)
     _gamma(0.5 + std::sqrt(3) / 3. * std::cos(libMesh::pi / 18.)),
     _safe_start(getParam<bool>("safe_start"))
 {
-  mooseInfo("AStableDirk4 and other multistage TimeIntegrators are known not to work with "
-            "Materials/AuxKernels that accumulate 'state' and should be used with caution.");
-
   // Name the stage residuals "residual_stage1", "residual_stage2", etc.
   for (unsigned int stage = 0; stage < 3; ++stage)
   {
@@ -71,48 +71,34 @@ AStableDirk4::AStableDirk4(const InputParameters & parameters)
     // FEProblemBase::addTimeIntegrator() to ensure that the
     // getCheckedPointerParam() sanity checking is happy.  This is why
     // constructing MOOSE objects "manually" is generally frowned upon.
+    params.set<FEProblemBase *>("_fe_problem_base") = &_fe_problem;
     params.set<SystemBase *>("_sys") = &_sys;
 
     _bootstrap_method = factory.create<LStableDirk4>("LStableDirk4", name() + "_bootstrap", params);
   }
 }
 
+AStableDirk4::~AStableDirk4() {}
+
 void
 AStableDirk4::computeTimeDerivatives()
 {
-  // We are multiplying by the method coefficients in postResidual(), so
+  // We are multiplying by the method coefficients in postStep(), so
   // the time derivatives are of the same form at every stage although
   // the current solution varies depending on the stage.
-  if (!_sys.solutionUDot())
-    mooseError("AStableDirk4: Time derivative of solution (`u_dot`) is not stored. Please set "
-               "uDotRequested() to true in FEProblemBase befor requesting `u_dot`.");
-
-  NumericVector<Number> & u_dot = *_sys.solutionUDot();
-  u_dot = *_solution;
-  computeTimeDerivativeHelper(u_dot, _solution_old);
-  u_dot.close();
+  _u_dot = *_solution;
+  _u_dot -= _solution_old;
+  _u_dot *= 1. / _dt;
+  _u_dot.close();
   _du_dot_du = 1. / _dt;
-}
-
-void
-AStableDirk4::computeADTimeDerivatives(DualReal & ad_u_dot, const dof_id_type & dof) const
-{
-  computeTimeDerivativeHelper(ad_u_dot, _solution_old(dof));
 }
 
 void
 AStableDirk4::solve()
 {
-  // Reset iteration counts
-  _n_nonlinear_iterations = 0;
-  _n_linear_iterations = 0;
-
   if (_t_step == 1 && _safe_start)
-  {
     _bootstrap_method->solve();
-    _n_nonlinear_iterations = _bootstrap_method->getNumNonlinearIterations();
-    _n_linear_iterations = _bootstrap_method->getNumLinearIterations();
-  }
+
   else
   {
     // Time at end of step
@@ -144,29 +130,21 @@ AStableDirk4::solve()
 
       // Do the solve
       _fe_problem.getNonlinearSystemBase().system().solve();
-
-      // Update the iteration counts
-      _n_nonlinear_iterations += getNumNonlinearIterationsLastSolve();
-      _n_linear_iterations += getNumLinearIterationsLastSolve();
-
-      // Abort time step immediately on stage failure - see TimeIntegrator doc page
-      if (!_fe_problem.converged())
-        return;
     }
   }
 }
 
 void
-AStableDirk4::postResidual(NumericVector<Number> & residual)
+AStableDirk4::postStep(NumericVector<Number> & residual)
 {
   if (_t_step == 1 && _safe_start)
-    _bootstrap_method->postResidual(residual);
+    _bootstrap_method->postStep(residual);
 
   else
   {
     // Error if _stage got messed up somehow.
     if (_stage > 4)
-      mooseError("AStableDirk4::postResidual(): Member variable _stage can only have values 1-4.");
+      mooseError("AStableDirk4::postStep(): Member variable _stage can only have values 1-4.");
 
     if (_stage < 4)
     {

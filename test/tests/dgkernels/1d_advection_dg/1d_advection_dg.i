@@ -9,7 +9,7 @@
 [Functions]
   [./ic_u]
     type = PiecewiseConstant
-    axis = x
+    axis = 0
     direction = right
     xy_data = '0.1 0.0
                0.6 1.0

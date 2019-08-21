@@ -71,7 +71,7 @@
     type = Reaction
     variable = u
     use_displaced_mesh = true
-    extra_vector_tags = 'eigen'
+    eigen_kernel = true
   [../]
 []
 
@@ -83,21 +83,18 @@
     value = 0
     use_displaced_mesh = true
   [../]
-  [./eigen_bc]
-    type = EigenDirichletBC
-    variable = u
-    boundary = '0 1 2 3'
-    use_displaced_mesh = true
-  [../]
+[]
+
+[Problem]
+  type = EigenProblem
+  eigen_problem_type = gen_non_hermitian
+  n_eigen_pairs = 1
+  n_basis_vectors = 18
 []
 
 [Executioner]
-  type = Eigenvalue
-  eigen_problem_type = gen_non_hermitian
-  which_eigen_pairs = SMALLEST_MAGNITUDE
-  n_eigen_pairs = 1
-  n_basis_vectors = 18
-  solve_type = jacobi_davidson
+  type = Steady
+  eigen_solve_type = jacobi_davidson
   petsc_options = '-eps_view'
 []
 

@@ -1,18 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PolycrystalElasticDrivingForceAction.h"
 #include "Factory.h"
 #include "FEProblem.h"
 #include "Conversion.h"
-
-registerMooseAction("PhaseFieldApp", PolycrystalElasticDrivingForceAction, "add_kernel");
 
 template <>
 InputParameters
@@ -56,8 +52,7 @@ PolycrystalElasticDrivingForceAction::act()
     std::string var_name = _var_name_base + Moose::stringify(op);
 
     // Create Stiffness derivative name
-    MaterialPropertyName D_stiff_name =
-        derivativePropertyNameFirst(_elasticity_tensor_name, var_name);
+    MaterialPropertyName D_stiff_name = propertyNameFirst(_elasticity_tensor_name, var_name);
 
     // Set name of kernel being created
     std::string kernel_type = "ACGrGrElasticDrivingForce";

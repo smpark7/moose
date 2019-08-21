@@ -56,6 +56,7 @@
 []
 
 [BCs]
+  # active = ' '
   [./Periodic]
     [./x]
       primary = bottom
@@ -76,3 +77,4 @@
   execute_on = 'timestep_end'
   exodus = true
 []
+

@@ -1,18 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "MooseTypes.h"
 #include "PermutationTensor.h"
 #include "RankFourTensor.h"
-#include "ElasticityTensorTools.h"
-
-#include "libmesh/vector_value.h"
 
 namespace ElasticityTensorTools
 {
@@ -114,4 +109,33 @@ momentJacobianWC(const RankFourTensor & r4t, unsigned int i, unsigned int k, Rea
   return test * phi * sum;
 }
 
+Real
+getIsotropicShearModulus(const RankFourTensor & elasticity_tensor)
+{
+  const Real shear_modulus = elasticity_tensor(0, 1, 0, 1);
+  return shear_modulus;
+}
+
+Real
+getIsotropicBulkModulus(const RankFourTensor & elasticity_tensor)
+{
+  const Real shear_modulus = getIsotropicShearModulus(elasticity_tensor);
+  // dilatational modulus is defined as lambda plus two mu
+  const Real dilatational_modulus = elasticity_tensor(0, 0, 0, 0);
+  const Real lambda = dilatational_modulus - 2.0 * shear_modulus;
+  const Real bulk_modulus = lambda + 2.0 * shear_modulus / 3.0;
+  return bulk_modulus;
+}
+
+Real
+getIsotropicYoungsModulus(const RankFourTensor & elasticity_tensor)
+{
+  const Real shear_modulus = getIsotropicShearModulus(elasticity_tensor);
+  // dilatational modulus is defined as lambda plus two mu
+  const Real dilatational_modulus = elasticity_tensor(0, 0, 0, 0);
+  const Real lambda = dilatational_modulus - 2.0 * shear_modulus;
+  const Real youngs_modulus =
+      shear_modulus * (3.0 * lambda + 2.0 * shear_modulus) / (lambda + shear_modulus);
+  return youngs_modulus;
+}
 }

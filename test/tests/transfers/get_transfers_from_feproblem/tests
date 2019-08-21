@@ -1,11 +1,12 @@
 [Tests]
-  issues = '#8608'
-  design = 'FEProblemBase.md'
-
-  [success]
+  [./get_transfer_success]
     type = 'RunApp'
     input = 'master.i'
-
-    requirement = "The system shall include an interface for retrieving objects that pertain to transferring data between applications."
-  []
+  [../]
+  [./get_transfer_fail]
+    type = RunException
+    input = 'master.i'
+    expect_err = 'Number of transfers in GetTransferUserObject incorrect'
+    cli_args = 'Transfers/active='nearest_node''
+  [../]
 []

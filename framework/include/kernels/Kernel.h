@@ -1,92 +1,63 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef KERNEL_H
+#define KERNEL_H
 
 #include "KernelBase.h"
-#include "MooseVariableInterface.h"
 
 class Kernel;
 
 template <>
 InputParameters validParams<Kernel>();
 
-class Kernel : public KernelBase, public MooseVariableInterface<Real>
+class Kernel : public KernelBase
 {
 public:
   Kernel(const InputParameters & parameters);
 
-  /// Compute this Kernel's contribution to the residual
   virtual void computeResidual() override;
-
-  /// Compute this Kernel's contribution to the diagonal Jacobian entries
   virtual void computeJacobian() override;
-
-  /// Computes d-residual / d-jvar... storing the result in Ke.
-  virtual void computeOffDiagJacobian(MooseVariableFEBase & jvar) override;
-
-  /**
-   * Deprecated method
-   */
-  virtual void computeOffDiagJacobian(unsigned jvar);
-
-  /**
-   * Computes jacobian block with respect to a scalar variable
-   * @param jvar The number of the scalar variable
-   */
+  virtual void computeOffDiagJacobian(unsigned int jvar) override;
   virtual void computeOffDiagJacobianScalar(unsigned int jvar) override;
 
-  virtual MooseVariable & variable() override { return _var; }
-
 protected:
-  /**
-   * Compute this Kernel's contribution to the residual at the current quadrature point
-   */
+  /// Compute this Kernel's contribution to the residual at the current quadrature point
   virtual Real computeQpResidual() = 0;
 
-  /**
-   * Compute this Kernel's contribution to the Jacobian at the current quadrature point
-   */
-  virtual Real computeQpJacobian() { return 0; }
+  /// Compute this Kernel's contribution to the Jacobian at the current quadrature point
+  virtual Real computeQpJacobian();
 
-  /**
-   * This is the virtual that derived classes should override for computing an off-diagonal Jacobian
-   * component.
-   */
-  virtual Real computeQpOffDiagJacobian(unsigned int /*jvar*/) { return 0; }
+  /// This is the virtual that derived classes should override for computing an off-diagonal Jacobian component.
+  virtual Real computeQpOffDiagJacobian(unsigned int jvar);
 
-  /**
-   * For coupling array variables
-   */
-  virtual RealEigenVector computeQpOffDiagJacobianArray(ArrayMooseVariable & jvar)
-  {
-    return RealEigenVector::Zero(jvar.count());
-  }
-
-  /// This is a regular kernel so we cast to a regular MooseVariable
-  MooseVariable & _var;
-
-  /// the current test function
-  const VariableTestValue & _test;
-
-  /// gradient of the test function
-  const VariableTestGradient & _grad_test;
-
-  /// the current shape functions
-  const VariablePhiValue & _phi;
-
-  /// gradient of the shape function
-  const VariablePhiGradient & _grad_phi;
+  /// Following methods are used for Kernels that need to perform a per-element calculation
+  virtual void precalculateResidual();
+  virtual void precalculateJacobian() {}
+  virtual void precalculateOffDiagJacobian(unsigned int /* jvar */) {}
 
   /// Holds the solution at current quadrature points
   const VariableValue & _u;
 
   /// Holds the solution gradient at the current quadrature points
   const VariableGradient & _grad_u;
+
+  /// Time derivative of u
+  const VariableValue & _u_dot;
+
+  /// Derivative of u_dot with respect to u
+  const VariableValue & _du_dot_du;
 };
+
+#endif /* KERNEL_H */

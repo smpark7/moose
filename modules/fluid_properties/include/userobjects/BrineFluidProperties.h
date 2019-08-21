@@ -1,15 +1,14 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef BRINEFLUIDPROPERTIES_H
+#define BRINEFLUIDPROPERTIES_H
 
-#include "MultiComponentFluidProperties.h"
+#include "MultiComponentFluidPropertiesPT.h"
 #include "Water97FluidProperties.h"
 
 class BrineFluidProperties;
@@ -17,25 +16,11 @@ class BrineFluidProperties;
 template <>
 InputParameters validParams<BrineFluidProperties>();
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Woverloaded-virtual"
-
 /**
  * Brine (NaCl in H2O) fluid properties as a function of pressure (Pa),
  * temperature (K) and NaCl mass fraction
- *
- * Most properties from:
- * Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
- * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 5000 bar, and 0
- * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007)
- *
- * Viscosity and thermal conductivity from:
- * Phillips et al, A technical databook for geothermal energy utilization,
- * LbL-12810 (1981)
- * Note: uses water thermal conductivity from IAPWS rather than the correlation
- * given by Phillips et al.
  */
-class BrineFluidProperties : public MultiComponentFluidProperties
+class BrineFluidProperties : public MultiComponentFluidPropertiesPT
 {
 public:
   BrineFluidProperties(const InputParameters & parameters);
@@ -53,7 +38,6 @@ public:
    * @return average molar mass (kg/mol)
    */
   Real molarMass(Real xnacl) const;
-  FPDualReal molarMass(const FPDualReal & xnacl) const;
 
   /**
    * NaCl molar mass
@@ -67,64 +51,168 @@ public:
    */
   Real molarMassH2O() const;
 
-  virtual Real rho_from_p_T_X(Real pressure, Real temperature, Real xnacl) const override;
-  using MultiComponentFluidProperties::rho_from_p_T_X;
+  /**
+   * Density of brine
+   * From Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
+   * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 500 bar, and 0
+   * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007).
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @return density (kg/m^3)
+   */
+  virtual Real rho(Real pressure, Real temperature, Real xnacl) const override;
 
-  FPDualReal rho_from_p_T_X(const FPDualReal & pressure,
-                            const FPDualReal & temperature,
-                            const FPDualReal & xnacl) const;
+  /**
+   * Density of brine and derivatives wrt pressure, temperature and mass fraction
+   * From Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
+   * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 500 bar, and 0
+   * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007).
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @param[out] rho density (kg/m^3)
+   * @param[out] drho_dp derivative of density wrt pressure
+   * @param[out] drho_dT derivative of density wrt temperature
+   * @param[out] drho_dx derivative of density wrt NaCl mass fraction
+   */
+  virtual void rho_dpTx(Real pressure,
+                        Real temperature,
+                        Real xnacl,
+                        Real & rho,
+                        Real & drho_dp,
+                        Real & drho_dT,
+                        Real & drho_dx) const override;
 
-  virtual void rho_from_p_T_X(Real pressure,
-                              Real temperature,
-                              Real xnacl,
-                              Real & rho,
-                              Real & drho_dp,
-                              Real & drho_dT,
-                              Real & drho_dx) const override;
+  /**
+   * Viscosity of brine
+   * From Phillips et al, A technical databook for geothermal energy utilization,
+   * LbL-12810 (1981).
+   *
+   * @param water_density water density (kg/m^3)
+   * @param temperature brine temperature (K)
+   * @param xnacl salt mass fraction (-)
+   * @return viscosity (Pa.s)
+   */
+  virtual Real mu(Real water_density, Real temperature, Real xnacl) const override;
 
-  virtual Real mu_from_p_T_X(Real pressure, Real temperature, Real xnacl) const override;
-  using MultiComponentFluidProperties::mu_from_p_T_X;
+  /**
+   * Viscosity of brine and derivatives wrt pressure, temperature and mass fraction
+   * From Phillips et al, A technical databook for geothermal energy utilization,
+   * LbL-12810 (1981).
+   *
+   * @param water_density water density (kg/m^3)
+   * @param temperature brine temperature (K)
+   * @param xnacl salt mass fraction (-)
+   * @param[out] mu viscosity (Pa.s)
+   * @param[out] dmu_drho derivative of viscosity wrt water density
+   * @param[out] dmu_dT derivative of viscosity wrt temperature
+   * @param[out] dmu_dx derivative of viscosity wrt NaCl mass fraction
+   */
+  virtual void mu_drhoTx(Real water_density,
+                         Real temperature,
+                         Real xnacl,
+                         Real & mu,
+                         Real & dmu_drho,
+                         Real & dmu_dT,
+                         Real & dmu_dx) const override;
 
-  virtual void mu_from_p_T_X(Real pressure,
-                             Real temperature,
-                             Real xnacl,
-                             Real & mu,
-                             Real & dmu_dp,
-                             Real & dmu_dT,
-                             Real & dmu_dx) const override;
+  /**
+   * Enthalpy of brine
+   * From Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
+   * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 500 bar, and 0
+   * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007).
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @return enthalpy (J/kg)
+   */
+  virtual Real h(Real pressure, Real temperature, Real xnacl) const override;
 
-  FPDualReal h_from_p_T_X(const FPDualReal & pressure,
-                          const FPDualReal & temperature,
-                          const FPDualReal & xnacl) const;
+  /**
+   * Enthalpy of brine and derivatives wrt pressure, temperature and mass fraction
+   * From Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
+   * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 500 bar, and 0
+   * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007).
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @param[out] h enthalpy (J/kg)
+   * @param[out] dh_dp derivative of enthalpy wrt pressure
+   * @param[out] dh_dT derivative of enthalpy wrt temperature
+   * @param[out] dh_dx derivative of enthalpy wrt NaCl mass fraction
+   */
+  virtual void h_dpTx(Real pressure,
+                      Real temperature,
+                      Real xnacl,
+                      Real & h,
+                      Real & dh_dp,
+                      Real & dh_dT,
+                      Real & dh_dx) const override;
 
-  virtual Real h_from_p_T_X(Real pressure, Real temperature, Real xnacl) const override;
-  using MultiComponentFluidProperties::h_from_p_T_X;
+  /**
+   * Isobaric heat capacity of brine
+   * From Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
+   * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 500 bar, and 0
+   * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007).
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @return isobaric heat capacity (J/kg/K)
+   */
+  virtual Real cp(Real pressure, Real temperature, Real xnacl) const override;
 
-  virtual void h_from_p_T_X(Real pressure,
-                            Real temperature,
-                            Real xnacl,
-                            Real & h,
-                            Real & dh_dp,
-                            Real & dh_dT,
-                            Real & dh_dx) const override;
+  /**
+   * Internal energy of brine
+   * Calculated from h - p / rho, where enthalpy and density are given above
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @return internal energy (J/kg)
+   */
+  virtual Real e(Real pressure, Real temperature, Real xnacl) const override;
 
-  virtual Real cp_from_p_T_X(Real pressure, Real temperature, Real xnacl) const override;
+  /**
+   * Internal energy of brine and derivatives wrt pressure, temperature and mass fraction
+   * From Driesner, The system H2O-NaCl. Part II: Correlations for molar volume,
+   * enthalpy, and isobaric heat capacity from 0 to 1000 C, 1 to 500 bar, and 0
+   * to 1 Xnacl, Geochimica et Cosmochimica Acta 71, 4902-4919 (2007).
+   *
+   * @param pressure fluid pressure (Pa)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @param[out] e internal energy (J/kg)
+   * @param[out] de_dp derivative of internal energy wrt pressure
+   * @param[out] de_dT derivative of internal energy wrt temperature
+   * @param[out] de_dx derivative of internal energy wrt NaCl mass fraction
+   */
+  virtual void e_dpTx(Real pressure,
+                      Real temperature,
+                      Real xnacl,
+                      Real & e,
+                      Real & de_dp,
+                      Real & de_dT,
+                      Real & de_dx) const override;
 
-  FPDualReal e_from_p_T_X(const FPDualReal & pressure,
-                          const FPDualReal & temperature,
-                          const FPDualReal & xnacl) const;
-
-  virtual Real e_from_p_T_X(Real pressure, Real temperature, Real xnacl) const override;
-
-  virtual void e_from_p_T_X(Real pressure,
-                            Real temperature,
-                            Real xnacl,
-                            Real & e,
-                            Real & de_dp,
-                            Real & de_dT,
-                            Real & de_dx) const override;
-
-  virtual Real k_from_p_T_X(Real pressure, Real temperature, Real xnacl) const override;
+  /**
+   * Thermal conductivity of brine
+   * From Phillips et al, A technical databook for geothermal energy utilization,
+   * LBL-12810 (1981).
+   * Note: uses water thermal conductivity from IAPWS rather than the correlation
+   * given by Phillips et al.
+   *
+   * @param water_density water density (kg/m^3)
+   * @param temperature fluid temperature (K)
+   * @param xnacl NaCl mass fraction (-)
+   * @return thermal conductivity (W/m/K)
+   */
+  virtual Real k(Real water_density, Real temperature, Real xnacl) const override;
 
   /**
    * Brine vapour pressure
@@ -154,24 +242,12 @@ public:
    */
   Real haliteSolubility(Real temperature) const;
 
-  /**
-   * IAPWS formulation of Henry's law constant for dissolution in water
-   * (implemented in water FluidProperties userobject)
-   * @param T fluid temperature (K)
-   * @param coeffs Henry's constant coefficients of gas
-   * @param[out] Kh Henry's constant
-   * @param[out] dKh_dT derivative of Kh wrt temperature
-   */
-  Real henryConstant(Real temperature, const std::vector<Real> & coeffs) const;
-  void
-  henryConstant(Real temperature, const std::vector<Real> & coeffs, Real & Kh, Real & dKh_dT) const;
-  DualReal henryConstant(const DualReal & temperature, const std::vector<Real> & coeffs) const;
+  /// Provides access to UserObject for specified component
+  virtual const SinglePhaseFluidPropertiesPT & getComponent(unsigned int component) const override;
 
   /// Fluid component numbers for water and NaCl
   static const unsigned int WATER = 0;
   static const unsigned int NACL = 1;
-
-  virtual const SinglePhaseFluidProperties & getComponent(unsigned int component) const override;
 
 protected:
   /**
@@ -187,21 +263,18 @@ protected:
    * @return mole fraction (mol/mol)
    */
   Real massFractionToMoleFraction(Real xnacl) const;
-  FPDualReal massFractionToMoleFraction(const FPDualReal & xnacl) const;
 
-  /// Water97FluidProperties UserObject (for Henry's law)
+  /// Water97FluidProperties UserObject
   const Water97FluidProperties * _water97_fp;
   /// Water97FluidProperties UserObject
-  const SinglePhaseFluidProperties * _water_fp;
+  const SinglePhaseFluidPropertiesPT * _water_fp;
   /// NaClFluidProperties UserObject
-  const SinglePhaseFluidProperties * _nacl_fp;
+  const SinglePhaseFluidPropertiesPT * _halite_fp;
 
   /// Molar mass of NaCl (kg/mol)
   Real _Mnacl;
   /// Molar mass of water (H2O) (kg/mol)
   Real _Mh2o;
-  /// Flag to indicate whether to calculate derivatives in water_fp
-  mutable bool _water_fp_derivs;
 };
 
-#pragma GCC diagnostic pop
+#endif /* BRINEFLUIDPROPERTIES_H */

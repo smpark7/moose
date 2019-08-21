@@ -1,16 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef BOUNDARYFLUXBASE_H
+#define BOUNDARYFLUXBASE_H
 
-#include "ThreadedGeneralUserObject.h"
+#include "GeneralUserObject.h"
 
+// Forward Declarations
 class BoundaryFluxBase;
 
 template <>
@@ -27,15 +27,14 @@ InputParameters validParams<BoundaryFluxBase>();
  *
  *   2. Derived classes need to override `calcFlux` and `calcJacobian`.
  */
-class BoundaryFluxBase : public ThreadedGeneralUserObject
+class BoundaryFluxBase : public GeneralUserObject
 {
 public:
   BoundaryFluxBase(const InputParameters & parameters);
 
-  virtual void execute() override;
-  virtual void initialize() override;
-  virtual void finalize() override;
-  virtual void threadJoin(const UserObject &) override;
+  virtual void execute();
+  virtual void initialize();
+  virtual void finalize();
 
   /**
    * Get the boundary flux vector
@@ -47,7 +46,8 @@ public:
   virtual const std::vector<Real> & getFlux(unsigned int iside,
                                             dof_id_type ielem,
                                             const std::vector<Real> & uvec1,
-                                            const RealVectorValue & dwave) const;
+                                            const RealVectorValue & dwave,
+                                            THREAD_ID tid) const;
 
   /**
    * Solve the Riemann problem on the boundary face
@@ -73,7 +73,8 @@ public:
   virtual const DenseMatrix<Real> & getJacobian(unsigned int iside,
                                                 dof_id_type ielem,
                                                 const std::vector<Real> & uvec1,
-                                                const RealVectorValue & dwave) const;
+                                                const RealVectorValue & dwave,
+                                                THREAD_ID tid) const;
 
   /**
    * Compute the Jacobian matrix on the boundary face
@@ -90,20 +91,17 @@ public:
                             DenseMatrix<Real> & jac1) const = 0;
 
 protected:
-  /// element ID of the cached flux values
-  mutable unsigned int _cached_flux_elem_id;
-  /// side ID of the cached flux values
-  mutable unsigned int _cached_flux_side_id;
+  mutable unsigned int _cached_side_id;
+  mutable dof_id_type _cached_elem_id;
 
-  /// element ID of the cached Jacobian values
-  mutable unsigned int _cached_jacobian_elem_id;
-  /// side ID of the cached Jacobian values
-  mutable unsigned int _cached_jacobian_side_id;
+  /// Threaded storage for fluxes
+  mutable std::vector<std::vector<Real>> _flux;
 
-  /// Cached flux
-  mutable std::vector<Real> _flux;
+  /// Threaded storage for jacobians
+  mutable std::vector<DenseMatrix<Real>> _jac1;
 
-  /// Cached flux Jacobian
-  mutable DenseMatrix<Real> _jac1;
+private:
+  static Threads::spin_mutex _mutex;
 };
 
+#endif // BOUNDARYFLUXBASE_H

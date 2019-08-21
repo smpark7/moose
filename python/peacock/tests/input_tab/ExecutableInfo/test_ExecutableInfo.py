@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 import unittest
 from peacock.Input.ExecutableInfo import ExecutableInfo
 from peacock.utils import Testing
@@ -89,10 +80,11 @@ class Tests(Testing.PeacockTester):
         self.checkPath(e, "/Preconditioning", True, True)
         self.checkPath(e, "/BCs", True, True)
         self.checkPath(e, "/BCs/Pressure", True, True)
+        self.checkPath(e, "/SolidMechanics", True, True)
         self.checkPath(e, "/Adaptivity", False, True)
         self.checkPath(e, "/Adaptivity/Markers", True, True)
         self.checkPath(e, "/GlobalParams", False, True)
-        self.checkPath(e, "/Mesh", True, True)
+        self.checkPath(e, "/Mesh", False, True)
         self.checkPath(e, "/AuxVariables", True, True)
         self.checkPath(e, "/AuxVariables/*/InitialCondition", False, False)
         self.checkPath(e, "/Variables/*/InitialCondition", False, False)

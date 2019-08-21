@@ -1,30 +1,27 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#include "libmesh/libmesh_config.h"
-
-#ifdef LIBMESH_HAVE_FPARSER
-
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 #include "Terminator.h"
 #include "MooseApp.h"
 #include "Executioner.h"
-
-registerMooseObject("MooseApp", Terminator);
 
 template <>
 InputParameters
 validParams<Terminator>()
 {
   InputParameters params = validParams<GeneralUserObject>();
-  params.addRequiredCustomTypeParam<std::string>(
+  params.addRequiredParam<std::string>(
       "expression",
-      "FunctionExpression",
       "FParser expression to process Postprocessor values into a boolean value. "
       "Termination of the simulation occurs when this returns true.");
   return params;
@@ -65,4 +62,3 @@ Terminator::execute()
   if (_fp.Eval(_params) != 0)
     _fe_problem.terminateSolve();
 }
-#endif

@@ -1,15 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "LayeredSideIntegral.h"
-
-registerMooseObject("MooseApp", LayeredSideIntegral);
 
 template <>
 InputParameters
@@ -23,10 +26,6 @@ validParams<LayeredSideIntegral>()
 LayeredSideIntegral::LayeredSideIntegral(const InputParameters & parameters)
   : SideIntegralVariableUserObject(parameters), LayeredBase(parameters)
 {
-  if (parameters.isParamValid("block") && parameters.isParamValid("boundary"))
-    mooseError("Both block and boundary cannot be specified in LayeredSideIntegral. If you want to "
-               "define the geometric bounds of the layers from a specified block set "
-               "layer_bounding_block instead.");
 }
 
 void

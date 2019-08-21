@@ -1,15 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowCapillaryPressureConst.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowCapillaryPressureConst);
 
 template <>
 InputParameters
@@ -17,7 +13,10 @@ validParams<PorousFlowCapillaryPressureConst>()
 {
   InputParameters params = validParams<PorousFlowCapillaryPressure>();
   params.addRangeCheckedParam<Real>(
-      "pc", 0.0, "pc >= 0", "Constant capillary pressure (Pa). Default is 0");
+      "pc",
+      0.0,
+      "pc <= 0",
+      "Constant capillary pressure (Pa). Default is 0. Note: capillary pressure must be negative");
   params.addClassDescription("Constant capillary pressure");
   return params;
 }
@@ -26,44 +25,19 @@ PorousFlowCapillaryPressureConst::PorousFlowCapillaryPressureConst(
     const InputParameters & parameters)
   : PorousFlowCapillaryPressure(parameters), _pc(getParam<Real>("pc"))
 {
-  // Set _log_ext to false as the logarithmic extension is not necessary in this object
-  _log_ext = false;
 }
 
-Real
-PorousFlowCapillaryPressureConst::effectiveSaturation(Real /*pc*/, unsigned /*qp*/) const
-{
-  return 1.0;
-}
+Real PorousFlowCapillaryPressureConst::capillaryPressure(Real /*saturation*/) const { return _pc; }
 
-Real
-PorousFlowCapillaryPressureConst::dEffectiveSaturation(Real /*pc*/, unsigned /*qp*/) const
+Real PorousFlowCapillaryPressureConst::dCapillaryPressure(Real /*saturation*/) const { return 0.0; }
+
+Real PorousFlowCapillaryPressureConst::d2CapillaryPressure(Real /*saturation*/) const
 {
   return 0.0;
 }
 
-Real
-PorousFlowCapillaryPressureConst::d2EffectiveSaturation(Real /*pc*/, unsigned /*qp*/) const
-{
-  return 0.0;
-}
+Real PorousFlowCapillaryPressureConst::effectiveSaturation(Real /*pc*/) const { return 1.0; }
 
-Real
-PorousFlowCapillaryPressureConst::capillaryPressureCurve(Real /*saturation*/, unsigned /*qp*/) const
-{
-  return _pc;
-}
+Real PorousFlowCapillaryPressureConst::dEffectiveSaturation(Real /*pc*/) const { return 0.0; }
 
-Real
-PorousFlowCapillaryPressureConst::dCapillaryPressureCurve(Real /*saturation*/,
-                                                          unsigned /*qp*/) const
-{
-  return 0.0;
-}
-
-Real
-PorousFlowCapillaryPressureConst::d2CapillaryPressureCurve(Real /*saturation*/,
-                                                           unsigned /*qp*/) const
-{
-  return 0.0;
-}
+Real PorousFlowCapillaryPressureConst::d2EffectiveSaturation(Real /*pc*/) const { return 0.0; }

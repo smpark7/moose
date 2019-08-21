@@ -1,12 +1,3 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
 import os
 import glob
 import pandas
@@ -122,7 +113,7 @@ class VectorPostprocessorReader(object):
         """
         Returns the list of available time indices contained in the data.
         """
-        return self.data.keys().values.tolist()
+        return list(self.data.keys().values)
 
     def clear(self):
         """
@@ -207,11 +198,7 @@ class VectorPostprocessorReader(object):
         """
 
         # The list of files from the supplied pattern
-        filenames = []
-        for fname in sorted(glob.glob(self.filename)):
-            if fname.endswith('LATEST') or fname.endswith('FINAL'):
-                continue
-            filenames.append(fname)
+        filenames = sorted(glob.glob(self.filename))
 
         # Remove the "_time.csv" from the list, if it exists
         try:

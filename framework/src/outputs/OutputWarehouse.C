@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "OutputWarehouse.h"
@@ -14,8 +19,6 @@
 #include "FileOutput.h"
 #include "Checkpoint.h"
 #include "FEProblem.h"
-#include "TableOutput.h"
-#include "Exodus.h"
 
 #include <libgen.h>
 #include <sys/types.h>
@@ -27,8 +30,7 @@ OutputWarehouse::OutputWarehouse(MooseApp & app)
     _buffer_action_console_outputs(false),
     _output_exec_flag(EXEC_CUSTOM),
     _force_output(false),
-    _logging_requested(false),
-    _last_message_ended_in_newline(true)
+    _logging_requested(false)
 {
   // Set the reserved names
   _reserved.insert("none"); // allows 'none' to be used as a keyword in 'outputs' parameter
@@ -122,7 +124,7 @@ OutputWarehouse::hasOutput(const std::string & name) const
 const std::set<OutputName> &
 OutputWarehouse::getOutputNames()
 {
-  if (_object_names.empty() && _app.actionWarehouse().hasActions("add_output"))
+  if (_object_names.empty())
   {
     const auto & actions = _app.actionWarehouse().getActionListByName("add_output");
     for (const auto & act : actions)
@@ -193,19 +195,11 @@ OutputWarehouse::mooseConsole()
       // this will cause messages to console before its construction immediately flushed and
       // cleared.
       std::string message = _console_buffer.str();
-
-      bool this_message_ends_in_newline = message.empty() ? true : message.back() == '\n';
-
-      // If that last message ended in newline then this one may need
-      // to start with indenting
-      if (_last_message_ended_in_newline && _app.multiAppLevel() > 0)
+      if (_app.multiAppLevel() > 0)
         MooseUtils::indentMessage(_app.name(), message);
-
-      Moose::out << message << std::flush;
+      Moose::out << message;
       _console_buffer.clear();
       _console_buffer.str("");
-
-      _last_message_ended_in_newline = this_message_ends_in_newline;
     }
   }
 }
@@ -324,18 +318,4 @@ void
 OutputWarehouse::forceOutput()
 {
   _force_output = true;
-}
-
-void
-OutputWarehouse::reset()
-{
-  for (const auto & pair : _object_map)
-  {
-    auto * table = dynamic_cast<TableOutput *>(pair.second);
-    if (table != NULL)
-      table->clear();
-    auto * exodus = dynamic_cast<Exodus *>(pair.second);
-    if (exodus != NULL)
-      exodus->clear();
-  }
 }

@@ -1,27 +1,54 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ChangeOverTimestepPostprocessor.h"
-
-registerMooseObject("MooseApp", ChangeOverTimestepPostprocessor);
 
 template <>
 InputParameters
 validParams<ChangeOverTimestepPostprocessor>()
 {
-  InputParameters params = validParams<ChangeOverTimePostprocessor>();
+  InputParameters params = validParams<GeneralPostprocessor>();
+  params.addRequiredParam<PostprocessorName>("postprocessor", "The name of the postprocessor");
+  params.addParam<bool>(
+      "compute_relative_change", false, "Compute magnitude of relative change instead of change");
   return params;
 }
 
 ChangeOverTimestepPostprocessor::ChangeOverTimestepPostprocessor(const InputParameters & parameters)
-  : ChangeOverTimePostprocessor(parameters)
+  : GeneralPostprocessor(parameters),
+    _compute_relative_change(getParam<bool>("compute_relative_change")),
+    _pps_value(getPostprocessorValue("postprocessor")),
+    _pps_value_old(getPostprocessorValueOld("postprocessor"))
 {
-  mooseDeprecated(
-      "'ChangeOverTimestepPostprocessor' has been renamed to 'ChangeOverTimePostprocessor'");
+}
+
+void
+ChangeOverTimestepPostprocessor::initialize()
+{
+}
+
+void
+ChangeOverTimestepPostprocessor::execute()
+{
+}
+
+Real
+ChangeOverTimestepPostprocessor::getValue()
+{
+  if (_compute_relative_change)
+    return std::fabs((std::fabs(_pps_value) - std::fabs(_pps_value_old)) *
+                     std::pow(std::fabs(_pps_value), -1));
+  else
+    return _pps_value - _pps_value_old;
 }

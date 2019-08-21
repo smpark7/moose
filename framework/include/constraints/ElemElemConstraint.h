@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef ELEMELEMCONSTRAINT_H
+#define ELEMELEMCONSTRAINT_H
 
 // MOOSE includes
 #include "Constraint.h"
@@ -22,8 +28,7 @@ template <>
 InputParameters validParams<ElemElemConstraint>();
 
 class ElemElemConstraint : public Constraint,
-                           public NeighborCoupleableMooseVariableDependencyIntermediateInterface,
-                           public NeighborMooseVariableInterface<Real>
+                           public NeighborCoupleableMooseVariableDependencyIntermediateInterface
 {
 public:
   ElemElemConstraint(const InputParameters & parameters);
@@ -58,28 +63,14 @@ public:
    */
   virtual void computeJacobian();
 
-  /**
-   * Get the interface ID
-   */
-  unsigned int getInterfaceID() const { return _interface_id; };
-
-  /**
-   * The variable number that this object operates on.
-   */
-  MooseVariable & variable() { return _var; }
-
 protected:
   FEProblemBase & _fe_problem;
   unsigned int _dim;
 
-  unsigned int _interface_id;
-
-  MooseVariable & _var;
-
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
 
   /// The neighboring element
-  const Elem * const & _neighbor_elem;
+  const Elem *& _neighbor_elem;
 
   /// Quadrature points used in integration of constraint
   std::vector<Point> _constraint_q_point;
@@ -132,3 +123,4 @@ protected:
   virtual Real computeQpJacobian(Moose::DGJacobianType type) = 0;
 };
 
+#endif /* ELEMELEMCONSTRAINT_H */

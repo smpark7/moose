@@ -1,39 +1,31 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MOOSE_H
+#define MOOSE_H
 
+// libMesh includes
 #include "libmesh/perf_log.h"
 #include "libmesh/libmesh_common.h"
 #include "XTermConstants.h"
 
-#include <set>
 #include <string>
-
-namespace libMesh
-{
-template <typename>
-class NumericVector;
-template <typename>
-class SparseMatrix;
-}
 
 using namespace libMesh;
 
 class ActionFactory;
 class Factory;
-class MooseEnumItem;
-class ExecFlagEnum;
-class MooseVariableFEBase;
-
-void MooseVecView(NumericVector<Number> & vector);
-void MooseMatView(SparseMatrix<Number> & mat);
 
 /**
  * MOOSE now contains C++11 code, so give a reasonable error message
@@ -63,51 +55,9 @@ void MooseMatView(SparseMatrix<Number> & mat);
 #define FORTRAN_CALL(name) name##_
 #endif
 
-/**
- * Function to mirror the behavior of the C++17 std::map::try_emplace() method (no hint).
- * @param m The std::map
- * @param k The key use to insert the pair
- * @param args The value to be inserted. This can be a moveable type but won't be moved
- *             if the insertion is successful.
- */
-template <class M, class... Args>
-std::pair<typename M::iterator, bool>
-moose_try_emplace(M & m, const typename M::key_type & k, Args &&... args)
-{
-  auto it = m.lower_bound(k);
-  if (it == m.end() || m.key_comp()(k, it->first))
-  {
-    return {m.emplace_hint(it,
-                           std::piecewise_construct,
-                           std::forward_as_tuple(k),
-                           std::forward_as_tuple(std::forward<Args>(args)...)),
-            true};
-  }
-  return {it, false};
-}
-
 // forward declarations
 class Syntax;
 class FEProblemBase;
-
-// Define MOOSE execution flags, this cannot be done in MooseTypes because the registration calls
-// must be in Moose.C to remain consistent with other registration calls.
-using ExecFlagType = MooseEnumItem;
-extern const ExecFlagType EXEC_NONE;
-extern const ExecFlagType EXEC_INITIAL;
-extern const ExecFlagType EXEC_LINEAR;
-extern const ExecFlagType EXEC_NONLINEAR;
-extern const ExecFlagType EXEC_TIMESTEP_END;
-extern const ExecFlagType EXEC_TIMESTEP_BEGIN;
-extern const ExecFlagType EXEC_FINAL;
-extern const ExecFlagType EXEC_FORCED;
-extern const ExecFlagType EXEC_FAILED;
-extern const ExecFlagType EXEC_CUSTOM;
-extern const ExecFlagType EXEC_SUBDOMAIN;
-extern const ExecFlagType EXEC_PRE_DISPLACE;
-extern const ExecFlagType EXEC_SAME_AS_MULTIAPP;
-extern const ExecFlagType EXEC_PRE_MULTIAPP_SETUP;
-extern const ExecFlagType EXEC_TRANSFER;
 
 namespace Moose
 {
@@ -117,6 +67,10 @@ namespace Moose
  * If the application prints this in the end they will get performance info.
  */
 extern PerfLog perf_log;
+
+/**
+ * PerfLog to be used during setup.  This log will get printed just before the first solve. */
+extern PerfLog setup_perf_log;
 
 /**
  * Variable indicating whether we will enable FPE trapping for this run.
@@ -138,13 +92,6 @@ extern bool _deprecated_is_error;
  * only be used with MOOSE unit.
  */
 extern bool _throw_on_error;
-
-/**
- * Storage for the registered execute flags. This is needed for the ExecuteMooseObjectWarehouse
- * to create the necessary storage containers on a per flag basis. This isn't something that
- * should be used by application developers.
- */
-extern ExecFlagEnum execute_flags;
 
 /**
  * Macros for coloring any output stream (_console, std::ostringstream, etc.)
@@ -169,50 +116,24 @@ bool setColorConsole(bool use_color, bool force = false);
 /**
  * Import libMesh::out, and libMesh::err for use in MOOSE.
  */
-using libMesh::err;
 using libMesh::out;
+using libMesh::err;
 
 /**
  * Register objects that are in MOOSE
  */
-
-void registerAll(Factory & f, ActionFactory & af, Syntax & s);
-
 void registerObjects(Factory & factory);
-void registerObjects(Factory & factory, const std::set<std::string> & obj_labels);
 void addActionTypes(Syntax & syntax);
 void registerActions(Syntax & syntax, ActionFactory & action_factory);
-void registerActions(Syntax & syntax,
-                     ActionFactory & action_factory,
-                     const std::set<std::string> & obj_labels);
-void registerExecFlags(Factory & factory);
-
-void associateSyntax(Syntax & syntax, ActionFactory & action_factory);
 
 void setSolverDefaults(FEProblemBase & problem);
 
 /**
- * Swap the libMesh MPI communicator out for ours.  Note that you should usually use
- * the Moose::ScopedCommSwapper class instead of calling this function.
+ * Swap the libMesh MPI communicator out for ours.
  */
 MPI_Comm swapLibMeshComm(MPI_Comm new_comm);
 
-class ScopedCommSwapper
-{
-public:
-  /// Swaps the current libmesh MPI communicator for new_comm.  new_comm will be automatically
-  /// swapped back in as the current libmesh communicator when this object is destructed.
-  ScopedCommSwapper(MPI_Comm new_comm) : _orig(swapLibMeshComm(new_comm)) {}
-  virtual ~ScopedCommSwapper() { swapLibMeshComm(_orig); }
-  /// Forcibly swap the currently swapped-out communicator back in to libmesh.  Calling this
-  /// function twice in a row leaves communicators exactly as they were before this function
-  /// was called.  Usually you should not need/use this function because MPI communicators
-  /// are swapped automatically when this object is constructed/destructed.
-  void forceSwap() { _orig = swapLibMeshComm(_orig); }
-
-private:
-  MPI_Comm _orig;
-};
+void enableFPE(bool on = true);
 
 // MOOSE Requires PETSc to run, this CPP check will cause a compile error if PETSc is not found
 #ifndef LIBMESH_HAVE_PETSC
@@ -220,3 +141,5 @@ private:
 #endif
 
 } // namespace Moose
+
+#endif /* MOOSE_H */

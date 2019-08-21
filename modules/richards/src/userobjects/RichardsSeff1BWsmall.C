@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 //  "Broadbridge-White" form of effective saturation for Kn small (P Broadbridge and I White
 //  ``Constant rate rainfall infiltration: A versatile nonlinear model 1. Analytic Solution'', Water
@@ -13,8 +11,6 @@
 //
 #include "RichardsSeff1BWsmall.h"
 #include "libmesh/utility.h"
-
-registerMooseObject("RichardsApp", RichardsSeff1BWsmall);
 
 template <>
 InputParameters

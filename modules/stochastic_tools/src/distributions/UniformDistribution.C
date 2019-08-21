@@ -1,15 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "UniformDistribution.h"
-
-registerMooseObject("StochasticToolsApp", UniformDistribution);
 
 template <>
 InputParameters
@@ -31,51 +34,33 @@ UniformDistribution::UniformDistribution(const InputParameters & parameters)
     mooseError("The lower bound is larger than the upper bound!");
 }
 
+UniformDistribution::~UniformDistribution() {}
+
 Real
-UniformDistribution::pdf(const Real & x, const Real & lower_bound, const Real & upper_bound) const
+UniformDistribution::pdf(const Real & x)
 {
-  if (x < lower_bound || x > upper_bound)
+  if (x < _lower_bound || x > _upper_bound)
     return 0.0;
   else
-    return 1.0 / (upper_bound - lower_bound);
+    return 1.0 / (_upper_bound - _lower_bound);
 }
 
 Real
-UniformDistribution::cdf(const Real & x, const Real & lower_bound, const Real & upper_bound) const
+UniformDistribution::cdf(const Real & x)
 {
-  if (x < lower_bound)
+  if (x < _lower_bound)
     return 0.0;
-  else if (x > upper_bound)
+  else if (x > _upper_bound)
     return 1.0;
   else
-    return (x - lower_bound) / (upper_bound - lower_bound);
+    return (x - _lower_bound) / (_upper_bound - _lower_bound);
 }
 
 Real
-UniformDistribution::quantile(const Real & y,
-                              const Real & lower_bound,
-                              const Real & upper_bound) const
+UniformDistribution::inverseCdf(const Real & y)
 {
   if (y < 0 || y > 1)
     mooseError("The cdf_value provided is out of range 0 to 1.");
   else
-    return y * (upper_bound - lower_bound) + lower_bound;
-}
-
-Real
-UniformDistribution::pdf(const Real & x) const
-{
-  return pdf(x, _lower_bound, _upper_bound);
-}
-
-Real
-UniformDistribution::cdf(const Real & x) const
-{
-  return cdf(x, _lower_bound, _upper_bound);
-}
-
-Real
-UniformDistribution::quantile(const Real & y) const
-{
-  return quantile(y, _lower_bound, _upper_bound);
+    return y * (_upper_bound - _lower_bound) + _lower_bound;
 }

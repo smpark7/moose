@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "EigenKernel.h"
 
@@ -15,15 +20,16 @@
 #include "Executioner.h"
 #include "MooseApp.h"
 #include "MooseEigenSystem.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
 
 template <>
 InputParameters
 validParams<EigenKernel>()
 {
-  InputParameters params = validParams<Kernel>();
+  InputParameters params = validParams<KernelBase>();
   params.addParam<bool>(
       "eigen", true, "Use for eigenvalue problem (true) or source problem (false)");
   params.addParam<PostprocessorName>(
@@ -33,7 +39,9 @@ validParams<EigenKernel>()
 }
 
 EigenKernel::EigenKernel(const InputParameters & parameters)
-  : Kernel(parameters),
+  : KernelBase(parameters),
+    _u(_is_implicit ? _var.sln() : _var.slnOld()),
+    _grad_u(_is_implicit ? _var.gradSln() : _var.gradSlnOld()),
     _eigen(getParam<bool>("eigen")),
     _eigen_sys(dynamic_cast<MooseEigenSystem *>(&_fe_problem.getNonlinearSystemBase())),
     _eigenvalue(NULL)
@@ -52,7 +60,7 @@ EigenKernel::EigenKernel(const InputParameters & parameters)
   {
     EigenExecutionerBase * exec = dynamic_cast<EigenExecutionerBase *>(_app.getExecutioner());
     if (exec)
-      eigen_pp_name = exec->getParamTempl<PostprocessorName>("bx_norm");
+      eigen_pp_name = exec->getParam<PostprocessorName>("bx_norm");
   }
 
   // If the postprocessor name was not provided and an EigenExecutionerBase is not being used,
@@ -132,34 +140,33 @@ EigenKernel::computeJacobian()
 }
 
 void
-EigenKernel::computeOffDiagJacobian(MooseVariableFEBase & jvar)
+EigenKernel::computeOffDiagJacobian(unsigned int jvar)
 {
-  size_t jvar_num = jvar.number();
   if (!_is_implicit)
     return;
 
-  if (jvar_num == _var.number())
+  if (jvar == _var.number())
     computeJacobian();
   else
   {
-    DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar_num);
+    DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar);
     _local_ke.resize(ke.m(), ke.n());
     _local_ke.zero();
 
     mooseAssert(*_eigenvalue != 0.0, "Can't divide by zero eigenvalue in EigenKernel!");
     Real one_over_eigen = 1.0 / *_eigenvalue;
     for (_i = 0; _i < _test.size(); _i++)
-      for (_j = 0; _j < jvar.phiSize(); _j++)
+      for (_j = 0; _j < _phi.size(); _j++)
         for (_qp = 0; _qp < _qrule->n_points(); _qp++)
           _local_ke(_i, _j) +=
-              _JxW[_qp] * _coord[_qp] * one_over_eigen * computeQpOffDiagJacobian(jvar_num);
+              _JxW[_qp] * _coord[_qp] * one_over_eigen * computeQpOffDiagJacobian(jvar);
 
     ke += _local_ke;
   }
 }
 
 bool
-EigenKernel::enabled() const
+EigenKernel::enabled()
 {
   bool flag = MooseObject::enabled();
   if (_eigen)

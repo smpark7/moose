@@ -1,19 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "NodalEqualValueConstraint.h"
 
 // MOOSE includes
 #include "Assembly.h"
 #include "MooseVariableScalar.h"
-
-registerMooseObject("MooseApp", NodalEqualValueConstraint);
 
 template <>
 InputParameters
@@ -28,7 +31,7 @@ NodalEqualValueConstraint::NodalEqualValueConstraint(const InputParameters & par
   : NodalScalarKernel(parameters)
 {
   if (_node_ids.size() != 2)
-    paramError("boundary", "invalid number of nodes: want 2, got ", _node_ids.size());
+    mooseError(name(), ": The number of nodes has to be 2, but it is ", _node_ids.size(), ".");
 
   unsigned int n = coupledComponents("var");
   _value.resize(n);
@@ -43,33 +46,28 @@ NodalEqualValueConstraint::NodalEqualValueConstraint(const InputParameters & par
 void
 NodalEqualValueConstraint::computeResidual()
 {
-  prepareVectorTag(_assembly, _var.number());
+  // LM residuals
+  DenseVector<Number> & lm_re = _assembly.residualBlock(_var.number());
 
   for (unsigned int k = 0; k < _value.size(); k++)
-    _local_re(k) = (*_value[k])[0] - (*_value[k])[1];
-
-  assignTaggedLocalResidual();
+    lm_re(k) = (*_value[k])[0] - (*_value[k])[1];
 }
 
 void
 NodalEqualValueConstraint::computeJacobian()
 {
-  prepareMatrixTag(_assembly, _var.number(), _var.number());
-
+  // do the diagonal block
+  DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), _var.number());
   // put zeroes on the diagonal (we have to do it, otherwise PETSc will complain!)
-  for (unsigned int i = 0; i < _local_ke.m(); i++)
-    for (unsigned int j = 0; j < _local_ke.n(); j++)
-      _local_ke(i, j) = 0.;
-
-  assignTaggedLocalMatrix();
+  for (unsigned int i = 0; i < ke.m(); i++)
+    for (unsigned int j = 0; j < ke.n(); j++)
+      ke(i, j) = 0.;
 
   for (unsigned int k = 0; k < _value.size(); k++)
   {
-    prepareMatrixTag(_assembly, _var.number(), _val_number[k]);
+    DenseMatrix<Number> & ken = _assembly.jacobianBlock(_var.number(), _val_number[k]);
 
-    _local_ke(k, 0) = 1.;
-    _local_ke(k, 1) = -1.;
-
-    assignTaggedLocalMatrix();
+    ken(k, 0) = 1.;
+    ken(k, 1) = -1.;
   }
 }

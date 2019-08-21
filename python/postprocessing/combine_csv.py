@@ -1,14 +1,6 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
+#!/usr/bin/env python
 
-import argparse, sys, os, csv
+import argparse, re, sys, os, csv
 
 parser = argparse.ArgumentParser(description="Combine series of csv outputs in separate files for each time step into a single file")
 parser.add_argument("-d", "--delimiter", type = str, help="delimiter for output file")
@@ -101,7 +93,7 @@ while (keep_reading):
             else:
                 if cur_xvar != line_data[x_varname]:
                     sys.stderr.write("Inconsistent value for '"+x_varname+"' field in file: "+csvfile_names[icsv]+"\n")
-                    sys.stderr.write("cur: "+cur_xvar+" orig: "+line_data[x_varname]+"\n")
+                    sys.stderr.write("line: "+str(iline)+" cur: "+cur_xvar+" orig: "+line_data[x_varname]+"\n")
                     sys.exit(1)
         try:
             cur_data = curr_line_data[y_varname]

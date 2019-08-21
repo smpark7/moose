@@ -1,17 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "TensorMechanicsPlasticDruckerPrager.h"
-#include "RankFourTensor.h"
 #include "libmesh/utility.h"
-
-registerMooseObject("TensorMechanicsApp", TensorMechanicsPlasticDruckerPrager);
 
 template <>
 InputParameters
@@ -232,16 +226,14 @@ TensorMechanicsPlasticDruckerPrager::dbothAB(Real intnl, Real & daaa, Real & dbb
   switch (_mc_interpolation_scheme)
   {
     case 0: // outer_tip
-      daaa = 2.0 * std::sqrt(3.0) *
-             (dC * cosphi / (3.0 - sinphi) + C * dcosphi / (3.0 - sinphi) +
-              C * cosphi * dsinphi / Utility::pow<2>(3.0 - sinphi));
+      daaa = 2.0 * std::sqrt(3.0) * (dC * cosphi / (3.0 - sinphi) + C * dcosphi / (3.0 - sinphi) +
+                                     C * cosphi * dsinphi / Utility::pow<2>(3.0 - sinphi));
       dbbb = 2.0 / std::sqrt(3.0) *
              (dsinphi / (3.0 - sinphi) + sinphi * dsinphi / Utility::pow<2>(3.0 - sinphi));
       break;
     case 1: // inner_tip
-      daaa = 2.0 * std::sqrt(3.0) *
-             (dC * cosphi / (3.0 + sinphi) + C * dcosphi / (3.0 + sinphi) -
-              C * cosphi * dsinphi / Utility::pow<2>(3.0 + sinphi));
+      daaa = 2.0 * std::sqrt(3.0) * (dC * cosphi / (3.0 + sinphi) + C * dcosphi / (3.0 + sinphi) -
+                                     C * cosphi * dsinphi / Utility::pow<2>(3.0 + sinphi));
       dbbb = 2.0 / std::sqrt(3.0) *
              (dsinphi / (3.0 + sinphi) - sinphi * dsinphi / Utility::pow<2>(3.0 + sinphi));
       break;

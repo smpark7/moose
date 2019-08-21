@@ -46,7 +46,7 @@
     variable = u
   [../]
   [./ffn]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fn
   [../]
@@ -61,17 +61,13 @@
   [./l2_error_aux]
     type = ElementL2ErrorFunctionAux
     variable = element_l2_error
-    # A function representing the exact solution for the solution
     function = exact_fn
-    # The nonlinear variable representing the FEM solution
     coupled_variable = u
   [../]
   [./h1_error_aux]
     type = ElementH1ErrorFunctionAux
     variable = element_h1_error
-    # A function representing the exact solution for the solution
     function = exact_fn
-    # The nonlinear variable representing the FEM solution
     coupled_variable = u
   [../]
 []
@@ -105,3 +101,4 @@
 [Outputs]
   exodus = true
 []
+

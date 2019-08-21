@@ -1,17 +1,17 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef MOVINGPLANARFRONT_H
+#define MOVINGPLANARFRONT_H
 
 #include "Function.h"
 #include "FunctionInterface.h"
 
+// Forward Declarations
 class MovingPlanarFront;
 
 template <>
@@ -30,7 +30,7 @@ class MovingPlanarFront : public Function, protected FunctionInterface
 public:
   MovingPlanarFront(const InputParameters & parameters);
 
-  virtual Real value(Real t, const Point & p) const override;
+  virtual Real value(Real t, const Point & p) override;
 
 protected:
   /// Initial position of front
@@ -40,23 +40,25 @@ protected:
   const RealVectorValue _end_posn;
 
   /// The front's distance from start_posn (along the normal direction)
-  const Function & _distance;
+  Function & _distance;
 
-  /// Active length
+  /// active length
   const Real _active_length;
 
-  /// True value to return
+  /// true value to return
   const Real _true_value;
 
-  /// False value to return
+  /// false value to return
   const Real _false_value;
 
-  /// Activation time
+  /// activation time
   const Real _activation_time;
 
-  /// Deactivation time
+  /// deactivation time
   const Real _deactivation_time;
 
-  /// Front unit normal
+  /// front unit normal
   RealVectorValue _front_normal;
 };
+
+#endif // MOVINGPLANARFRONT_H

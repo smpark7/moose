@@ -1,19 +1,20 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#include "MooseObject.h"
 #include "MooseObjectAction.h"
 #include "MooseUtils.h"
 #include "Factory.h"
-#include "Conversion.h"
-#include "MooseMesh.h"
-#include "MooseApp.h"
 
 template <>
 InputParameters
@@ -22,12 +23,12 @@ validParams<MooseObjectAction>()
   InputParameters params = validParams<Action>();
   params.addRequiredParam<std::string>(
       "type", "A string representing the Moose Object that will be built by this Action");
-  params.addParam<bool>("isObjectAction", true, "Indicates that this is a MooseObjectAction.");
+
+  params.addPrivateParam<std::string>(
+      "_moose_docs_type", "mooseobjectaction"); // the type of syntax for documentation system
+  params.addPrivateParam<bool>("isObjectAction", true);
   return params;
 }
-
-template <>
-InputParameters validParams<MooseObject>();
 
 MooseObjectAction::MooseObjectAction(InputParameters params)
   : Action(params),
@@ -36,16 +37,10 @@ MooseObjectAction::MooseObjectAction(InputParameters params)
     _moose_object_pars(!params.have_parameter<bool>("skip_param_construction") ||
                                (params.have_parameter<bool>("skip_param_construction") &&
                                 !params.get<bool>("skip_param_construction"))
-                           ? (Registry::isADObj(_type + "<RESIDUAL>")
-                                  ? _factory.getValidParams(_type + "<RESIDUAL>")
-                                  : _factory.getValidParams(_type))
+                           ? _factory.getValidParams(_type)
                            : validParams<MooseObject>())
 {
-  _moose_object_pars.blockFullpath() = params.blockFullpath();
-}
-
-void
-MooseObjectAction::addRelationshipManagers(Moose::RelationshipManagerType input_rm_type)
-{
-  addRelationshipManagers(input_rm_type, _moose_object_pars);
+  if (params.have_parameter<std::string>("parser_syntax"))
+    _moose_object_pars.addPrivateParam<std::string>("parser_syntax",
+                                                    params.get<std::string>("parser_syntax"));
 }

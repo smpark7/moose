@@ -1,18 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowPlasticHeatEnergy.h"
 
+// MOOSE includes
 #include "MooseMesh.h"
 #include "MooseVariable.h"
-
-registerMooseObject("PorousFlowApp", PorousFlowPlasticHeatEnergy);
 
 template <>
 InputParameters
@@ -27,7 +24,7 @@ validParams<PorousFlowPlasticHeatEnergy>()
                         " If you set this to true, you will also want to set the same parameter to "
                         "true for related Kernels and Materials");
   params.addRequiredParam<UserObjectName>(
-      "PorousFlowDictator", "The UserObject that holds the list of PorousFlow variable names.");
+      "PorousFlowDictator", "The UserObject that holds the list of Porous-Flow variable names.");
   params.addClassDescription(
       "Plastic heat energy density source = (1 - porosity) * coeff * stress * plastic_strain_rate");
   return params;
@@ -62,7 +59,7 @@ PorousFlowPlasticHeatEnergy::computeQpJacobian()
 Real
 PorousFlowPlasticHeatEnergy::computeQpOffDiagJacobian(unsigned int jvar)
 {
-  // If the variable is not a PorousFlow variable, the Jacobian terms are 0
+  /// If the variable is not a PorousFlow variable, the Jacobian terms are 0
   if (_dictator.notPorousFlowVariable(jvar))
     return 0.0;
 

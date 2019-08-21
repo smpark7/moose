@@ -1,19 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "AddExtraNodeset.h"
 #include "MooseApp.h"
 #include "MooseMesh.h"
 #include "FEProblem.h"
 #include "ActionWarehouse.h"
-
-registerMooseObjectReplaced("MooseApp", AddExtraNodeset, "11/30/2019 00:00", ExtraNodesetGenerator);
 
 template <>
 InputParameters
@@ -77,7 +80,7 @@ AddExtraNodeset::modify()
   unsigned int dim = _mesh_ptr->dimension();
   unsigned int n_nodes = coord.size() / dim;
 
-  std::unique_ptr<PointLocatorBase> locator = _mesh_ptr->getMesh().sub_point_locator();
+  UniquePtr<PointLocatorBase> locator = _mesh_ptr->getMesh().sub_point_locator();
   locator->enable_out_of_mesh_mode();
 
   for (unsigned int i = 0; i < n_nodes; ++i)
@@ -86,47 +89,30 @@ AddExtraNodeset::modify()
     for (unsigned int j = 0; j < dim; ++j)
       p(j) = coord[i * dim + j];
 
-    bool on_node = false;
-
     const Elem * elem = (*locator)(p);
-
-    if (elem)
-    {
-      for (unsigned int j = 0; j < elem->n_nodes(); ++j)
-      {
-        const Node * node = elem->node_ptr(j);
-
-        Point q;
-        for (unsigned int k = 0; k < dim; ++k)
-          q(k) = (*node)(k);
-
-        if (p.absolute_fuzzy_equals(q, getParam<Real>("tolerance")))
-        {
-          for (const auto & boundary_id : boundary_ids)
-            boundary_info.add_node(node, boundary_id);
-
-          on_node = true;
-          break;
-        }
-      }
-    }
-
-    bool found_elem = elem;
-
-    // If we are on a distributed mesh, then any particular processor
-    // may be unable to find any particular node, but *some* processor
-    // should have found it.
-    if (!_mesh_ptr->getMesh().is_replicated())
-    {
-      this->comm().max(found_elem);
-      this->comm().max(on_node);
-    }
-
-    if (!found_elem)
+    if (!elem)
       mooseError(
           "Unable to locate the following point within the domain, please check its coordinates:\n",
           p);
 
+    bool on_node = false;
+    for (unsigned int j = 0; j < elem->n_nodes(); ++j)
+    {
+      const Node * node = elem->node_ptr(j);
+
+      Point q;
+      for (unsigned int k = 0; k < dim; ++k)
+        q(k) = (*node)(k);
+
+      if (p.absolute_fuzzy_equals(q, getParam<Real>("tolerance")))
+      {
+        for (const auto & boundary_id : boundary_ids)
+          boundary_info.add_node(node, boundary_id);
+
+        on_node = true;
+        break;
+      }
+    }
     if (!on_node)
       mooseError("Point can not be located!");
   }

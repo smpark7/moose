@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "GrainTracker.h"
 
@@ -16,6 +14,7 @@
 #include "MooseVariable.h"
 #include "NonlinearSystem.h"
 
+// libMesh includes
 #include "libmesh/periodic_boundary_base.h"
 
 // C++ includes
@@ -27,7 +26,7 @@ template <>
 void
 dataStore(std::ostream & stream, GrainTracker::PartialFeatureData & feature, void * context)
 {
-  storeHelper(stream, feature.boundary_intersection, context);
+  storeHelper(stream, feature.intersects_boundary, context);
   storeHelper(stream, feature.id, context);
   storeHelper(stream, feature.centroid, context);
   storeHelper(stream, feature.status, context);
@@ -37,13 +36,11 @@ template <>
 void
 dataLoad(std::istream & stream, GrainTracker::PartialFeatureData & feature, void * context)
 {
-  loadHelper(stream, feature.boundary_intersection, context);
+  loadHelper(stream, feature.intersects_boundary, context);
   loadHelper(stream, feature.id, context);
   loadHelper(stream, feature.centroid, context);
   loadHelper(stream, feature.status, context);
 }
-
-registerMooseObject("PhaseFieldApp", GrainTracker);
 
 template <>
 InputParameters
@@ -51,26 +48,6 @@ validParams<GrainTracker>()
 {
   InputParameters params = validParams<FeatureFloodCount>();
   params += validParams<GrainTrackerInterface>();
-
-  // FeatureFloodCount adds a relationship manager, but we need to extend that for GrainTracker
-  params.clearRelationshipManagers();
-
-  params.addRelationshipManager(
-      "ElementSideNeighborLayers",
-      Moose::RelationshipManagerType::GEOMETRIC,
-
-      [](const InputParameters & obj_params, InputParameters & rm_params) {
-        rm_params.set<unsigned short>("layers") = obj_params.get<unsigned short>("halo_level");
-      }
-
-  );
-
-  params.addRelationshipManager("ElementSideNeighborLayers",
-                                Moose::RelationshipManagerType::ALGEBRAIC);
-
-  // The GrainTracker requires non-volatile storage for tracking grains across invocations.
-  params.set<bool>("restartable_required") = true;
-
   params.addClassDescription("Grain Tracker object for running reduced order parameter simulations "
                              "without grain coalescence.");
 
@@ -81,35 +58,23 @@ GrainTracker::GrainTracker(const InputParameters & parameters)
   : FeatureFloodCount(parameters),
     GrainTrackerInterface(),
     _tracking_step(getParam<int>("tracking_step")),
-    _halo_level(getParam<unsigned short>("halo_level")),
-    _max_remap_recursion_depth(getParam<unsigned short>("max_remap_recursion_depth")),
+    _halo_level(getParam<unsigned int>("halo_level")),
     _n_reserve_ops(getParam<unsigned short>("reserve_op")),
     _reserve_op_index(_n_reserve_ops <= _n_vars ? _n_vars - _n_reserve_ops : 0),
     _reserve_op_threshold(getParam<Real>("reserve_op_threshold")),
     _remap(getParam<bool>("remap_grains")),
-    _tolerate_failure(getParam<bool>("tolerate_failure")),
     _nl(_fe_problem.getNonlinearSystemBase()),
+    _feature_sets_old(declareRestartableData<std::vector<FeatureData>>("unique_grains")),
     _poly_ic_uo(parameters.isParamValid("polycrystal_ic_uo")
                     ? &getUserObject<PolycrystalUserObjectBase>("polycrystal_ic_uo")
                     : nullptr),
-    _verbosity_level(getParam<short>("verbosity_level")),
-    _first_time(declareRestartableData<bool>("first_time", true)),
+    _first_time(true),
     _error_on_grain_creation(getParam<bool>("error_on_grain_creation")),
     _reserve_grain_first_index(0),
     _old_max_grain_id(0),
-    _max_curr_grain_id(declareRestartableData<unsigned int>("max_curr_grain_id", invalid_id)),
-    _is_transient(_subproblem.isTransient()),
-    _finalize_timer(registerTimedSection("finalize", 1)),
-    _remap_timer(registerTimedSection("remapGrains", 2)),
-    _track_grains(registerTimedSection("trackGrains", 2)),
-    _broadcast_update(registerTimedSection("broadCastUpdate", 2)),
-    _update_field_info(registerTimedSection("updateFieldInfo", 2))
+    _max_curr_grain_id(0),
+    _is_transient(_subproblem.isTransient())
 {
-  if (_tolerate_failure)
-    paramInfo("tolerate_failure",
-              "Tolerate failure has been set to true. Non-physical simulation results "
-              "are possible, you will be notified in the event of a failed remapping operation.");
-
   if (_tracking_step > 0 && _poly_ic_uo)
     mooseError("Can't start tracking after the initial condition when using a polycrystal_ic_uo");
 }
@@ -150,7 +115,7 @@ std::size_t
 GrainTracker::getTotalFeatureCount() const
 {
   // Note: This value is parallel consistent, see assignGrains()/trackGrains()
-  return _max_curr_grain_id == invalid_id ? 0 : _max_curr_grain_id + 1;
+  return _max_curr_grain_id + 1;
 }
 
 Point
@@ -181,46 +146,7 @@ GrainTracker::doesFeatureIntersectBoundary(unsigned int feature_id) const
   if (feature_index != invalid_size_t)
   {
     mooseAssert(feature_index < _feature_sets.size(), "Grain index out of bounds");
-    return _feature_sets[feature_index]._boundary_intersection != BoundaryIntersection::NONE;
-  }
-
-  return false;
-}
-
-bool
-GrainTracker::doesFeatureIntersectSpecifiedBoundary(unsigned int feature_id) const
-{
-  // TODO: This data structure may need to be turned into a Multimap
-  mooseAssert(feature_id < _feature_id_to_local_index.size(), "Grain ID out of bounds");
-
-  auto feature_index = _feature_id_to_local_index[feature_id];
-  if (feature_index != invalid_size_t)
-  {
-    mooseAssert(feature_index < _feature_sets.size(), "Grain index out of bounds");
-    return ((_feature_sets[feature_index]._boundary_intersection &
-             BoundaryIntersection::SPECIFIED_BOUNDARY) == BoundaryIntersection::SPECIFIED_BOUNDARY);
-  }
-
-  return false;
-}
-
-bool
-GrainTracker::isFeaturePercolated(unsigned int feature_id) const
-{
-  // TODO: This data structure may need to be turned into a Multimap
-  mooseAssert(feature_id < _feature_id_to_local_index.size(), "Grain ID out of bounds");
-
-  auto feature_index = _feature_id_to_local_index[feature_id];
-  if (feature_index != invalid_size_t)
-  {
-    mooseAssert(feature_index < _feature_sets.size(), "Grain index out of bounds");
-    bool primary = ((_feature_sets[feature_index]._boundary_intersection &
-                     BoundaryIntersection::PRIMARY_PERCOLATION_BOUNDARY) ==
-                    BoundaryIntersection::PRIMARY_PERCOLATION_BOUNDARY);
-    bool secondary = ((_feature_sets[feature_index]._boundary_intersection &
-                       BoundaryIntersection::SECONDARY_PERCOLATION_BOUNDARY) ==
-                      BoundaryIntersection::SECONDARY_PERCOLATION_BOUNDARY);
-    return (primary && secondary);
+    return _feature_sets[feature_index]._intersects_boundary;
   }
 
   return false;
@@ -234,39 +160,14 @@ GrainTracker::initialize()
     return;
 
   /**
-   * If we are passed the first time, we need to save the existing grains before beginning the
-   * tracking on the current step. We'll do that with a swap since the _feature_sets contents will
-   * be cleared anyway.
+   * If we are passed the first time, we need to save the existing
+   * grains before beginning the tracking on the current step. We'll do that
+   * with a swap since the _feature_sets contents will be cleared anyway.
    */
   if (!_first_time)
     _feature_sets_old.swap(_feature_sets);
 
   FeatureFloodCount::initialize();
-}
-
-void
-GrainTracker::meshChanged()
-{
-  // Update the element ID ranges for use when computing halo maps
-  if (_compute_halo_maps && _mesh.isDistributedMesh())
-  {
-    _all_ranges.clear();
-
-    auto range = std::make_pair(std::numeric_limits<dof_id_type>::max(),
-                                std::numeric_limits<dof_id_type>::min());
-    for (const auto & current_elem : _mesh.getMesh().active_local_element_ptr_range())
-    {
-      auto id = current_elem->id();
-      if (id < range.first)
-        range.first = id;
-      else if (id > range.second)
-        range.second = id;
-    }
-
-    _communicator.gather(0, range, _all_ranges);
-  }
-
-  FeatureFloodCount::meshChanged();
 }
 
 void
@@ -279,7 +180,9 @@ GrainTracker::execute()
   if (_poly_ic_uo && _first_time)
     return;
 
+  Moose::perf_log.push("execute()", "GrainTracker");
   FeatureFloodCount::execute();
+  Moose::perf_log.pop("execute()", "GrainTracker");
 }
 
 Real
@@ -329,11 +232,16 @@ GrainTracker::prepopulateState(const FeatureFloodCount & ffc_object)
 void
 GrainTracker::finalize()
 {
+  /**
+   * Some perf_log operations appear here instead of inside of the named routines
+   * because of multiple return paths.
+   */
+
   // Don't track grains if the current simulation step is before the specified tracking step
   if (_t_step < _tracking_step)
     return;
 
-  TIME_SECTION(_finalize_timer);
+  Moose::perf_log.push("finalize()", "GrainTracker");
 
   // Expand the depth of the halos around all grains
   auto num_halo_layers = _halo_level >= 1
@@ -353,13 +261,13 @@ GrainTracker::finalize()
   /**
    * Assign or Track Grains
    */
+  Moose::perf_log.push("trackGrains()", "GrainTracker");
   if (_first_time)
     assignGrains();
   else
     trackGrains();
-
-  if (_verbosity_level > 1)
-    _console << "Finished inside of trackGrains" << std::endl;
+  Moose::perf_log.pop("trackGrains()", "GrainTracker");
+  _console << "Finished inside of trackGrains" << std::endl;
 
   /**
    * Broadcast essential data
@@ -369,26 +277,26 @@ GrainTracker::finalize()
   /**
    * Remap Grains
    */
+  Moose::perf_log.push("remapGrains()", "GrainTracker");
   if (_remap)
     remapGrains();
+  Moose::perf_log.pop("remapGrains()", "GrainTracker");
 
   updateFieldInfo();
-  if (_verbosity_level > 1)
-    _console << "Finished inside of updateFieldInfo\n";
+  _console << "Finished inside of updateFieldInfo" << std::endl;
 
   // Set the first time flag false here (after all methods of finalize() have completed)
   _first_time = false;
 
   // TODO: Release non essential memory
-  if (_verbosity_level > 0)
-    _console << "Finished inside of GrainTracker\n" << std::endl;
+
+  _console << "Finished inside of GrainTracker" << std::endl;
+  Moose::perf_log.pop("finalize()", "GrainTracker");
 }
 
 void
 GrainTracker::broadcastAndUpdateGrainData()
 {
-  TIME_SECTION(_broadcast_update);
-
   std::vector<PartialFeatureData> root_feature_data;
   std::vector<std::string> send_buffer(1), recv_buffer;
 
@@ -402,7 +310,7 @@ GrainTracker::broadcastAndUpdateGrainData()
                    std::back_inserter(root_feature_data),
                    [](FeatureData & feature) {
                      PartialFeatureData partial_feature;
-                     partial_feature.boundary_intersection = feature._boundary_intersection;
+                     partial_feature.intersects_boundary = feature._intersects_boundary;
                      partial_feature.id = feature._id;
                      partial_feature.centroid = feature._centroid;
                      partial_feature.status = feature._status;
@@ -437,7 +345,7 @@ GrainTracker::broadcastAndUpdateGrainData()
           _feature_id_to_local_index[partial_data.id] != invalid_size_t)
       {
         auto & grain = _feature_sets[_feature_id_to_local_index[partial_data.id]];
-        grain._boundary_intersection = partial_data.boundary_intersection;
+        grain._intersects_boundary = partial_data.intersects_boundary;
         grain._centroid = partial_data.centroid;
         if (partial_data.status == Status::INACTIVE)
           grain._status = Status::INACTIVE;
@@ -458,23 +366,17 @@ GrainTracker::assignGrains()
    */
   if (_is_master)
   {
+    mooseAssert(!_feature_sets.empty(), "Feature sets empty!");
+
     // Find the largest grain ID, this requires sorting if the ID is not already set
     sortAndLabel();
-
-    if (_feature_sets.empty())
-    {
-      _max_curr_grain_id = invalid_id;
-      _reserve_grain_first_index = 0;
-    }
-    else
-    {
-      _max_curr_grain_id = _feature_sets.back()._id;
-      _reserve_grain_first_index = _max_curr_grain_id + 1;
-    }
+    _max_curr_grain_id = _feature_sets[_feature_sets.size() - 1]._id;
 
     for (auto & grain : _feature_sets)
       grain._status = Status::MARKED; // Mark the grain
 
+    // Set up the first reserve grain index based on the largest grain ID
+    _reserve_grain_first_index = _max_curr_grain_id + 1;
   } // is_master
 
   /*************************************************************
@@ -489,16 +391,13 @@ GrainTracker::assignGrains()
   buildFeatureIdToLocalIndices(_max_curr_grain_id);
 
   // Now trigger the newGrainCreated() callback on all ranks
-  if (_max_curr_grain_id != invalid_id)
-    for (unsigned int new_id = 0; new_id <= _max_curr_grain_id; ++new_id)
-      newGrainCreated(new_id);
+  for (auto new_id = decltype(_max_curr_grain_id)(0); new_id <= _max_curr_grain_id; ++new_id)
+    newGrainCreated(new_id);
 }
 
 void
 GrainTracker::trackGrains()
 {
-  TIME_SECTION(_track_grains);
-
   mooseAssert(!_first_time, "Track grains may only be called when _tracking_step > _t_step");
 
   // Used to track indices for which to trigger the new grain callback on (used on all ranks)
@@ -522,23 +421,16 @@ GrainTracker::trackGrains()
     }
 
     // Print out stats on overall tracking changes per var_index
-    if (_verbosity_level > 0)
+    for (auto map_num = decltype(_maps_size)(0); map_num < _maps_size; ++map_num)
     {
-      _console << "\nGrain Tracker Status:";
-      for (MooseIndex(_maps_size) map_num = 0; map_num < _maps_size; ++map_num)
-      {
-        _console << "\nGrains active index " << map_num << ": " << map_sizes[map_num] << " -> "
-                 << _feature_counts_per_map[map_num];
-        if (map_sizes[map_num] > _feature_counts_per_map[map_num])
-          _console << "--";
-        else if (map_sizes[map_num] < _feature_counts_per_map[map_num])
-          _console << "++";
-      }
-      _console << '\n' << std::endl;
+      _console << "\nGrains active index " << map_num << ": " << map_sizes[map_num] << " -> "
+               << _feature_counts_per_map[map_num];
+      if (map_sizes[map_num] > _feature_counts_per_map[map_num])
+        _console << "--";
+      else if (map_sizes[map_num] < _feature_counts_per_map[map_num])
+        _console << "++";
     }
-
-    // Before we track grains, lets sort them so that we get parallel consistent answers
-    std::sort(_feature_sets.begin(), _feature_sets.end());
+    _console << '\n' << std::endl;
 
     /**
      * To track grains across time steps, we will loop over our unique grains and link each one up
@@ -549,7 +441,7 @@ GrainTracker::trackGrains()
     std::vector<std::size_t> new_grain_index_to_existing_grain_index(_feature_sets.size(),
                                                                      invalid_size_t);
 
-    for (MooseIndex(_feature_sets_old) old_grain_index = 0;
+    for (auto old_grain_index = beginIndex(_feature_sets_old);
          old_grain_index < _feature_sets_old.size();
          ++old_grain_index)
     {
@@ -576,9 +468,8 @@ GrainTracker::trackGrains()
       // clang-format on
 
       // We only need to examine grains that have matching variable indices
-      bool any_boxes_intersect = false;
-      for (MooseIndex(_feature_sets)
-               new_grain_index = std::distance(_feature_sets.begin(), start_it);
+      for (decltype(_feature_sets.size()) new_grain_index =
+               std::distance(_feature_sets.begin(), start_it);
            new_grain_index < _feature_sets.size() &&
            _feature_sets[new_grain_index]._var_index == old_grain._var_index;
            ++new_grain_index)
@@ -591,7 +482,6 @@ GrainTracker::trackGrains()
          */
         if (new_grain.boundingBoxesIntersect(old_grain))
         {
-          any_boxes_intersect = true;
           Real curr_centroid_diff = centroidRegionDistance(old_grain._bboxes, new_grain._bboxes);
           if (curr_centroid_diff <= min_centroid_diff)
           {
@@ -600,10 +490,6 @@ GrainTracker::trackGrains()
           }
         }
       }
-
-      if (_verbosity_level > 2 && !any_boxes_intersect)
-        _console << "\nNo intersecting bounding boxes found while trying to match grain "
-                 << old_grain;
 
       // found a match
       if (closest_match_index != invalid_size_t)
@@ -629,14 +515,9 @@ GrainTracker::trackGrains()
           auto & inactive_grain = (centroid_diff1 < centroid_diff2) ? other_old_grain : old_grain;
 
           inactive_grain._status = Status::INACTIVE;
-          if (_verbosity_level > 0)
-          {
-            _console << COLOR_GREEN << "Marking Grain " << inactive_grain._id
-                     << " as INACTIVE (variable index: " << inactive_grain._var_index << ")\n"
-                     << COLOR_DEFAULT;
-            if (_verbosity_level > 1)
-              _console << inactive_grain;
-          }
+          _console << COLOR_GREEN << "Marking Grain " << inactive_grain._id
+                   << " as INACTIVE (variable index: " << inactive_grain._var_index << ")\n"
+                   << COLOR_DEFAULT << inactive_grain;
 
           /**
            * If the grain we just marked inactive was the one whose index was in the new grain
@@ -652,7 +533,7 @@ GrainTracker::trackGrains()
     }
 
     // Mark all resolved grain matches
-    for (MooseIndex(new_grain_index_to_existing_grain_index) new_index = 0;
+    for (auto new_index = beginIndex(new_grain_index_to_existing_grain_index);
          new_index < new_grain_index_to_existing_grain_index.size();
          ++new_index)
     {
@@ -685,7 +566,7 @@ GrainTracker::trackGrains()
      *         for any new grain which means it can't be marked inactive in the loop above.
      */
     // Case 1 (new grains in _feature_sets):
-    for (MooseIndex(_feature_sets) grain_num = 0; grain_num < _feature_sets.size(); ++grain_num)
+    for (auto grain_num = beginIndex(_feature_sets); grain_num < _feature_sets.size(); ++grain_num)
     {
       auto & grain = _feature_sets[grain_num];
 
@@ -720,8 +601,8 @@ GrainTracker::trackGrains()
         // clang-format on
 
         // Loop over matching variable indices
-        for (MooseIndex(_feature_sets)
-                 new_grain_index = std::distance(_feature_sets.begin(), start_it);
+        for (decltype(_feature_sets.size()) new_grain_index =
+                 std::distance(_feature_sets.begin(), start_it);
              new_grain_index < _feature_sets.size() &&
              _feature_sets[new_grain_index]._var_index == grain._var_index;
              ++new_grain_index)
@@ -737,78 +618,10 @@ GrainTracker::trackGrains()
           {
             grain._id = other_grain._id;    // Set the duplicate ID
             grain._status = Status::MARKED; // Mark it
-
-            if (_verbosity_level > 0)
-              _console << COLOR_YELLOW << "Split Grain Detected #" << grain._id
-                       << " (variable index: " << grain._var_index << ")\n"
-                       << COLOR_DEFAULT;
-            if (_verbosity_level > 1)
-              _console << grain << other_grain;
+            _console << COLOR_YELLOW << "Split Grain Detected "
+                     << " (variable index: " << grain._var_index << ")\n"
+                     << COLOR_DEFAULT << grain << other_grain;
           }
-        }
-
-        if (grain._var_index < _reserve_op_index)
-        {
-          /**
-           * The "try-harder loop":
-           * OK so we still have an extra grain in the new set that isn't matched up against the
-           * old set and since the order parameter isn't reserved. We aren't really expecting a new
-           * grain. Let's try to make a few more attempts to see if this is a split grain even
-           * though it failed to match the criteria above. This might happen if the halo front is
-           * advancing too fast!
-           *
-           * In this loop we'll make an attempt to match up this new grain to the old halos. If
-           * adaptivity is happening this could fail as elements in the new set may be at a
-           * different level than in the old set. If we get multiple matches, we'll compare the
-           * grain volumes (based on elements, not integrated to choose the closest).
-           *
-           * Future ideas:
-           * Look at the volume fraction of the new grain and overlay it over the volume fraction
-           * of the old grain (would require more saved information, or an aux field hanging around
-           * (subject to projection problems).
-           */
-          if (_verbosity_level > 1)
-            _console << COLOR_YELLOW
-                     << "Trying harder to detect a split grain while examining grain on variable "
-                        "index "
-                     << grain._var_index << '\n'
-                     << COLOR_DEFAULT;
-
-          std::vector<std::size_t> old_grain_indices;
-          for (MooseIndex(_feature_sets_old) old_grain_index = 0;
-               old_grain_index < _feature_sets_old.size();
-               ++old_grain_index)
-          {
-            auto & old_grain = _feature_sets_old[old_grain_index];
-
-            if (old_grain._status == Status::INACTIVE)
-              continue;
-
-            /**
-             * Note that the old grains we are looking at will already be marked from the earlier
-             * tracking phase. We are trying to see if this unmatched grain is part of a larger
-             * whole. To do that we'll look at the halos across the time step.
-             */
-            if (grain._var_index == old_grain._var_index &&
-                grain.boundingBoxesIntersect(old_grain) && grain.halosIntersect(old_grain))
-              old_grain_indices.push_back(old_grain_index);
-          }
-
-          if (old_grain_indices.size() == 1)
-          {
-            grain._id = _feature_sets_old[old_grain_indices[0]]._id;
-            grain._status = Status::MARKED;
-
-            if (_verbosity_level > 0)
-              _console << COLOR_YELLOW << "Split Grain Detected #" << grain._id
-                       << " (variable index: " << grain._var_index << ")\n"
-                       << COLOR_DEFAULT;
-          }
-          else if (old_grain_indices.size() > 1)
-            _console
-                << COLOR_RED << "Split Grain Likely Detected #" << grain._id
-                << " Need more information to find correct candidate - contact a developer!\n\n"
-                << COLOR_DEFAULT;
         }
 
         // Must be a nucleating grain (status is still not set)
@@ -817,13 +630,6 @@ GrainTracker::trackGrains()
           auto new_index = getNextUniqueID();
           grain._id = new_index;          // Set the ID
           grain._status = Status::MARKED; // Mark it
-
-          if (_verbosity_level > 0)
-            _console << COLOR_YELLOW << "Nucleating Grain Detected "
-                     << " (variable index: " << grain._var_index << ")\n"
-                     << COLOR_DEFAULT;
-          if (_verbosity_level > 1)
-            _console << grain;
         }
       }
     }
@@ -834,14 +640,9 @@ GrainTracker::trackGrains()
       if (grain._status == Status::CLEAR)
       {
         grain._status = Status::INACTIVE;
-        if (_verbosity_level > 0)
-        {
-          _console << COLOR_GREEN << "Marking Grain " << grain._id
-                   << " as INACTIVE (variable index: " << grain._var_index << ")\n"
-                   << COLOR_DEFAULT;
-          if (_verbosity_level > 1)
-            _console << grain;
-        }
+        _console << COLOR_GREEN << "Marking Grain " << grain._id
+                 << " as INACTIVE (variable index: " << grain._var_index << ")\n"
+                 << COLOR_DEFAULT << grain;
       }
     }
   } // is_master
@@ -918,10 +719,7 @@ GrainTracker::remapGrains()
   if (_t_step < _tracking_step)
     return;
 
-  TIME_SECTION(_remap_timer);
-
-  if (_verbosity_level > 1)
-    _console << "Running remap Grains\n" << std::endl;
+  _console << "Running remap Grains" << std::endl;
 
   /**
    * Map used for communicating remap indices to all ranks
@@ -955,11 +753,11 @@ GrainTracker::remapGrains()
     }
 
     // Make sure that all split pieces of any grain are on the same OP
-    for (MooseIndex(_feature_sets) i = 0; i < _feature_sets.size(); ++i)
+    for (auto i = beginIndex(_feature_sets); i < _feature_sets.size(); ++i)
     {
       auto & grain1 = _feature_sets[i];
 
-      for (MooseIndex(_feature_sets) j = 0; j < _feature_sets.size(); ++j)
+      for (auto j = beginIndex(_feature_sets); j < _feature_sets.size(); ++j)
       {
         auto & grain2 = _feature_sets[j];
         if (i == j)
@@ -971,12 +769,11 @@ GrainTracker::remapGrains()
           split_pairs.push_front(std::make_pair(i, j));
           if (grain1._var_index != grain2._var_index)
           {
-            if (_verbosity_level > 0)
-              _console << COLOR_YELLOW << "Split Grain (#" << grain1._id
-                       << ") detected on unmatched OPs (" << grain1._var_index << ", "
-                       << grain2._var_index << ") attempting to remap to " << grain1._var_index
-                       << ".\n"
-                       << COLOR_DEFAULT;
+            _console << COLOR_YELLOW << "Split Grain (#" << grain1._id
+                     << ") detected on unmatched OPs (" << grain1._var_index << ", "
+                     << grain2._var_index << ") attempting to remap to " << grain1._var_index
+                     << ".\n"
+                     << COLOR_DEFAULT;
 
             /**
              * We're not going to try very hard to look for a suitable remapping. Just set it to
@@ -994,27 +791,23 @@ GrainTracker::remapGrains()
      */
     bool any_grains_remapped = false;
     bool grains_remapped;
-
-    std::set<unsigned int> notify_ids;
     do
     {
       grains_remapped = false;
-      notify_ids.clear();
-
       for (auto & grain1 : _feature_sets)
       {
         // We need to remap any grains represented on any variable index above the cuttoff
         if (grain1._var_index >= _reserve_op_index)
         {
-          if (_verbosity_level > 0)
-            _console << COLOR_YELLOW << "\nGrain #" << grain1._id
-                     << " detected on a reserved order parameter #" << grain1._var_index
-                     << ", remapping to another variable\n"
-                     << COLOR_DEFAULT;
+          _console << COLOR_YELLOW << "\nGrain #" << grain1._id
+                   << " detected on a reserved order parameter #" << grain1._var_index
+                   << ", remapping to another variable\n"
+                   << COLOR_DEFAULT;
 
-          for (MooseIndex(_max_remap_recursion_depth) max = 0; max <= _max_remap_recursion_depth;
+          for (auto max = decltype(_max_renumbering_recursion)(0);
+               max <= _max_renumbering_recursion;
                ++max)
-            if (max < _max_remap_recursion_depth)
+            if (max < _max_renumbering_recursion)
             {
               if (attemptGrainRenumber(grain1, 0, max))
                 break;
@@ -1022,14 +815,10 @@ GrainTracker::remapGrains()
             else if (!attemptGrainRenumber(grain1, 0, max))
             {
               _console << std::flush;
-              std::stringstream oss;
-              oss << "Unable to find any suitable order parameters for remapping while working "
-                  << "with Grain #" << grain1._id << ", which is on a reserve order parameter.\n"
-                  << "\n\nPossible Resolutions:\n"
-                  << "\t- Add more order parameters to your simulation (8 for 2D, 28 for 3D)\n"
-                  << "\t- Increase adaptivity or reduce your grain boundary widths\n"
-                  << "\t- Make sure you are not starting with too many grains for the mesh size\n";
-              mooseError(oss.str());
+              mooseError(COLOR_RED,
+                         "Unable to find any suitable order parameters for remapping."
+                         " Perhaps you need more op variables?\n\n",
+                         COLOR_DEFAULT);
             }
 
           grains_remapped = true;
@@ -1046,51 +835,34 @@ GrainTracker::remapGrains()
               grain1.boundingBoxesIntersect(grain2) &&  // do bboxes intersect (coarse level)?
               grain1.halosIntersect(grain2))            // do they actually overlap (fine level)?
           {
-            if (_verbosity_level > 0)
-              _console << COLOR_YELLOW << "Grain #" << grain1._id << " intersects Grain #"
-                       << grain2._id << " (variable index: " << grain1._var_index << ")\n"
-                       << COLOR_DEFAULT;
+            _console << COLOR_YELLOW << "\nGrain #" << grain1._id << " intersects Grain #"
+                     << grain2._id << " (variable index: " << grain1._var_index << ")\n"
+                     << COLOR_DEFAULT;
 
-            for (MooseIndex(_max_remap_recursion_depth) max = 0; max <= _max_remap_recursion_depth;
+            for (auto max = decltype(_max_renumbering_recursion)(0);
+                 max <= _max_renumbering_recursion;
                  ++max)
-            {
-              if (max < _max_remap_recursion_depth)
+              if (max < _max_renumbering_recursion)
               {
                 if (attemptGrainRenumber(grain1, 0, max))
-                {
-                  grains_remapped = true;
                   break;
-                }
               }
               else if (!attemptGrainRenumber(grain1, 0, max) &&
                        !attemptGrainRenumber(grain2, 0, max))
               {
-                notify_ids.insert(grain1._id);
-                notify_ids.insert(grain2._id);
+                _console << std::flush;
+                mooseError(COLOR_RED,
+                           "Unable to find any suitable order parameters for remapping."
+                           " Perhaps you need more op variables?\n\n",
+                           COLOR_DEFAULT);
               }
-            }
+
+            grains_remapped = true;
           }
         }
       }
       any_grains_remapped |= grains_remapped;
     } while (grains_remapped);
-
-    if (!notify_ids.empty())
-    {
-      _console << std::flush;
-      std::stringstream oss;
-      oss << "Unable to find any suitable order parameters for remapping while working "
-          << "with the following grain IDs:\n"
-          << Moose::stringify(notify_ids, ", ", "", true) << "\n\nPossible Resolutions:\n"
-          << "\t- Add more order parameters to your simulation (8 for 2D, 28 for 3D)\n"
-          << "\t- Increase adaptivity or reduce your grain boundary widths\n"
-          << "\t- Make sure you are not starting with too many grains for the mesh size\n";
-
-      if (_tolerate_failure)
-        mooseWarning(oss.str());
-      else
-        mooseError(oss.str());
-    }
 
     // Verify that split grains are still intact
     for (auto & split_pair : split_pairs)
@@ -1134,15 +906,12 @@ GrainTracker::remapGrains()
 
     if (!grain_id_to_new_var.empty())
     {
-      if (_verbosity_level > 1)
-      {
-        _console << "Final remapping tally:\n";
-        for (const auto & remap_pair : grain_id_to_new_var)
-          _console << "Grain #" << remap_pair.first << " var_index "
-                   << grain_id_to_existing_var_index[remap_pair.first] << " -> "
-                   << remap_pair.second << '\n';
-        _console << "Communicating swaps with remaining processors..." << std::endl;
-      }
+      _console << "\nFinal remapping tally:\n";
+      for (const auto & remap_pair : grain_id_to_new_var)
+        _console << "Grain #" << remap_pair.first << " var_index "
+                 << grain_id_to_existing_var_index[remap_pair.first] << " -> " << remap_pair.second
+                 << '\n';
+      _console << "Communicating swaps with remaining processors..." << std::endl;
     }
   } // root processor
 
@@ -1178,8 +947,7 @@ GrainTracker::remapGrains()
 
     _fe_problem.getNonlinearSystemBase().system().update();
 
-    if (_verbosity_level > 1)
-      _console << "Swaps complete" << std::endl;
+    _console << "Swaps complete" << std::endl;
   }
 }
 
@@ -1210,7 +978,7 @@ GrainTracker::computeMinDistancesFromGrain(FeatureData & grain,
    *        __/  0  \___/
    *
    */
-  for (MooseIndex(_feature_sets) i = 0; i < _feature_sets.size(); ++i)
+  for (auto i = beginIndex(_feature_sets); i < _feature_sets.size(); ++i)
   {
     auto & other_grain = _feature_sets[i];
 
@@ -1246,7 +1014,7 @@ GrainTracker::computeMinDistancesFromGrain(FeatureData & grain,
    * parameter corresponding to this grain, we need to put them in the list or the grain  tracker
    * won't realize that those vars are available for remapping.
    */
-  for (MooseIndex(_vars) var_index = 0; var_index < _reserve_op_index; ++var_index)
+  for (auto var_index = beginIndex(_vars); var_index < _reserve_op_index; ++var_index)
   {
     // Don't put an entry in for matching variable indices (i.e. we can't remap to ourselves)
     if (grain._var_index == var_index)
@@ -1311,17 +1079,14 @@ GrainTracker::attemptGrainRenumber(FeatureData & grain, unsigned int depth, unsi
     // If the distance is positive we can just remap and be done
     if (target_it->_distance > 0)
     {
-      if (_verbosity_level > 0)
-      {
-        _console << COLOR_GREEN << "- Depth " << depth << ": Remapping grain #" << grain._id
-                 << " from variable index " << curr_var_index << " to " << target_it->_var_index;
-        if (target_it->_distance == std::numeric_limits<Real>::max())
-          _console << " which currently contains zero grains.\n\n" << COLOR_DEFAULT;
-        else
-          _console << " whose closest grain (#" << target_it->_grain_id << ") is at a distance of "
-                   << std::sqrt(target_it->_distance) << "\n\n"
-                   << COLOR_DEFAULT;
-      }
+      _console << COLOR_GREEN << "- Depth " << depth << ": Remapping grain #" << grain._id
+               << " from variable index " << curr_var_index << " to " << target_it->_var_index;
+      if (target_it->_distance == std::numeric_limits<Real>::max())
+        _console << " which currently contains zero grains." << COLOR_DEFAULT;
+      else
+        _console << " whose closest grain (#" << target_it->_grain_id << ") is at a distance of "
+                 << target_it->_distance << "\n"
+                 << COLOR_DEFAULT;
 
       grain._status |= Status::DIRTY;
       grain._var_index = target_it->_var_index;
@@ -1330,55 +1095,38 @@ GrainTracker::attemptGrainRenumber(FeatureData & grain, unsigned int depth, unsi
 
     // If the distance isn't positive we just need to make sure that none of the grains represented
     // by the target variable index would intersect this one if we were to remap
+    auto next_target_it = target_it;
+    bool intersection_hit = false;
+    std::ostringstream oss;
+    while (!intersection_hit && next_target_it != list_ref.end())
     {
-      auto next_target_it = target_it;
-      bool intersection_hit = false;
-      unsigned short num_close_targets = 0;
-      std::ostringstream oss;
-      while (!intersection_hit && next_target_it != list_ref.end())
-      {
-        if (next_target_it->_distance > 0)
-          break;
+      if (next_target_it->_distance > 0)
+        break;
 
-        mooseAssert(next_target_it->_grain_index < _feature_sets.size(),
-                    "Error in indexing target grain in attemptGrainRenumber");
-        FeatureData & next_target_grain = _feature_sets[next_target_it->_grain_index];
+      mooseAssert(next_target_it->_grain_index < _feature_sets.size(),
+                  "Error in indexing target grain in attemptGrainRenumber");
+      FeatureData & next_target_grain = _feature_sets[next_target_it->_grain_index];
 
-        // If any grains touch we're done here
-        if (grain.halosIntersect(next_target_grain))
-          intersection_hit = true;
-        else
-        {
-          if (num_close_targets > 0)
-            oss << ", "; // delimiter
-          oss << "#" << next_target_it->_grain_id;
-        }
+      // If any grains touch we're done here
+      if (grain.halosIntersect(next_target_grain))
+        intersection_hit = true;
+      else
+        oss << " #" << next_target_it->_grain_id;
 
-        ++next_target_it;
-        ++num_close_targets;
-      }
+      ++next_target_it;
+    }
 
-      if (!intersection_hit)
-      {
-        if (_verbosity_level > 0)
-        {
-          _console << COLOR_GREEN << "- Depth " << depth << ": Remapping grain #" << grain._id
-                   << " from variable index " << curr_var_index << " to " << target_it->_var_index;
+    if (!intersection_hit)
+    {
+      _console << COLOR_GREEN << "- Depth " << depth << ": Remapping grain #" << grain._id
+               << " from variable index " << curr_var_index << " to " << target_it->_var_index
+               << " whose closest grain:" << oss.str()
+               << " is inside our bounding box but whose halo(s) are not touching.\n"
+               << COLOR_DEFAULT;
 
-          if (num_close_targets == 1)
-            _console << " whose closest grain (" << oss.str()
-                     << ") is inside our bounding box but whose halo is not touching.\n\n"
-                     << COLOR_DEFAULT;
-          else
-            _console << " whose closest grains (" << oss.str()
-                     << ") are inside our bounding box but whose halos are not touching.\n\n"
-                     << COLOR_DEFAULT;
-        }
-
-        grain._status |= Status::DIRTY;
-        grain._var_index = target_it->_var_index;
-        return true;
-      }
+      grain._status |= Status::DIRTY;
+      grain._var_index = target_it->_var_index;
+      return true;
     }
 
     // If we reach this part of the loop, there is no simple renumbering that can be done.
@@ -1410,11 +1158,10 @@ GrainTracker::attemptGrainRenumber(FeatureData & grain, unsigned int depth, unsi
     if (attemptGrainRenumber(target_grain, depth + 1, max_depth))
     {
       // SUCCESS!
-      if (_verbosity_level > 0)
-        _console << COLOR_GREEN << "- Depth " << depth << ": Remapping grain #" << grain._id
-                 << " from variable index " << curr_var_index << " to " << target_it->_var_index
-                 << "\n\n"
-                 << COLOR_DEFAULT;
+      _console << COLOR_GREEN << "- Depth " << depth << ": Remapping grain #" << grain._id
+               << " from variable index " << curr_var_index << " to " << target_it->_var_index
+               << '\n'
+               << COLOR_DEFAULT;
 
       // Now we need to mark the grain as DIRTY since the recursion succeeded.
       grain._status |= Status::DIRTY;
@@ -1446,13 +1193,13 @@ GrainTracker::swapSolutionValues(FeatureData & grain,
   {
     if (_is_elemental)
     {
-      Elem * elem = mesh.query_elem_ptr(entity);
+      Elem * elem = mesh.query_elem(entity);
       if (!elem)
         continue;
 
       for (unsigned int i = 0; i < elem->n_nodes(); ++i)
       {
-        Node * curr_node = elem->node_ptr(i);
+        Node * curr_node = elem->get_node(i);
         if (updated_nodes_tmp.find(curr_node) == updated_nodes_tmp.end())
         {
           // cache this node so we don't attempt to remap it again within this loop
@@ -1488,11 +1235,11 @@ GrainTracker::swapSolutionValuesHelper(Node * curr_node,
     // Retrieve the value either from the old variable or cache
     if (cache_mode == RemapCacheMode::FILL || cache_mode == RemapCacheMode::BYPASS)
     {
-      current = _vars[curr_var_index]->dofValues()[0];
+      current = _vars[curr_var_index]->nodalSln()[0];
       if (_is_transient)
       {
-        old = _vars[curr_var_index]->dofValuesOld()[0];
-        older = _vars[curr_var_index]->dofValuesOlder()[0];
+        old = _vars[curr_var_index]->nodalSlnOld()[0];
+        older = _vars[curr_var_index]->nodalSlnOlder()[0];
       }
     }
     else // USE
@@ -1554,12 +1301,11 @@ GrainTracker::swapSolutionValuesHelper(Node * curr_node,
 void
 GrainTracker::updateFieldInfo()
 {
-  TIME_SECTION(_update_field_info);
-
-  for (MooseIndex(_maps_size) map_num = 0; map_num < _maps_size; ++map_num)
+  for (auto map_num = decltype(_maps_size)(0); map_num < _maps_size; ++map_num)
     _feature_maps[map_num].clear();
 
   std::map<dof_id_type, Real> tmp_map;
+  MeshBase & mesh = _mesh.getMesh();
 
   for (const auto & grain : _feature_sets)
   {
@@ -1572,7 +1318,7 @@ GrainTracker::updateFieldInfo()
       Real entity_value = std::numeric_limits<Real>::lowest();
       if (_is_elemental)
       {
-        const Elem * elem = _mesh.elemPtr(entity);
+        const Elem * elem = mesh.elem(entity);
         std::vector<Point> centroid(1, elem->centroid());
         if (_poly_ic_uo && _first_time)
         {
@@ -1580,14 +1326,14 @@ GrainTracker::updateFieldInfo()
         }
         else
         {
-          _fe_problem.reinitElemPhys(elem, centroid, 0, /* suppress_displaced_init = */ true);
+          _fe_problem.reinitElemPhys(elem, centroid, 0);
           entity_value = _vars[curr_var]->sln()[0];
         }
       }
       else
       {
-        auto node_ptr = _mesh.nodePtr(entity);
-        entity_value = _vars[curr_var]->getNodalValue(*node_ptr);
+        Node & node = mesh.node(entity);
+        entity_value = _vars[curr_var]->getNodalValue(node);
       }
 
       if (entity_value != std::numeric_limits<Real>::lowest() &&
@@ -1604,18 +1350,18 @@ GrainTracker::updateFieldInfo()
 
       if (_compute_var_to_feature_map)
       {
-        auto insert_pair = moose_try_emplace(
-            _entity_var_to_features, entity, std::vector<unsigned int>(_n_vars, invalid_id));
-        auto & vec_ref = insert_pair.first->second;
-
-        if (insert_pair.second)
+        auto map_it = _entity_var_to_features.lower_bound(entity);
+        if (map_it == _entity_var_to_features.end() || map_it->first != entity)
         {
+          map_it = _entity_var_to_features.emplace_hint(
+              map_it, entity, std::vector<unsigned int>(_n_vars, invalid_id));
+
           // insert the reserve op numbers (if appropriate)
-          for (MooseIndex(_n_reserve_ops) reserve_index = 0; reserve_index < _n_reserve_ops;
+          for (auto reserve_index = decltype(_n_reserve_ops)(0); reserve_index < _n_reserve_ops;
                ++reserve_index)
-            vec_ref[reserve_index] = _reserve_grain_first_index + reserve_index;
+            map_it->second[reserve_index] = _reserve_grain_first_index + reserve_index;
         }
-        vec_ref[grain._var_index] = grain._id;
+        map_it->second[grain._var_index] = grain._id;
       }
     }
 
@@ -1642,49 +1388,25 @@ GrainTracker::communicateHaloMap()
     std::vector<std::pair<std::size_t, dof_id_type>> local_halo_ids;
     std::size_t counter = 0;
 
-    const bool isDistributedMesh = _mesh.isDistributedMesh();
-
     if (_is_master)
     {
       std::vector<std::vector<std::pair<std::size_t, dof_id_type>>> root_halo_ids(_n_procs);
       counts.resize(_n_procs);
 
+      auto & mesh = _mesh.getMesh();
       // Loop over the _halo_ids "field" and build minimal lists for all of the other ranks
-      for (MooseIndex(_halo_ids) var_index = 0; var_index < _halo_ids.size(); ++var_index)
+      for (auto var_index = beginIndex(_halo_ids); var_index < _halo_ids.size(); ++var_index)
       {
         for (const auto & entity_pair : _halo_ids[var_index])
         {
-          auto entity_id = entity_pair.first;
-          if (isDistributedMesh)
-          {
-            // Check to see which contiguous range this entity ID falls into
-            auto range_it =
-                std::lower_bound(_all_ranges.begin(),
-                                 _all_ranges.end(),
-                                 entity_id,
-                                 [](const std::pair<dof_id_type, dof_id_type> range,
-                                    dof_id_type entity_id) { return range.second < entity_id; });
-
-            mooseAssert(range_it != _all_ranges.end(), "No range round?");
-
-            // Recover the index from the iterator
-            auto proc_id = std::distance(_all_ranges.begin(), range_it);
-
-            // Now add this halo entity to the map for the corresponding proc to scatter latter
-            root_halo_ids[proc_id].push_back(std::make_pair(var_index, entity_id));
-          }
+          DofObject * halo_entity;
+          if (_is_elemental)
+            halo_entity = mesh.elem(entity_pair.first);
           else
-          {
-            DofObject * halo_entity;
-            if (_is_elemental)
-              halo_entity = _mesh.queryElemPtr(entity_id);
-            else
-              halo_entity = _mesh.queryNodePtr(entity_id);
+            halo_entity = &mesh.node(entity_pair.first);
 
-            if (halo_entity)
-              root_halo_ids[halo_entity->processor_id()].push_back(
-                  std::make_pair(var_index, entity_id));
-          }
+          root_halo_ids[halo_entity->processor_id()].push_back(
+              std::make_pair(var_index, entity_pair.first));
         }
       }
 
@@ -1704,12 +1426,7 @@ GrainTracker::communicateHaloMap()
     for (const auto & halo_pair : local_halo_ids)
       _halo_ids[halo_pair.first].emplace(std::make_pair(halo_pair.second, halo_pair.first));
 
-    /**
-     * Finally remove halo markings from interior regions. This step is necessary because we expand
-     * halos _before_ we do communication but that expansion can and will likely go into the
-     * interior of the grain (from a single processor's perspective). We could expand halos after
-     * merging, but that would likely be less scalable.
-     */
+    // Finally remove halo markings from stitch regions
     for (const auto & grain : _feature_sets)
       for (auto local_id : grain._local_ids)
         _halo_ids[grain._var_index].erase(local_id);
@@ -1717,8 +1434,8 @@ GrainTracker::communicateHaloMap()
 }
 
 Real
-GrainTracker::centroidRegionDistance(std::vector<BoundingBox> & bboxes1,
-                                     std::vector<BoundingBox> & bboxes2) const
+GrainTracker::centroidRegionDistance(std::vector<MeshTools::BoundingBox> & bboxes1,
+                                     std::vector<MeshTools::BoundingBox> & bboxes2) const
 {
   /**
    * Find the minimum centroid distance between any to pieces of the grains.
@@ -1744,8 +1461,8 @@ GrainTracker::centroidRegionDistance(std::vector<BoundingBox> & bboxes1,
 }
 
 Real
-GrainTracker::boundingRegionDistance(std::vector<BoundingBox> & bboxes1,
-                                     std::vector<BoundingBox> & bboxes2) const
+GrainTracker::boundingRegionDistance(std::vector<MeshTools::BoundingBox> & bboxes1,
+                                     std::vector<MeshTools::BoundingBox> & bboxes2) const
 {
   /**
    * The region that each grain covers is represented by a bounding box large enough to encompassing
@@ -1803,7 +1520,7 @@ GrainTracker::getNextUniqueID()
    * _reserve_grain_first_index IS a valid index. It does not
    * point to the last valid index of the non-reserved grains.
    */
-  _max_curr_grain_id = std::max(_max_curr_grain_id == invalid_id ? 0 : _max_curr_grain_id + 1,
+  _max_curr_grain_id = std::max(_max_curr_grain_id + 1,
                                 _reserve_grain_first_index + _n_reserve_ops /* no +1 here!*/);
 
   return _max_curr_grain_id;

@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "GeneralizedPlaneStrainOffDiag.h"
 
@@ -17,9 +15,8 @@
 #include "RankTwoTensor.h"
 #include "RankFourTensor.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
-
-registerMooseObject("TensorMechanicsApp", GeneralizedPlaneStrainOffDiag);
 
 template <>
 InputParameters
@@ -28,15 +25,11 @@ validParams<GeneralizedPlaneStrainOffDiag>()
   InputParameters params = validParams<Kernel>();
   params.addClassDescription("Generalized Plane Strain kernel to provide contribution of the "
                              "out-of-plane strain to other kernels");
-  params.addRequiredParam<std::vector<VariableName>>("displacements",
-                                                     "Variable for the displacements");
-  params.addParam<VariableName>("temperature", "Variable for the temperature");
-
+  params.addRequiredParam<std::vector<NonlinearVariableName>>("displacements",
+                                                              "Variable for the displacements");
+  params.addParam<NonlinearVariableName>("temperature", "Variable for the temperature");
   params.addCoupledVar("scalar_out_of_plane_strain",
                        "Scalar variable for generalized plane strain");
-  MooseEnum outOfPlaneDirection("x y z", "z");
-  params.addParam<MooseEnum>(
-      "out_of_plane_direction", outOfPlaneDirection, "The direction of the out-of-plane strain.");
   params.addParam<UserObjectName>("subblock_index_provider",
                                   "SubblockIndexProvider user object name");
   params.addParam<unsigned int>(
@@ -63,23 +56,17 @@ GeneralizedPlaneStrainOffDiag::GeneralizedPlaneStrainOffDiag(const InputParamete
                        ? getParam<unsigned int>("scalar_out_of_plane_strain_index")
                        : 0),
     _temp_var(isParamValid("temperature")
-                  ? &_subproblem.getStandardVariable(_tid, getParam<VariableName>("temperature"))
-                  : NULL),
-    _num_disp_var(getParam<std::vector<VariableName>>("displacements").size()),
-    _scalar_out_of_plane_strain_direction(getParam<MooseEnum>("out_of_plane_direction"))
+                  ? &_subproblem.getVariable(_tid, getParam<NonlinearVariableName>("temperature"))
+                  : NULL)
 {
-  const std::vector<VariableName> & nl_vnames(getParam<std::vector<VariableName>>("displacements"));
+  const std::vector<NonlinearVariableName> & nl_vnames(
+      getParam<std::vector<NonlinearVariableName>>("displacements"));
+  if (nl_vnames.size() > 2)
+    mooseError("GeneralizedPlaneStrainOffDiag only works for 1D axisymmetric or 2D Cartesian "
+               "generalized plane strain cases!");
 
-  if (_scalar_out_of_plane_strain_direction == 2 && _num_disp_var > 2)
-    mooseError("For 1D axisymmetric or 2D cartesian simulations where the out-of-plane direction "
-               "is z, the number of supplied displacements to GeneralizedPlaneStrainOffDiag must "
-               "be less than three.");
-  else if (_scalar_out_of_plane_strain_direction != 2 && _num_disp_var != 3)
-    mooseError("For 2D cartesian simulations where the out-of-plane direction is x or y the number "
-               "of supplied displacements must be three.");
-
-  for (unsigned int i = 0; i < _num_disp_var; ++i)
-    _disp_var.push_back(&_subproblem.getStandardVariable(_tid, nl_vnames[i]));
+  for (unsigned int i = 0; i < nl_vnames.size(); ++i)
+    _disp_var.push_back(&_subproblem.getVariable(_tid, nl_vnames[i]));
 
   for (unsigned int i = 0; i < _deigenstrain_dT.size(); ++i)
     _deigenstrain_dT[i] = &getMaterialPropertyDerivative<RankTwoTensor>(
@@ -99,12 +86,14 @@ GeneralizedPlaneStrainOffDiag::computeOffDiagJacobianScalar(unsigned int jvar)
 
   if (elem_scalar_var_id == _scalar_var_id)
   {
-    if (_assembly.coordSystem() == Moose::COORD_RZ)
+    if (_assembly.coordSystem() == Moose::COORD_XYZ)
+      _scalar_out_of_plane_strain_direction = 2;
+    else if (_assembly.coordSystem() == Moose::COORD_RZ)
       _scalar_out_of_plane_strain_direction = 1;
 
     if (_var.number() == _disp_var[0]->number())
       computeDispOffDiagJacobianScalar(0, jvar);
-    else if (_num_disp_var == 2 && _var.number() == _disp_var[1]->number())
+    else if (_var.number() == _disp_var[1]->number())
       computeDispOffDiagJacobianScalar(1, jvar);
     else if (isParamValid("temperature") ? _var.number() == _temp_var->number() : 0)
       computeTempOffDiagJacobianScalar(jvar);
@@ -120,13 +109,6 @@ GeneralizedPlaneStrainOffDiag::computeDispOffDiagJacobianScalar(unsigned int com
     DenseMatrix<Number> & ken = _assembly.jacobianBlock(_var.number(), jvar);
     DenseMatrix<Number> & kne = _assembly.jacobianBlock(jvar, _var.number());
     MooseVariableScalar & jv = _sys.getScalarVariable(_tid, jvar);
-
-    // Set appropriate components for scalar kernels, including in the cases where a planar model is
-    // running in planes other than the x-y plane (defined by _out_of_plane_strain_direction).
-    if (_scalar_out_of_plane_strain_direction == 0)
-      component += 1;
-    else if (_scalar_out_of_plane_strain_direction == 1 && component == 1)
-      component += 1;
 
     for (_i = 0; _i < _test.size(); ++_i)
       for (_j = 0; _j < jv.order(); ++_j)

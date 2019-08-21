@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "SideUserObject.h"
 #include "SubProblem.h"
@@ -24,13 +29,14 @@ validParams<SideUserObject>()
 
 SideUserObject::SideUserObject(const InputParameters & parameters)
   : UserObject(parameters),
-    BoundaryRestrictableRequired(this, false), // false for applying to sidesets
-    MaterialPropertyInterface(this, Moose::EMPTY_BLOCK_IDS, boundaryIDs()),
+    BoundaryRestrictableRequired(parameters, false), // false for applying to sidesets
+    MaterialPropertyInterface(this, boundaryIDs()),
     Coupleable(this, false),
     MooseVariableDependencyInterface(),
     UserObjectInterface(this),
     TransientInterface(this),
     PostprocessorInterface(this),
+    ZeroInterface(parameters),
     _mesh(_subproblem.mesh()),
     _q_point(_assembly.qPointsFace()),
     _qrule(_assembly.qRuleFace()),
@@ -43,7 +49,7 @@ SideUserObject::SideUserObject(const InputParameters & parameters)
     _current_side_volume(_assembly.sideElemVolume())
 {
   // Keep track of which variables are coupled so we know what we depend on
-  const std::vector<MooseVariableFEBase *> & coupled_vars = getCoupledMooseVars();
+  const std::vector<MooseVariable *> & coupled_vars = getCoupledMooseVars();
   for (const auto & var : coupled_vars)
     addMooseVariableDependency(var);
 }

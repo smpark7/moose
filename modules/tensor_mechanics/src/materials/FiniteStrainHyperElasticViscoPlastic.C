@@ -1,16 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "FiniteStrainHyperElasticViscoPlastic.h"
 #include "libmesh/utility.h"
-
-registerMooseObject("TensorMechanicsApp", FiniteStrainHyperElasticViscoPlastic);
 
 template <>
 InputParameters
@@ -64,10 +59,8 @@ FiniteStrainHyperElasticViscoPlastic::FiniteStrainHyperElasticViscoPlastic(
     _pk2_prop_name(_base_name + "pk2"),
     _pk2(declareProperty<RankTwoTensor>(_pk2_prop_name)),
     _fp(declareProperty<RankTwoTensor>(_base_name + "fp")),
-    _fp_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "fp")),
+    _fp_old(declarePropertyOld<RankTwoTensor>(_base_name + "fp")),
     _ce(declareProperty<RankTwoTensor>(_base_name + "ce")),
-    _elasticity_tensor_name(_base_name + "elasticity_tensor"),
-    _elasticity_tensor(getMaterialPropertyByName<RankFourTensor>(_elasticity_tensor_name)),
     _deformation_gradient(getMaterialProperty<RankTwoTensor>(_base_name + "deformation_gradient")),
     _deformation_gradient_old(
         getMaterialPropertyOld<RankTwoTensor>(_base_name + "deformation_gradient")),
@@ -127,14 +120,13 @@ FiniteStrainHyperElasticViscoPlastic::initProp(const std::vector<UserObjectName>
 
 template <typename T>
 void
-FiniteStrainHyperElasticViscoPlastic::initPropOld(
-    const std::vector<UserObjectName> & uo_names,
-    unsigned int uo_num,
-    std::vector<const MaterialProperty<T> *> & uo_prop_old)
+FiniteStrainHyperElasticViscoPlastic::initPropOld(const std::vector<UserObjectName> & uo_names,
+                                                  unsigned int uo_num,
+                                                  std::vector<MaterialProperty<T> *> & uo_prop_old)
 {
   uo_prop_old.resize(uo_num);
   for (unsigned int i = 0; i < uo_num; ++i)
-    uo_prop_old[i] = &getMaterialPropertyOld<T>(uo_names[i]);
+    uo_prop_old[i] = &declarePropertyOld<T>(uo_names[i]);
 }
 
 template <typename T>
@@ -184,9 +176,12 @@ void
 FiniteStrainHyperElasticViscoPlastic::initQpStatefulProperties()
 {
   _stress[_qp].zero();
+
+  _fp[_qp].zero();
+  _fp[_qp].addIa(1.0);
   _ce[_qp].zero();
+
   _pk2[_qp].zero();
-  _fp[_qp].setToIdentity();
 
   for (unsigned int i = 0; i < _num_flow_rate_uos; ++i)
     (*_flow_rate_prop[i])[_qp] = 0.0;
@@ -197,8 +192,7 @@ FiniteStrainHyperElasticViscoPlastic::initQpStatefulProperties()
   for (unsigned int i = 0; i < _num_int_var_uos; ++i)
   {
     (*_int_var_stateful_prop[i])[_qp] = 0.0;
-    // TODO: remove this nasty const_cast if you can figure out how
-    const_cast<MaterialProperty<Real> &>(*_int_var_stateful_prop_old[i])[_qp] = 0.0;
+    (*_int_var_stateful_prop_old[i])[_qp] = 0.0;
   }
 
   for (unsigned int i = 0; i < _num_int_var_rate_uos; ++i)
@@ -224,7 +218,7 @@ FiniteStrainHyperElasticViscoPlastic::computeQpStress()
 
     for (unsigned int istep = 0; istep < num_substep; ++istep)
     {
-      _dfgrd_tmp = (istep + 1.0) * delta_dfgrd / num_substep + _deformation_gradient_old[_qp];
+      _dfgrd_tmp = (istep + 1) * delta_dfgrd / num_substep + _deformation_gradient_old[_qp];
       if (!solveQp())
       {
         converge = false;
@@ -258,10 +252,8 @@ FiniteStrainHyperElasticViscoPlastic::preSolveQp()
 {
   _fp_tmp_old_inv = _fp_old[_qp].inverse();
 
-  // TODO: remove this nasty const_cast if you can figure out how
   for (unsigned int i = 0; i < _num_int_var_uos; ++i)
-    (*_int_var_stateful_prop[i])[_qp] =
-        const_cast<MaterialProperty<Real> &>(*_int_var_stateful_prop_old[i])[_qp] = _int_var_old[i];
+    (*_int_var_stateful_prop[i])[_qp] = (*_int_var_stateful_prop_old[i])[_qp] = _int_var_old[i];
 
   _dpk2_dce = _elasticity_tensor[_qp] * _dee_dce;
 }
@@ -291,9 +283,8 @@ FiniteStrainHyperElasticViscoPlastic::postSolveQp()
 void
 FiniteStrainHyperElasticViscoPlastic::recoverOldState()
 {
-  // TODO: remove this nasty const_cast if you can figure out how
   for (unsigned int i = 0; i < _num_int_var_uos; ++i)
-    const_cast<MaterialProperty<Real> &>(*_int_var_stateful_prop_old[i])[_qp] = _int_var_old[i];
+    (*_int_var_stateful_prop_old[i])[_qp] = _int_var_old[i];
 }
 
 void
@@ -364,10 +355,8 @@ FiniteStrainHyperElasticViscoPlastic::postSolveFlowrate()
 {
   _fp_tmp_old_inv = _fp_tmp_inv;
 
-  // TODO: remove this nasty const_cast if you can figure out how
   for (unsigned int i = 0; i < _num_int_var_uos; ++i)
-    const_cast<MaterialProperty<Real> &>(*_int_var_stateful_prop_old[i])[_qp] =
-        (*_int_var_stateful_prop[i])[_qp];
+    (*_int_var_stateful_prop_old[i])[_qp] = (*_int_var_stateful_prop[i])[_qp];
 }
 
 bool
@@ -480,7 +469,8 @@ FiniteStrainHyperElasticViscoPlastic::computePK2StressAndDerivative()
 void
 FiniteStrainHyperElasticViscoPlastic::computeElasticStrain()
 {
-  RankTwoTensor iden(RankTwoTensor::initIdentity);
+  RankTwoTensor iden;
+  iden.addIa(1.0);
   _ee = 0.5 * (_ce[_qp] - iden);
 }
 
@@ -503,7 +493,8 @@ FiniteStrainHyperElasticViscoPlastic::computeElasticRightCauchyGreenTensor()
 void
 FiniteStrainHyperElasticViscoPlastic::computeElasticPlasticDeformGrad()
 {
-  RankTwoTensor iden(RankTwoTensor::initIdentity);
+  RankTwoTensor iden;
+  iden.addIa(1.0);
 
   RankTwoTensor val;
   for (unsigned int i = 0; i < _num_flow_rate_uos; ++i)

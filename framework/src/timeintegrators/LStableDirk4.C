@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "LStableDirk4.h"
 #include "NonlinearSystemBase.h"
 #include "FEProblem.h"
 #include "PetscSupport.h"
-
-registerMooseObject("MooseApp", LStableDirk4);
 
 template <>
 InputParameters
@@ -35,9 +38,6 @@ const Real LStableDirk4::_a[LStableDirk4::_n_stages][LStableDirk4::_n_stages] = 
 LStableDirk4::LStableDirk4(const InputParameters & parameters)
   : TimeIntegrator(parameters), _stage(1)
 {
-  mooseInfo("LStableDirk4 and other multistage TimeIntegrators are known not to work with "
-            "Materials/AuxKernels that accumulate 'state' and should be used with caution.");
-
   // Name the stage residuals "residual_stage1", "residual_stage2", etc.
   for (unsigned int stage = 0; stage < _n_stages; ++stage)
   {
@@ -47,27 +47,19 @@ LStableDirk4::LStableDirk4(const InputParameters & parameters)
   }
 }
 
+LStableDirk4::~LStableDirk4() {}
+
 void
 LStableDirk4::computeTimeDerivatives()
 {
-  // We are multiplying by the method coefficients in postResidual(), so
+  // We are multiplying by the method coefficients in postStep(), so
   // the time derivatives are of the same form at every stage although
   // the current solution varies depending on the stage.
-  if (!_sys.solutionUDot())
-    mooseError("LStableDirk4: Time derivative of solution (`u_dot`) is not stored. Please set "
-               "uDotRequested() to true in FEProblemBase befor requesting `u_dot`.");
-
-  NumericVector<Number> & u_dot = *_sys.solutionUDot();
-  u_dot = *_solution;
-  computeTimeDerivativeHelper(u_dot, _solution_old);
-  u_dot.close();
+  _u_dot = *_solution;
+  _u_dot -= _solution_old;
+  _u_dot *= 1. / _dt;
+  _u_dot.close();
   _du_dot_du = 1. / _dt;
-}
-
-void
-LStableDirk4::computeADTimeDerivatives(DualReal & ad_u_dot, const dof_id_type & dof) const
-{
-  computeTimeDerivativeHelper(ad_u_dot, _solution_old(dof));
 }
 
 void
@@ -75,10 +67,6 @@ LStableDirk4::solve()
 {
   // Time at end of step
   Real time_old = _fe_problem.timeOld();
-
-  // Reset iteration counts
-  _n_nonlinear_iterations = 0;
-  _n_linear_iterations = 0;
 
   // A for-loop would increment _stage too far, so we use an extra
   // loop counter.
@@ -99,25 +87,17 @@ LStableDirk4::solve()
 
     // Do the solve
     _fe_problem.getNonlinearSystemBase().system().solve();
-
-    // Update the iteration counts
-    _n_nonlinear_iterations += getNumNonlinearIterationsLastSolve();
-    _n_linear_iterations += getNumLinearIterationsLastSolve();
-
-    // Abort time step immediately on stage failure - see TimeIntegrator doc page
-    if (!_fe_problem.converged())
-      return;
   }
 }
 
 void
-LStableDirk4::postResidual(NumericVector<Number> & residual)
+LStableDirk4::postStep(NumericVector<Number> & residual)
 {
   // Error if _stage got messed up somehow.
   if (_stage > _n_stages)
     // the explicit cast prevents strange compiler weirdness with the static
     // const variable and the variadic mooseError function
-    mooseError("LStableDirk4::postResidual(): Member variable _stage can only have values 1-",
+    mooseError("LStableDirk4::postStep(): Member variable _stage can only have values 1-",
                (unsigned int)_n_stages,
                ".");
 

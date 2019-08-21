@@ -1,20 +1,15 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "FeatureFloodCountAux.h"
 #include "FeatureFloodCount.h"
 #include "GrainTrackerInterface.h"
 #include "MooseEnum.h"
 
 #include <algorithm>
-
-registerMooseObject("PhaseFieldApp", FeatureFloodCountAux);
 
 template <>
 InputParameters
@@ -39,7 +34,9 @@ validParams<FeatureFloodCountAux>()
                              "(UNIQUE_REGION and VARIABLE_COLORING are nodal, CENTROID is "
                              "elemental, default: UNIQUE_REGION)");
 
-  params.set<ExecFlagEnum>("execute_on") = {EXEC_INITIAL, EXEC_TIMESTEP_END};
+  MultiMooseEnum execute_options(SetupInterface::getExecuteOptions());
+  execute_options = "initial timestep_end";
+  params.set<MultiMooseEnum>("execute_on") = execute_options;
 
   return params;
 }

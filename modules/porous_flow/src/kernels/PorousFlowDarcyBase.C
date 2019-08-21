@@ -1,19 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "PorousFlowDarcyBase.h"
 
+// MOOSE includes
 #include "Assembly.h"
 #include "MooseMesh.h"
 #include "MooseVariable.h"
 #include "SystemBase.h"
 
+// libMesh includes
 #include "libmesh/quadrature.h"
 
 template <>
@@ -65,10 +65,9 @@ PorousFlowDarcyBase::PorousFlowDarcyBase(const InputParameters & parameters)
         "dPorousFlow_grad_porepressure_qp_dgradvar")),
     _dgrad_p_dvar(getMaterialProperty<std::vector<std::vector<RealGradient>>>(
         "dPorousFlow_grad_porepressure_qp_dvar")),
-    _dictator(getUserObject<PorousFlowDictator>("PorousFlowDictator")),
-    _num_phases(_dictator.numPhases()),
+    _porousflow_dictator(getUserObject<PorousFlowDictator>("PorousFlowDictator")),
+    _num_phases(_porousflow_dictator.numPhases()),
     _gravity(getParam<RealVectorValue>("gravity")),
-    _perm_derivs(_dictator.usePermDerivs()),
     _full_upwind_threshold(getParam<unsigned>("full_upwind_threshold")),
     _fallback_scheme(getParam<MooseEnum>("fallback_scheme").getEnum<FallbackEnum>()),
     _proto_flux(_num_phases),
@@ -101,26 +100,18 @@ PorousFlowDarcyBase::darcyQp(unsigned int ph) const
 Real
 PorousFlowDarcyBase::darcyQpJacobian(unsigned int jvar, unsigned int ph) const
 {
-  if (_dictator.notPorousFlowVariable(jvar))
+  if (_porousflow_dictator.notPorousFlowVariable(jvar))
     return 0.0;
 
-  const unsigned int pvar = _dictator.porousFlowVariableNum(jvar);
-
-  RealVectorValue deriv =
-      _permeability[_qp] * (_grad_phi[_j][_qp] * _dgrad_p_dgrad_var[_qp][ph][pvar] -
-                            _phi[_j][_qp] * _dfluid_density_qp_dvar[_qp][ph][pvar] * _gravity);
-
-  deriv += _permeability[_qp] * (_dgrad_p_dvar[_qp][ph][pvar] * _phi[_j][_qp]);
-
-  if (_perm_derivs)
-  {
-    deriv += _dpermeability_dvar[_qp][pvar] * _phi[_j][_qp] *
+  const unsigned int pvar = _porousflow_dictator.porousFlowVariableNum(jvar);
+  RealVectorValue deriv = _dpermeability_dvar[_qp][pvar] * _phi[_j][_qp] *
+                          (_grad_p[_qp][ph] - _fluid_density_qp[_qp][ph] * _gravity);
+  for (unsigned i = 0; i < LIBMESH_DIM; ++i)
+    deriv += _dpermeability_dgradvar[_qp][i][pvar] * _grad_phi[_j][_qp](i) *
              (_grad_p[_qp][ph] - _fluid_density_qp[_qp][ph] * _gravity);
-    for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
-      deriv += _dpermeability_dgradvar[_qp][i][pvar] * _grad_phi[_j][_qp](i) *
-               (_grad_p[_qp][ph] - _fluid_density_qp[_qp][ph] * _gravity);
-  }
-
+  deriv += _permeability[_qp] * (_grad_phi[_j][_qp] * _dgrad_p_dgrad_var[_qp][ph][pvar] -
+                                 _phi[_j][_qp] * _dfluid_density_qp_dvar[_qp][ph][pvar] * _gravity);
+  deriv += _permeability[_qp] * (_dgrad_p_dvar[_qp][ph][pvar] * _phi[_j][_qp]);
   return _grad_test[_i][_qp] * deriv;
 }
 
@@ -144,33 +135,35 @@ PorousFlowDarcyBase::computeJacobian()
 }
 
 void
-PorousFlowDarcyBase::computeOffDiagJacobian(MooseVariableFEBase & jvar)
+PorousFlowDarcyBase::computeOffDiagJacobian(unsigned int jvar)
 {
-  computeResidualAndJacobian(JacRes::CALCULATE_JACOBIAN, jvar.number());
+  computeResidualAndJacobian(JacRes::CALCULATE_JACOBIAN, jvar);
 }
 
 void
 PorousFlowDarcyBase::computeResidualAndJacobian(JacRes res_or_jac, unsigned int jvar)
 {
-  if ((res_or_jac == JacRes::CALCULATE_JACOBIAN) && _dictator.notPorousFlowVariable(jvar))
+  if ((res_or_jac == JacRes::CALCULATE_JACOBIAN) &&
+      _porousflow_dictator.notPorousFlowVariable(jvar))
     return;
 
-  // The PorousFlow variable index corresponding to the variable number jvar
+  /// The PorousFlow variable index corresponding to the variable number jvar
   const unsigned int pvar =
-      ((res_or_jac == JacRes::CALCULATE_JACOBIAN) ? _dictator.porousFlowVariableNum(jvar) : 0);
+      ((res_or_jac == JacRes::CALCULATE_JACOBIAN) ? _porousflow_dictator.porousFlowVariableNum(jvar)
+                                                  : 0);
 
   DenseMatrix<Number> & ke = _assembly.jacobianBlock(_var.number(), jvar);
-  if ((ke.n() == 0) && (res_or_jac == JacRes::CALCULATE_JACOBIAN)) // this removes a problem
-                                                                   // encountered in the initial
-                                                                   // timestep when
-                                                                   // use_displaced_mesh=true
+  if ((ke.n() == 0) &&
+      (res_or_jac == JacRes::CALCULATE_JACOBIAN)) // this removes a problem encountered in
+                                                  // the initial timestep when
+                                                  // use_displaced_mesh=true
     return;
 
-  // The number of nodes in the element
+  /// The number of nodes in the element
   const unsigned int num_nodes = _test.size();
 
-  // Compute the residual and jacobian without the mobility terms. Even if we are computing the
-  // Jacobian we still need this in order to see which nodes are upwind and which are downwind.
+  /// Compute the residual and jacobian without the mobility terms. Even if we are computing the Jacobian
+  /// we still need this in order to see which nodes are upwind and which are downwind.
   for (unsigned ph = 0; ph < _num_phases; ++ph)
   {
     _proto_flux[ph].assign(num_nodes, 0);
@@ -256,7 +249,7 @@ PorousFlowDarcyBase::computeResidualAndJacobian(JacRes res_or_jac, unsigned int 
     }
   }
 
-  // Add results to the Residual or Jacobian
+  /// Add results to the Residual or Jacobian
   if (res_or_jac == JacRes::CALCULATE_RESIDUAL)
   {
     DenseVector<Number> & re = _assembly.residualBlock(_var.number());
@@ -333,18 +326,18 @@ PorousFlowDarcyBase::fullyUpwind(JacRes res_or_jac, unsigned int ph, unsigned in
    *
    * The final subtle thing is we must also conserve fluid mass: the total component mass flowing
    * out of node i must be the sum of the masses flowing into the other nodes.
-   **/
+  **/
 
-  // The number of nodes in the element
+  /// The number of nodes in the element
   const unsigned int num_nodes = _test.size();
 
   Real mob;
   Real dmob;
-  // Define variables used to ensure mass conservation
+  /// Define variables used to ensure mass conservation
   Real total_mass_out = 0.0;
   Real total_in = 0.0;
 
-  // The following holds derivatives of these
+  /// The following holds derivatives of these
   std::vector<Real> dtotal_mass_out;
   std::vector<Real> dtotal_in;
   if (res_or_jac == JacRes::CALCULATE_JACOBIAN)
@@ -353,18 +346,18 @@ PorousFlowDarcyBase::fullyUpwind(JacRes res_or_jac, unsigned int ph, unsigned in
     dtotal_in.assign(num_nodes, 0.0);
   }
 
-  // Perform the upwinding using the mobility
+  /// Perform the upwinding using the mobility
   std::vector<bool> upwind_node(num_nodes);
   for (unsigned int n = 0; n < num_nodes; ++n)
   {
     if (_proto_flux[ph][n] >= 0.0) // upstream node
     {
       upwind_node[n] = true;
-      // The mobility at the upstream node
+      /// The mobility at the upstream node
       mob = mobility(n, ph);
       if (res_or_jac == JacRes::CALCULATE_JACOBIAN)
       {
-        // The derivative of the mobility wrt the PorousFlow variable
+        /// The derivative of the mobility wrt the PorousFlow variable
         dmob = dmobility(n, ph, pvar);
 
         for (_j = 0; _j < _phi.size(); _j++)
@@ -397,8 +390,7 @@ PorousFlowDarcyBase::fullyUpwind(JacRes res_or_jac, unsigned int ph, unsigned in
     }
   }
 
-  // Conserve mass over all phases by proportioning the total_mass_out mass to the inflow nodes,
-  // weighted by their proto_flux values
+  /// Conserve mass over all phases by proportioning the total_mass_out mass to the inflow nodes, weighted by their proto_flux values
   for (unsigned int n = 0; n < num_nodes; ++n)
   {
     if (!upwind_node[n]) // downstream node
@@ -419,20 +411,20 @@ PorousFlowDarcyBase::fullyUpwind(JacRes res_or_jac, unsigned int ph, unsigned in
 void
 PorousFlowDarcyBase::quickUpwind(JacRes res_or_jac, unsigned int ph, unsigned int pvar)
 {
-  // The number of nodes in the element
+  /// The number of nodes in the element
   const unsigned int num_nodes = _test.size();
 
   Real mob;
   Real dmob;
 
-  // Use the raw nodal mobility
+  /// Use the raw nodal mobility
   for (unsigned int n = 0; n < num_nodes; ++n)
   {
-    // The mobility at the node
+    /// The mobility at the node
     mob = mobility(n, ph);
     if (res_or_jac == JacRes::CALCULATE_JACOBIAN)
     {
-      // The derivative of the mobility wrt the PorousFlow variable
+      /// The derivative of the mobility wrt the PorousFlow variable
       dmob = dmobility(n, ph, pvar);
 
       for (_j = 0; _j < _phi.size(); _j++)
@@ -456,12 +448,12 @@ PorousFlowDarcyBase::quickUpwind(JacRes res_or_jac, unsigned int ph, unsigned in
 void
 PorousFlowDarcyBase::harmonicMean(JacRes res_or_jac, unsigned int ph, unsigned int pvar)
 {
-  // The number of nodes in the element
+  /// The number of nodes in the element
   const unsigned int num_nodes = _test.size();
 
   std::vector<Real> mob(num_nodes);
   unsigned num_zero = 0;
-  unsigned zero_mobility_node = std::numeric_limits<unsigned>::max();
+  unsigned zero_mobility_node;
   Real harmonic_mob = 0;
   for (unsigned n = 0; n < num_nodes; ++n)
   {
@@ -478,6 +470,26 @@ PorousFlowDarcyBase::harmonicMean(JacRes res_or_jac, unsigned int ph, unsigned i
     harmonic_mob = 0.0;
   else
     harmonic_mob = (1.0 * num_nodes) / harmonic_mob;
+
+  /*
+  if (res_or_jac == JacRes::CALCULATE_RESIDUAL)
+  {
+    Moose::out << "RES ";
+    for (unsigned n = 0; n < num_nodes; ++n)
+      Moose::out << std::setprecision(16) << _pp[n][0] << " ";
+    Moose::out << "\n";
+    for (unsigned n = 0; n < num_nodes; ++n)
+      Moose::out << mob[n] << " ";
+    Moose::out << "harmonic_mob = " << harmonic_mob << "\n";
+  }
+  if (res_or_jac == JacRes::CALCULATE_JACOBIAN)
+  {
+    Moose::out << "JAC ";
+    for (unsigned n = 0; n < num_nodes; ++n)
+      Moose::out << mob[n] << " ";
+    Moose::out << "harmonic_mob = " << harmonic_mob << "\n";
+  }
+  */
 
   // d(harmonic_mob)/d(PorousFlow variable at node n)
   std::vector<Real> dharmonic_mob(num_nodes, 0.0);

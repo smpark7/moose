@@ -53,6 +53,7 @@
   num_steps = 1
   dt = 0.001 # This will be constrained by the multiapp
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'

@@ -1,18 +1,25 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MOOSEPARSEDFUNCTIONWRAPPER_H
+#define MOOSEPARSEDFUNCTIONWRAPPER_H
 
 // MOOSE includes
 #include "MooseError.h"
 #include "MooseTypes.h"
 
+// libMesh includes
 #include "libmesh/parsed_function.h"
 
 // C++ includes
@@ -21,7 +28,6 @@
 
 // Forward declarations
 class FEProblemBase;
-class Function;
 
 /**
  * A wrapper class for creating and evaluating parsed functions via the
@@ -86,51 +92,40 @@ private:
   /// List of the values for the variables supplied by the user
   const std::vector<std::string> & _vals_input;
 
-  /// Storage for the initial values of _vars variables used by the libMesh::ParsedFunction object
-  std::vector<Real> _initial_vals;
+  /// Storage for the values
+  std::vector<Real> _vals;
 
   /// Pointer to the libMesh::ParsedFunction object
   std::unique_ptr<ParsedFunction<Real>> _function_ptr;
 
-  /// Stores indices into _addr variable that are connected to Postprocessors
+  /// Stores the relative location of variables (in _vars) that are connected to Postprocessors
   std::vector<unsigned int> _pp_index;
 
-  /// Vector of pointers to postprocessor values this parsed function is using
+  /// Vector of pointers to PP values
   std::vector<const Real *> _pp_vals;
 
-  /// Stores indicies into _addr variable that are connected to Scalar Variables
+  /// Stores the relative location of variables (in _vars) that are connected to Scalar Variables
   std::vector<unsigned int> _scalar_index;
 
-  /// Vector of pointers to scalar variables values
+  /// Vector of pointers to PP values
   std::vector<Real *> _scalar_vals;
 
-  /// Stores indices into _addr that are connected to Functions this libMesh::ParsedFunction is using
-  std::vector<unsigned int> _function_index;
-
-  /// Vector of Functions this parsed function is using
-  std::vector<const Function *> _functions;
-
-  /// Pointers to the variables that store the values of _vars inside the libMesh::ParsedFunction object
+  /// Vector of pointers to the variables in libMesh::ParsedFunction
   std::vector<Real *> _addr;
 
   /// The thread id passed from owning Function object
   const THREAD_ID _tid;
 
   /**
-   * Initialization method that prepares the _vars and _initial_vals for use
+   * Initialization method that prepares the vars and vals for use
    * by the libMesh::ParsedFunction object allocated in the constructor
    */
   void initialize();
 
   /**
-   * Updates postprocessor and scalar values for use in the libMesh::ParsedFunction
+   * Updates postprocessor values for use in the libMesh::ParsedFunction
    */
   void update();
-
-  /**
-   * Updates function values for use in the libMesh::ParsedFunction
-   */
-  void updateFunctionValues(Real t, const Point & pt);
 
   // moose_unit needs access
   friend class ParsedFunctionTest;
@@ -146,11 +141,4 @@ evaluate(Real /*t*/, const Point & /*p*/)
   mooseError("The evaluate method is not defined for this type.");
 }
 
-template <>
-Real MooseParsedFunctionWrapper::evaluate(Real t, const Point & p);
-
-template <>
-DenseVector<Real> MooseParsedFunctionWrapper::evaluate(Real t, const Point & p);
-
-template <>
-RealVectorValue MooseParsedFunctionWrapper::evaluate(Real t, const Point & p);
+#endif // MOOOSEPARSEDFUNCTIONWRAPPER_H

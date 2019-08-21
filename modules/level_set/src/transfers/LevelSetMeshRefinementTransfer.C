@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "LevelSetMeshRefinementTransfer.h"
 
@@ -14,9 +12,6 @@
 #include "FEProblem.h"
 #include "MooseVariable.h"
 #include "MultiApp.h"
-#include "LevelSetTypes.h"
-
-registerMooseObject("LevelSetApp", LevelSetMeshRefinementTransfer);
 
 template <>
 InputParameters
@@ -29,11 +24,9 @@ validParams<LevelSetMeshRefinementTransfer>()
   params.set<MooseEnum>("direction") = "TO_MULTIAPP";
   params.suppressParameter<MooseEnum>("direction");
 
-  ExecFlagEnum & exec = params.set<ExecFlagEnum>("execute_on");
-  exec.addAvailableFlags(LevelSet::EXEC_ADAPT_MESH, LevelSet::EXEC_COMPUTE_MARKERS);
-  exec = {LevelSet::EXEC_COMPUTE_MARKERS, LevelSet::EXEC_ADAPT_MESH};
+  params.set<MultiMooseEnum>("execute_on") = "CUSTOM";
   params.set<bool>("check_multiapp_execute_on") = false;
-  params.suppressParameter<ExecFlagEnum>("execute_on");
+  params.suppressParameter<MultiMooseEnum>("execute_on");
 
   return params;
 }
@@ -51,33 +44,30 @@ LevelSetMeshRefinementTransfer::initialSetup()
     if (_multi_app->hasLocalApp(i))
     {
       FEProblemBase & to_problem = _multi_app->appProblemBase(i);
-      MooseVariable & to_var = to_problem.getStandardVariable(0, _to_var_name);
+      MooseVariable & to_var = to_problem.getVariable(0, _to_var_name);
       Adaptivity & adapt = to_problem.adaptivity();
+
       adapt.setMarkerVariableName(to_var.name());
-      adapt.setCyclesPerStep(from_problem.adaptivity().getCyclesPerStep());
-      adapt.init(1, 0);
+      adapt.setCyclesPerStep(1);
+      adapt.init(0, 0);
       adapt.setUseNewSystem();
       adapt.setMaxHLevel(from_problem.adaptivity().getMaxHLevel());
-      adapt.setAdaptivityOn(false);
+      adapt.setAdpaptivityOn(false);
     }
 }
 
 void
 LevelSetMeshRefinementTransfer::execute()
 {
-  if (_current_execute_flag == LevelSet::EXEC_COMPUTE_MARKERS)
-    MultiAppCopyTransfer::execute();
+  MultiAppCopyTransfer::execute();
 
-  else if (_current_execute_flag == LevelSet::EXEC_ADAPT_MESH)
-  {
-    for (unsigned int i = 0; i < _multi_app->numGlobalApps(); i++)
-      if (_multi_app->hasLocalApp(i))
-      {
-        FEProblemBase & to_problem = _multi_app->appProblemBase(i);
-        Adaptivity & adapt = to_problem.adaptivity();
-        adapt.setAdaptivityOn(true);
-        to_problem.adaptMesh();
-        adapt.setAdaptivityOn(false);
-      }
-  }
+  for (unsigned int i = 0; i < _multi_app->numGlobalApps(); i++)
+    if (_multi_app->hasLocalApp(i))
+    {
+      FEProblemBase & to_problem = _multi_app->appProblemBase(i);
+      Adaptivity & adapt = to_problem.adaptivity();
+      adapt.setAdpaptivityOn(true);
+      to_problem.adaptMesh();
+      adapt.setAdpaptivityOn(false);
+    }
 }

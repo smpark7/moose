@@ -1,19 +1,26 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef IMAGESAMPLER_H
+#define IMAGESAMPLER_H
 
 // MOOSE includes
 #include "FileRangeBuilder.h"
 #include "ConsoleStream.h"
 
-#include "libmesh/bounding_box.h"
+// libmesh includes
+#include "libmesh/mesh_tools.h"
 
 // VTK includes
 #ifdef LIBMESH_HAVE_VTK
@@ -65,7 +72,7 @@ public:
    * Return the pixel value for the given point
    * @param p The point at which to extract pixel data
    */
-  virtual Real sample(const Point & p) const;
+  virtual Real sample(const Point & p);
 
   /**
    * Perform initialization of image data
@@ -152,7 +159,7 @@ private:
 #endif
 
   /// Bounding box for testing points
-  BoundingBox _bounding_box;
+  MeshTools::BoundingBox _bounding_box;
 
   /// Parameters for interface
   const InputParameters & _is_pars;
@@ -160,3 +167,5 @@ private:
   /// Create a console stream object for this helper class
   ConsoleStream _is_console;
 };
+
+#endif // IMAGESAMPLER_H

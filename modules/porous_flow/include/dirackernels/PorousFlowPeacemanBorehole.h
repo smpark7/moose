@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWPEACEMANBOREHOLE_H
+#define POROUSFLOWPEACEMANBOREHOLE_H
 
 #include "PorousFlowLineSink.h"
 
@@ -40,18 +39,18 @@ protected:
    * pressure, and does nothing otherwise
    * The flow rate to/from the borehole is multiplied by |character|, so usually character = +/- 1
    */
-  const Function & _character;
+  Function & _character;
 
-  /// Bottomhole pressure of borehole
+  /// bottomhole pressure of borehole
   const Real _p_bot;
 
-  /// Unit weight of fluid in borehole (for calculating bottomhole pressure at each Dirac Point)
+  /// unit weight of fluid in borehole (for calculating bottomhole pressure at each Dirac Point)
   const RealVectorValue _unit_weight;
 
-  /// Borehole constant
+  /// borehole constant
   const Real _re_constant;
 
-  /// Well constant
+  /// well constant
   const Real _well_constant;
 
   /// Whether there is a quadpoint permeability material (for error checking)
@@ -66,7 +65,7 @@ protected:
   /// d(Permeability)/d(PorousFlow variable)
   const MaterialProperty<std::vector<RealTensorValue>> & _dperm_or_cond_dvar;
 
-  /// Rotation matrix used in well_constant calculation
+  /// rotation matrix used in well_constant calculation
   std::vector<RealTensorValue> _rot_matrix;
 
   /**
@@ -86,3 +85,5 @@ protected:
                                     Real & outflow,
                                     Real & outflowp) const override;
 };
+
+#endif // POROUSFLOWPEACEMANBOREHOLE_H

@@ -1,16 +1,9 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
+#!/usr/bin/env python
 
-import os, re, subprocess
+import os, re
+from subprocess import Popen
 
-moose_examples_dir = "../../../examples"
+moose_examples_dir = "../../../moose_examples"
 
 preamble_file = 'preamble.tex'
 line_template = '\\lstinputlisting[style=<STYLE>, caption=<CAPTION>]{<PATH>}\n\clearpage\n\n'
@@ -42,7 +35,7 @@ def readOrTraverseDirectory(out_file, dirpath, dir):
             line = line.strip()
             if os.path.isfile(curr_path + '/' + line):
                 writeTex(out_file, curr_path + '/' + line, example_number)
-            elif line <> '': # ignore blank lines or lines that do not contain filenames
+            elif line <> '': # ignore blank lines
                 print 'Warning: File ' + curr_path + '/' + line + ' does not exist\n'
 
     # file list doesn't exist so recurse and pick up the common files
@@ -84,5 +77,5 @@ if __name__ == '__main__':
     genPreamble(tex_file)
     genFileList(tex_file)
     genPostscript(tex_file)
-    tex_file.close()
-    subprocess.call(['pdflatex', 'examples.tex'])
+
+    p = Popen('pdflatex examples.tex', shell=True)

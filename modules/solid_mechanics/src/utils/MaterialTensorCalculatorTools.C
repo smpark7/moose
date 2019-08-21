@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "MaterialTensorCalculatorTools.h"
 
@@ -69,23 +67,11 @@ hydrostatic(const SymmTensor & symm_tensor)
 Real
 volumetricStrain(const SymmTensor & symm_strain)
 {
-  // Since the strains are logarithmic strains, which are by definition log(L/L0),
-  // exp(log_strain) = L/L0
-  // The ratio of the volume change of a strained cube to the original volume
-  // (delta V / V) is thus:
-  // exp(log_strain_11) * exp(log_strain_22) * exp(log_strain_33) - 1
-  //
-  // Since eng_strain = exp(log_strain) - 1, the equivalent calculation using
-  // engineering strains would be:
-  // (1 + eng_strain_11) * (1 + eng_strain_22) + (1 + eng_strain_33) - 1
-  // If strains are small, the resulting terms that involve squared and cubed
-  // strains are negligible, resulting in the following approximate form:
-  // strain_11 + strain_22 + strain_33
-  // There is not currently an option to compute this small-strain form of the
-  // volumetric strain, but at small strains, it is approximately equal to the
-  // finite strain form that is computed.
-
-  return std::exp(symm_strain.xx()) * std::exp(symm_strain.yy()) * std::exp(symm_strain.zz()) - 1.0;
+  Real value = symm_strain.trace();
+  value += symm_strain.xx() * symm_strain.yy() + symm_strain.yy() * symm_strain.zz() +
+           symm_strain.zz() * symm_strain.xx() +
+           symm_strain.xx() * symm_strain.yy() * symm_strain.zz();
+  return value;
 }
 
 Real

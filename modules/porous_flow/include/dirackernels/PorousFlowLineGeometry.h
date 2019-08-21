@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWLINEGEOMETRY_H
+#define POROUSFLOWLINEGEOMETRY_H
 
 #include "DiracKernel.h"
 
@@ -32,10 +31,10 @@ public:
   PorousFlowLineGeometry(const InputParameters & parameters);
 
 protected:
-  /// Line length.  This is only used if there is only one borehole point
+  /// line length.  This is only used if there is only one borehole point
   const Real _line_length;
 
-  /// Line direction.  This is only used if there is only one borehole point
+  /// line direction.  This is only used if there is only one borehole point
   const RealVectorValue _line_direction;
 
   /**
@@ -45,7 +44,7 @@ protected:
    */
   const std::string _point_file;
 
-  /// Radii of the borehole
+  /// radii of the borehole
   std::vector<Real> _rs;
 
   /// x points of the borehole
@@ -57,7 +56,7 @@ protected:
   /// z points of borehole
   std::vector<Real> _zs;
 
-  /// The bottom point of the borehole (where bottom_pressure is defined)
+  /// the bottom point of the borehole (where bottom_pressure is defined)
   Point _bottom_point;
 
   /// 0.5*(length of polyline segments between points)
@@ -66,7 +65,8 @@ protected:
   /// Add Dirac Points to the line sink
   virtual void addPoints() override;
 
-  /// Reads a space-separated line of floats from ifs and puts in myvec
+  /// reads a space-separated line of floats from ifs and puts in myvec
   bool parseNextLineReals(std::ifstream & ifs, std::vector<Real> & myvec);
 };
 
+#endif // POROUSFLOWLINEGEOMETRY_H

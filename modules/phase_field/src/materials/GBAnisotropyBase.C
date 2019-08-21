@@ -1,16 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "GBAnisotropyBase.h"
 #include "MooseMesh.h"
-
-#include <fstream>
 
 template <>
 InputParameters
@@ -31,7 +27,7 @@ validParams<GBAnisotropyBase>()
                                     "Name of the file containing: 1)GB mobility prefactor; 2) GB "
                                     "migration activation energy; 3)GB energy");
   params.addRequiredParam<bool>("inclination_anisotropy",
-                                "The GB anisotropy inclination would be considered if true");
+                                "The GB anisotropy ininclination would be considered if true");
   params.addRequiredCoupledVarWithAutoBuild(
       "v", "var_name_base", "op_num", "Array of coupled variables");
   return params;
@@ -55,6 +51,7 @@ GBAnisotropyBase::GBAnisotropyBase(const InputParameters & parameters)
     _molar_volume(declareProperty<Real>("molar_volume")),
     _entropy_diff(declareProperty<Real>("entropy_diff")),
     _act_wGB(declareProperty<Real>("act_wGB")),
+    _tgrad_corr_mult(declareProperty<Real>("tgrad_corr_mult")),
     _kb(8.617343e-5),      // Boltzmann constant in eV/K
     _JtoeV(6.24150974e18), // Joule to eV conversion
     _mu_qp(0.0),
@@ -86,7 +83,7 @@ GBAnisotropyBase::GBAnisotropyBase(const InputParameters & parameters)
   std::ifstream inFile(_Anisotropic_GB_file_name.c_str());
 
   if (!inFile)
-    paramError("Anisotropic_GB_file_name", "Can't open GB anisotropy input file");
+    mooseError("Can't open GB anisotropy input file");
 
   for (unsigned int i = 0; i < 2; ++i)
     inFile.ignore(255, '\n'); // ignore line
@@ -179,4 +176,5 @@ GBAnisotropyBase::computeQpProperties()
       _M_V / (_length_scale * _length_scale * _length_scale); // m^3/mol converted to ls^3/mol
   _entropy_diff[_qp] = 9.5 * _JtoeV;                          // J/(K mol) converted to eV(K mol)
   _act_wGB[_qp] = 0.5e-9 / _length_scale;                     // 0.5 nm
+  _tgrad_corr_mult[_qp] = _mu[_qp] * 9.0 / 8.0;
 }

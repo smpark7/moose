@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 // TODO:
 // Clean up error checking in (!found_edge)
@@ -38,11 +36,6 @@ ElementFragmentAlgorithm::~ElementFragmentAlgorithm()
     mit->second = NULL;
   }
   for (mit = _embedded_nodes.begin(); mit != _embedded_nodes.end(); ++mit)
-  {
-    delete mit->second;
-    mit->second = NULL;
-  }
-  for (mit = _embedded_permanent_nodes.begin(); mit != _embedded_permanent_nodes.end(); ++mit)
   {
     delete mit->second;
     mit->second = NULL;
@@ -222,23 +215,6 @@ ElementFragmentAlgorithm::addElemEdgeIntersection(unsigned int elemid,
   if (!curr_elem)
     EFAError("addElemEdgeIntersection: elem ", elemid, " is not of type EFAelement2D");
   curr_elem->addEdgeCut(edgeid, position, NULL, _embedded_nodes, true);
-}
-
-void
-ElementFragmentAlgorithm::addElemNodeIntersection(unsigned int elemid, unsigned int nodeid)
-{
-  // this method is called when we are marking cut nodes
-  std::map<unsigned int, EFAElement *>::iterator eit = _elements.find(elemid);
-  if (eit == _elements.end())
-    EFAError("Could not find element with id: ", elemid, " in addElemNodeIntersection");
-
-  EFAElement2D * curr_elem = dynamic_cast<EFAElement2D *>(eit->second);
-  if (!curr_elem)
-    EFAError("addElemNodeIntersection: elem ", elemid, " is not of type EFAelement2D");
-
-  // Only add cut node when the curr_elem does not have any fragment
-  if (curr_elem->numFragments() == 0)
-    curr_elem->addNodeCut(nodeid, NULL, _permanent_nodes, _embedded_permanent_nodes);
 }
 
 bool
@@ -445,7 +421,6 @@ ElementFragmentAlgorithm::connectFragments(bool mergeUncutVirtualEdges)
     EFAElement * childElem = _child_elements[elem_iter];
     childElem->connectNeighbors(
         _permanent_nodes, _temp_nodes, _inverse_connectivity, mergeUncutVirtualEdges);
-    childElem->updateFragmentNode();
   } // loop over child elements
 
   std::vector<EFAElement *>::iterator vit;
@@ -532,16 +507,6 @@ ElementFragmentAlgorithm::printMesh()
   _ostream << "Embedded Nodes:" << std::endl;
   counter = 0;
   for (mit = _embedded_nodes.begin(); mit != _embedded_nodes.end(); ++mit)
-  {
-    _ostream << "  " << mit->second->id();
-    counter += 1;
-    if (counter % 10 == 0)
-      _ostream << std::endl;
-  }
-  _ostream << std::endl;
-  _ostream << "Embedded Permanent Nodes:" << std::endl;
-  counter = 0;
-  for (mit = _embedded_permanent_nodes.begin(); mit != _embedded_permanent_nodes.end(); ++mit)
   {
     _ostream << "  " << mit->second->id();
     counter += 1;

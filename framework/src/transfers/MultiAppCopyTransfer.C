@@ -1,27 +1,31 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
+
+#include "MultiAppCopyTransfer.h"
 
 // MOOSE includes
+#include "DisplacedProblem.h"
 #include "FEProblem.h"
+#include "MooseMesh.h"
 #include "MooseTypes.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "MultiApp.h"
 #include "NonlinearSystem.h"
-#include "MultiAppCopyTransfer.h"
-#include "DisplacedProblem.h"
-#include "MooseMesh.h"
 
+// libMesh includes
 #include "libmesh/system.h"
 #include "libmesh/id_types.h"
-#include "libmesh/string_to_enum.h"
-
-registerMooseObject("MooseApp", MultiAppCopyTransfer);
 
 template <>
 InputParameters
@@ -44,10 +48,16 @@ MultiAppCopyTransfer::MultiAppCopyTransfer(const InputParameters & parameters)
 }
 
 void
+MultiAppCopyTransfer::initialSetup()
+{
+  variableIntegrityCheck(_to_var_name);
+}
+
+void
 MultiAppCopyTransfer::transferDofObject(libMesh::DofObject * to_object,
                                         libMesh::DofObject * from_object,
-                                        MooseVariableFEBase & to_var,
-                                        MooseVariableFEBase & from_var)
+                                        MooseVariable & to_var,
+                                        MooseVariable & from_var)
 {
   if (to_object->n_dofs(to_var.sys().number(), to_var.number()) >
       0) // If this variable has dofs at this node
@@ -63,63 +73,37 @@ MultiAppCopyTransfer::transferDofObject(libMesh::DofObject * to_object,
 }
 
 void
-MultiAppCopyTransfer::initialSetup()
-{
-  if (_direction == TO_MULTIAPP)
-  {
-    FEProblemBase & from_problem = _multi_app->problemBase();
-    checkVariable(from_problem, _from_var_name, "source_variable");
-
-    for (unsigned int i = 0; i < _multi_app->numGlobalApps(); i++)
-      if (_multi_app->hasLocalApp(i))
-        checkVariable(_multi_app->appProblemBase(i), _to_var_name, "variable");
-  }
-
-  else if (_direction == FROM_MULTIAPP)
-  {
-    FEProblemBase & to_problem = _multi_app->problemBase();
-    checkVariable(to_problem, _to_var_name, "variable");
-
-    for (unsigned int i = 0; i < _multi_app->numGlobalApps(); i++)
-      if (_multi_app->hasLocalApp(i))
-        checkVariable(_multi_app->appProblemBase(i), _from_var_name, "source_variable");
-  }
-}
-
-void
 MultiAppCopyTransfer::transfer(FEProblemBase & to_problem, FEProblemBase & from_problem)
 {
-  // Perform error checking
-  checkVariable(to_problem, _to_var_name, "variable");
-  checkVariable(from_problem, _from_var_name, "source_variable");
-
   // Populate the to/from variables needed to perform the transfer
-  MooseVariableFEBase & to_var = to_problem.getVariable(
-      0, _to_var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_STANDARD);
+  MooseVariable & to_var = to_problem.getVariable(0, _to_var_name);
   MeshBase & to_mesh = to_problem.mesh().getMesh();
 
-  MooseVariableFEBase & from_var = from_problem.getVariable(
-      0, _from_var_name, Moose::VarKindType::VAR_ANY, Moose::VarFieldType::VAR_FIELD_STANDARD);
+  MooseVariable & from_var = from_problem.getVariable(0, _from_var_name);
   MeshBase & from_mesh = from_problem.mesh().getMesh();
 
   // Check integrity
   if (to_var.feType() != from_var.feType())
-    paramError("variable",
-               "'variable' and 'source_variable' must be the same type (order and family): ",
-               libMesh::Utility::enum_to_string<FEFamily>(to_var.feType().family),
-               moose::internal::incompatVarMsg(to_var, from_var));
+    mooseError("The variables must be the same type (order and family).");
 
   if ((to_mesh.n_nodes() != from_mesh.n_nodes()) || (to_mesh.n_elem() != from_mesh.n_elem()))
     mooseError("The meshes must be identical to utilize MultiAppCopyTransfer.");
 
   // Transfer node dofs
-  for (const auto & node : as_range(to_mesh.local_nodes_begin(), to_mesh.local_nodes_end()))
-    transferDofObject(node, from_mesh.node_ptr(node->id()), to_var, from_var);
+  MeshBase::const_node_iterator node_it = to_mesh.local_nodes_begin();
+  MeshBase::const_node_iterator node_end = to_mesh.local_nodes_end();
+  for (; node_it != node_end; ++node_it)
+    transferDofObject(*node_it, from_mesh.node_ptr((*node_it)->id()), to_var, from_var);
 
   // Transfer elem dofs
-  for (auto & to_elem : as_range(to_mesh.local_elements_begin(), to_mesh.local_elements_end()))
+  MeshBase::const_element_iterator elem_it = to_mesh.local_elements_begin();
+  MeshBase::const_element_iterator elem_end = to_mesh.local_elements_end();
+  Elem * to_elem;
+  Elem * from_elem;
+  for (; elem_it != elem_end; ++elem_it)
   {
-    Elem * from_elem = from_mesh.elem_ptr(to_elem->id());
+    to_elem = *elem_it;
+    from_elem = from_mesh.elem_ptr(to_elem->id());
     mooseAssert(to_elem->type() == from_elem->type(), "The elements must be the same type.");
     transferDofObject(to_elem, from_elem, to_var, from_var);
   }

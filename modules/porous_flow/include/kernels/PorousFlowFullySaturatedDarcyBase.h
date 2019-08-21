@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSBASEFULLYSATURATEDDARCYBASE_H
+#define POROUSBASEFULLYSATURATEDDARCYBASE_H
 
 #include "Kernel.h"
 #include "PorousFlowDictator.h"
@@ -38,8 +37,8 @@ protected:
   virtual Real mobility() const;
 
   /**
-   * The derivative of the mobility with respect to the PorousFlow variable pvar
-   * @param pvar Take the derivative with respect to this PorousFlow variable
+   * The derivative of the mobility with respect to the porous-flow variable pvar
+   * @param pvar Take the derivative with respect to this porous-flow variable
    */
   virtual Real dmobility(unsigned pvar) const;
 
@@ -49,10 +48,10 @@ protected:
   /// Permeability of porous material
   const MaterialProperty<RealTensorValue> & _permeability;
 
-  /// d(permeabiity)/d(PorousFlow variable)
+  /// d(permeabiity)/d(porous-flow variable)
   const MaterialProperty<std::vector<RealTensorValue>> & _dpermeability_dvar;
 
-  /// d(permeabiity)/d(grad(PorousFlow variable))
+  /// d(permeabiity)/d(grad(porous-flow variable))
   const MaterialProperty<std::vector<std::vector<RealTensorValue>>> & _dpermeability_dgradvar;
 
   /// Fluid density for each phase (at the qp)
@@ -79,12 +78,11 @@ protected:
   /// Derivative of Grad porepressure in each phase wrt PorousFlow variables
   const MaterialProperty<std::vector<std::vector<RealGradient>>> & _dgrad_p_dvar;
 
-  /// PorousFlowDictator UserObject
-  const PorousFlowDictator & _dictator;
+  /// PorousFlow UserObject
+  const PorousFlowDictator & _porousflow_dictator;
 
   /// Gravity pointing downwards
   const RealVectorValue _gravity;
-
-  /// Flag to check whether permeabiity derivatives are non-zero
-  const bool _perm_derivs;
 };
+
+#endif // POROUSBASEFULLYSATURATEDDARCYBASE_H

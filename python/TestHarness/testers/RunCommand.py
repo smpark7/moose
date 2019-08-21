@@ -1,13 +1,6 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+import re, os, sys, time
 from Tester import Tester
+from RunParallel import RunParallel # For TIMEOUT value
 
 class RunCommand(Tester):
 
@@ -26,8 +19,9 @@ class RunCommand(Tester):
         # Create the command line string to run
         return self.command
 
-    def processResults(self, moose_dir, options, output):
-        if self.exit_code != 0 :
-            self.setStatus(self.fail, 'CODE %d' % self.exit_code)
-
+    def processResults(self, moose_dir, retcode, options, output):
+        if retcode != 0 :
+            self.setStatus('CODE %d' % retcode, self.bucket_fail)
+        else:
+            self.setStatus(retcode, self.bucket_success)
         return output

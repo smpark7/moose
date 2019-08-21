@@ -1,73 +1,61 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "AverageNodalVariableValue.h"
 #include "MooseMesh.h"
 #include "SubProblem.h"
-
-registerMooseObject("MooseApp", AverageNodalVariableValue);
 
 template <>
 InputParameters
 validParams<AverageNodalVariableValue>()
 {
   InputParameters params = validParams<NodalVariablePostprocessor>();
-
-  params.addClassDescription("Computes the average value of a field by sampling all nodal "
-                             "solutions on the domain or within a subdomain");
   return params;
 }
 
 AverageNodalVariableValue::AverageNodalVariableValue(const InputParameters & parameters)
-  : NodalVariablePostprocessor(parameters), _sum(0), _n(0)
+  : NodalVariablePostprocessor(parameters), _avg(0), _n(0)
 {
 }
 
-// doco-init-start
 void
 AverageNodalVariableValue::initialize()
 {
-  _sum = 0;
+  _avg = 0;
   _n = 0;
 }
-// doco-init-end
 
-// doco-execute-get-start
 void
 AverageNodalVariableValue::execute()
 {
-  _sum += _u[_qp];
+  _avg += _u[_qp];
   _n++;
 }
 
 Real
 AverageNodalVariableValue::getValue()
 {
-  return _sum / _n;
-}
-// doco-execute-get-end
-
-// doco-final-start
-void
-AverageNodalVariableValue::finalize()
-{
-  gatherSum(_sum);
+  gatherSum(_avg);
   gatherSum(_n);
-}
-// doco-final-end
 
-// doco-thread-start
+  return _avg / _n;
+}
+
 void
 AverageNodalVariableValue::threadJoin(const UserObject & y)
 {
   const AverageNodalVariableValue & pps = static_cast<const AverageNodalVariableValue &>(y);
-  _sum += pps._sum;
+  _avg += pps._avg;
   _n += pps._n;
 }
-// doco-thread-end

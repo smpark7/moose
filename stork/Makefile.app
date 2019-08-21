@@ -3,7 +3,7 @@
 ###############################################################################
 #
 # Optional Environment variables
-# MOOSE_DIR        - Root directory of the MOOSE project
+# MOOSE_DIR        - Root directory of the MOOSE project 
 #
 ###############################################################################
 # Use the MOOSE submodule if it exists and MOOSE_DIR is not set
@@ -24,25 +24,23 @@ include $(FRAMEWORK_DIR)/moose.mk
 # yes as needed.  Or set ALL_MODULES to yes to turn on everything (overrides
 # other set variables).
 
-ALL_MODULES                 := no
+ALL_MODULES         := no
 
-CHEMICAL_REACTIONS          := no
-CONTACT                     := no
-EXTERNAL_PETSC_SOLVER       := no
-FLUID_PROPERTIES            := no
-FUNCTIONAL_EXPANSION_TOOLS  := no
-HEAT_CONDUCTION             := no
-LEVEL_SET                   := no
-MISC                        := no
-NAVIER_STOKES               := no
-PHASE_FIELD                 := no
-POROUS_FLOW                 := no
-RDG                         := no
-RICHARDS                    := no
-SOLID_MECHANICS             := no
-STOCHASTIC_TOOLS            := no
-TENSOR_MECHANICS            := no
-XFEM                        := no
+CHEMICAL_REACTIONS  := no
+CONTACT             := no
+FLUID_PROPERTIES    := no
+HEAT_CONDUCTION     := no
+MISC                := no
+NAVIER_STOKES       := no
+PHASE_FIELD         := no
+RDG                 := no
+RICHARDS            := no
+SOLID_MECHANICS     := no
+STOCHASTIC_TOOLS    := no
+TENSOR_MECHANICS    := no
+WATER_STEAM_EOS     := no
+XFEM                := no
+POROUS_FLOW         := no
 
 include $(MOOSE_DIR)/modules/modules.mk
 ###############################################################################
@@ -51,7 +49,7 @@ include $(MOOSE_DIR)/modules/modules.mk
 APPLICATION_DIR    := $(CURDIR)
 APPLICATION_NAME   := stork
 BUILD_EXEC         := yes
-GEN_REVISION       := no
+DEP_APPS           := $(shell $(FRAMEWORK_DIR)/scripts/find_dep_apps.py $(APPLICATION_NAME))
 include            $(FRAMEWORK_DIR)/app.mk
 
 ###############################################################################

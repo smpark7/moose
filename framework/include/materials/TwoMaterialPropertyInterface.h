@@ -1,16 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef TWOMATERIALPROPERTYINTERFACE_H
+#define TWOMATERIALPROPERTYINTERFACE_H
 
 #include "MaterialPropertyInterface.h"
-#include "MemberTemplateMacros.h"
 
 // Forward Declarations
 class MaterialData;
@@ -22,21 +27,27 @@ InputParameters validParams<TwoMaterialPropertyInterface>();
 class TwoMaterialPropertyInterface : public MaterialPropertyInterface
 {
 public:
+  ///@{
+  /**
+   * Constructor.
+   *
+   * @param parameters The objects input parameters
+   * @param block_ids A reference to the block ids (optional)
+   *
+   * This class has two constructors:
+   *   (1) not restricted to boundaries or blocks
+   *   (2) restricted to only blocks
+   */
+  TwoMaterialPropertyInterface(const MooseObject * moose_object);
   TwoMaterialPropertyInterface(const MooseObject * moose_object,
-                               const std::set<SubdomainID> & blocks_ids,
-                               const std::set<BoundaryID> & boundary_ids);
+                               const std::set<SubdomainID> & block_ids);
+  ///@}
 
   /**
    * Retrieve the property named "name"
    */
   template <typename T>
-  const MaterialProperty<T> & getNeighborMaterialPropertyTempl(const std::string & name);
-
-  /**
-   * Retrieve the ADMaterialProperty named "name"
-   */
-  template <typename T>
-  const ADMaterialPropertyObject<T> & getNeighborADMaterialPropertyTempl(const std::string & name);
+  const MaterialProperty<T> & getNeighborMaterialProperty(const std::string & name);
 
   template <typename T>
   const MaterialProperty<T> & getNeighborMaterialPropertyOld(const std::string & name);
@@ -50,7 +61,7 @@ protected:
 
 template <typename T>
 const MaterialProperty<T> &
-TwoMaterialPropertyInterface::getNeighborMaterialPropertyTempl(const std::string & name)
+TwoMaterialPropertyInterface::getNeighborMaterialProperty(const std::string & name)
 {
   // Check if the supplied parameter is a valid input parameter key
   std::string prop_name = deducePropertyName(name);
@@ -61,21 +72,6 @@ TwoMaterialPropertyInterface::getNeighborMaterialPropertyTempl(const std::string
     return *default_property;
   else
     return _neighbor_material_data->getProperty<T>(prop_name);
-}
-
-template <typename T>
-const ADMaterialPropertyObject<T> &
-TwoMaterialPropertyInterface::getNeighborADMaterialPropertyTempl(const std::string & name)
-{
-  // Check if the supplied parameter is a valid input parameter key
-  std::string prop_name = deducePropertyName(name);
-
-  // Check if it's just a constant
-  const ADMaterialPropertyObject<T> * default_property = defaultADMaterialProperty<T>(prop_name);
-  if (default_property)
-    return *default_property;
-  else
-    return _neighbor_material_data->getADProperty<T>(prop_name);
 }
 
 template <typename T>
@@ -107,3 +103,5 @@ TwoMaterialPropertyInterface::getNeighborMaterialPropertyOlder(const std::string
   else
     return _neighbor_material_data->getPropertyOlder<T>(prop_name);
 }
+
+#endif // TWOMATERIALPROPERTYINTERFACE_H

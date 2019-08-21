@@ -1,15 +1,10 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "ACGrGrMulti.h"
-
-registerMooseObject("PhaseFieldApp", ACGrGrMulti);
 
 template <>
 InputParameters
@@ -28,22 +23,15 @@ ACGrGrMulti::ACGrGrMulti(const InputParameters & parameters)
   : ACGrGrBase(parameters),
     _gamma_names(getParam<std::vector<MaterialPropertyName>>("gamma_names")),
     _num_j(_gamma_names.size()),
-    _prop_gammas(_num_j),
-    _uname(getParam<NonlinearVariableName>("variable")),
-    _dmudu(getMaterialPropertyDerivative<Real>("mu", _uname)),
-    _vname(getParam<std::vector<VariableName>>("v")),
-    _dmudEtaj(_num_j)
+    _prop_gammas(_num_j)
 {
   // check passed in parameter vectors
   if (_num_j != coupledComponents("v"))
-    paramError("gamma_names",
-               "Need to pass in as many gamma_names as coupled variables in v in ACGrGrMulti");
+    mooseError("Need to pass in as many gamma_names as coupled variables in v in ACGrGrMulti",
+               name());
 
   for (unsigned int n = 0; n < _num_j; ++n)
-  {
     _prop_gammas[n] = &getMaterialPropertyByName<Real>(_gamma_names[n]);
-    _dmudEtaj[n] = &getMaterialPropertyDerivative<Real>("mu", _vname[n]);
-  }
 }
 
 Real
@@ -59,13 +47,18 @@ ACGrGrMulti::computeDFDOP(PFFunctionType type)
   {
     case Residual:
     {
-      return _mu[_qp] * computedF0du();
+      const Real tgrad_correction =
+          _grad_T ? _tgrad_corr_mult[_qp] * _grad_u[_qp] * (*_grad_T)[_qp] : 0.0;
+      return _mu[_qp] * (_u[_qp] * _u[_qp] * _u[_qp] - _u[_qp] + 2.0 * _u[_qp] * SumGammaEtaj) +
+             tgrad_correction;
     }
 
     case Jacobian:
     {
-      Real d2f0du2 = 3.0 * _u[_qp] * _u[_qp] - 1.0 + 2.0 * SumGammaEtaj;
-      return _phi[_j][_qp] * (_mu[_qp] * d2f0du2 + _dmudu[_qp] * computedF0du());
+      const Real tgrad_correction =
+          _grad_T ? _tgrad_corr_mult[_qp] * _grad_phi[_j][_qp] * (*_grad_T)[_qp] : 0.0;
+      return _mu[_qp] * (_phi[_j][_qp] * (3.0 * _u[_qp] * _u[_qp] - 1.0 + 2.0 * SumGammaEtaj)) +
+             tgrad_correction;
     }
 
     default:
@@ -80,22 +73,11 @@ ACGrGrMulti::computeQpOffDiagJacobian(unsigned int jvar)
     if (jvar == _vals_var[i])
     {
       // Derivative of SumGammaEtaj
-      const Real dSumGammaEtaj = 2.0 * (*_prop_gammas[i])[_qp] * (*_vals[i])[_qp];
+      const Real dSumGammaEtaj = 2.0 * (*_prop_gammas[i])[_qp] * (*_vals[i])[_qp] * _phi[_j][_qp];
       const Real dDFDOP = _mu[_qp] * 2.0 * _u[_qp] * dSumGammaEtaj;
 
-      return _L[_qp] * _test[_i][_qp] * _phi[_j][_qp] *
-             (dDFDOP + (*_dmudEtaj[i])[_qp] * computedF0du());
+      return _L[_qp] * _test[_i][_qp] * dDFDOP;
     }
 
   return 0.0;
-}
-
-Real
-ACGrGrMulti::computedF0du()
-{
-  Real SumGammaEtaj = 0.0;
-  for (unsigned int i = 0; i < _op_num; ++i)
-    SumGammaEtaj += (*_prop_gammas[i])[_qp] * (*_vals[i])[_qp] * (*_vals[i])[_qp];
-
-  return _u[_qp] * _u[_qp] * _u[_qp] - _u[_qp] + 2.0 * _u[_qp] * SumGammaEtaj;
 }

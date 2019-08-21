@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef OUTPUTWAREHOUSE_H
+#define OUTPUTWAREHOUSE_H
 
 // MOOSE includes
 #include "Output.h"
@@ -191,9 +197,6 @@ public:
   /// Returns a Boolean indicating whether performance logging is requested in this application
   bool getLoggingRequested() const { return _logging_requested; }
 
-  /// Reset the output system
-  void reset();
-
 private:
   /**
    * Calls the outputStep method for each output object
@@ -347,9 +350,6 @@ private:
   /// Indicates that performance logging has been requested by the console or some object (PerformanceData)
   bool _logging_requested;
 
-  /// Whether or not the last thing output by mooseConsole had a newline as the last character
-  bool _last_message_ended_in_newline;
-
   // Allow complete access:
   // FEProblemBase for calling initial, timestepSetup, outputStep, etc. methods
   friend class FEProblemBase;
@@ -448,3 +448,5 @@ OutputWarehouse::allowOutput(bool state)
   for (typename std::vector<T *>::iterator it = outputs.begin(); it != outputs.end(); ++it)
     (*it)->allowOutput(state);
 }
+
+#endif // OUTPUTWAREHOUSE_H

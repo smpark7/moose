@@ -1,20 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/*               Do NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 #include "InitialConditionWarehouse.h"
 
 // MOOSE includes
-#include "InitialConditionBase.h"
-#include "MooseVariableFE.h"
+#include "InitialCondition.h"
+#include "MooseVariable.h"
 
 InitialConditionWarehouse::InitialConditionWarehouse()
-  : MooseObjectWarehouseBase<InitialConditionBase>(),
+  : MooseObjectWarehouseBase<InitialCondition>(),
     _boundary_ics(libMesh::n_threads()),
     _block_ics(libMesh::n_threads())
 {
@@ -23,18 +27,16 @@ InitialConditionWarehouse::InitialConditionWarehouse()
 void
 InitialConditionWarehouse::initialSetup(THREAD_ID tid)
 {
-  MooseObjectWarehouseBase<InitialConditionBase>::sort(tid);
+  MooseObjectWarehouseBase<InitialCondition>::sort(tid);
   for (const auto & ic : _active_objects[tid])
     ic->initialSetup();
 }
 
 void
-InitialConditionWarehouse::addObject(std::shared_ptr<InitialConditionBase> object,
-                                     THREAD_ID tid,
-                                     bool recurse)
+InitialConditionWarehouse::addObject(std::shared_ptr<InitialCondition> object, THREAD_ID tid)
 {
   // Check that when object is boundary restricted that the variable is nodal
-  const MooseVariableFEBase & var = object->variable();
+  const MooseVariable & var = object->variable();
 
   // Boundary Restricted
   if (object->boundaryRestricted())
@@ -83,7 +85,7 @@ InitialConditionWarehouse::addObject(std::shared_ptr<InitialConditionBase> objec
   }
 
   // Add the IC to the storage
-  MooseObjectWarehouseBase<InitialConditionBase>::addObject(object, tid, recurse);
+  MooseObjectWarehouseBase<InitialCondition>::addObject(object, tid);
 }
 
 std::set<std::string>

@@ -36,6 +36,7 @@
 [Executioner]
   type = Steady
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   # This option appears to modify the behavior in PETSc 3.6.0

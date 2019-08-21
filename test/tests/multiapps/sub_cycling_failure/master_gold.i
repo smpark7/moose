@@ -5,15 +5,6 @@
   ny = 10
 []
 
-[Functions]
-  # These mimic the behavior of the failing solve
-  [./dts]
-    type = PiecewiseLinear
-    x = '0    0.1   0.15'
-    y = '0.1  0.05  0.1'
-  [../]
-[]
-
 [Variables]
   [./u]
   [../]
@@ -51,10 +42,13 @@
   dt = 0.1
 
   [./TimeStepper]
+    # These mimic the behavior of the failing solve
     type = FunctionDT
-    function = dts
+    time_t  = '0    0.1   0.15'
+    time_dt = '0.1  0.05  0.1'
   [../]
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   petsc_options_iname = '-pc_type -pc_hypre_type'

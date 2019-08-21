@@ -6,7 +6,6 @@
   type = GeneratedMesh
   dim = 1
   nx = 2
-  parallel_type = replicated
 []
 
 [Variables]
@@ -85,5 +84,5 @@
 
 [Outputs]
   exodus = true
-  perf_graph = true
+  print_perf_log = true
 []

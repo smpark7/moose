@@ -89,14 +89,12 @@
 [Executioner]
   type = Transient
 
+  # Preconditioned JFNK (default)
   solve_type = 'PJFNK'
 
   start_time = 0.0
   num_steps = 2
   dt = .1
-
-  petsc_options_iname = '-pc_type -pc_hypre_type'
-  petsc_options_value = 'hypre boomeramg'
 
   [./Adaptivity]
     refine_fraction = 0.2

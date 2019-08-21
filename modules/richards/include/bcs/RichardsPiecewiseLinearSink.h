@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef RICHARDSPIECEWISELINEARSINK
+#define RICHARDSPIECEWISELINEARSINK
 
 #include "IntegratedBC.h"
 #include "LinearInterpolation.h"
@@ -42,18 +41,17 @@ public:
   RichardsPiecewiseLinearSink(const InputParameters & parameters);
 
 protected:
-  virtual void computeResidual() override;
+  virtual void computeResidual();
 
-  virtual Real computeQpResidual() override;
+  virtual Real computeQpResidual();
 
-  virtual void computeJacobian() override;
+  virtual void computeJacobian();
 
-  virtual Real computeQpJacobian() override;
+  virtual Real computeQpJacobian();
 
-  virtual void computeJacobianBlock(MooseVariableFEBase & jvar) override;
-  using IntegratedBC::computeJacobianBlock;
+  virtual void computeJacobianBlock(unsigned int jvar);
 
-  virtual Real computeQpOffDiagJacobian(unsigned int jvar) override;
+  virtual Real computeQpOffDiagJacobian(unsigned int jvar);
 
   /// whether to multiply the sink flux by permeability*density/viscosity
   bool _use_mobility;
@@ -68,7 +66,7 @@ protected:
   LinearInterpolation _sink_func;
 
   /// sink flux gets multiplied by this function
-  const Function & _m_func;
+  Function & _m_func;
 
   /// holds info about the names and values of richards variable in the simulation
   const RichardsVarNames & _richards_name_UO;
@@ -153,8 +151,8 @@ protected:
    * Only used if _fully_upwind = true
    * Eg:
    * _ps_at_nodes[_pvar] is a pointer to this variable's nodal porepressure values
-   * So: (*_ps_at_nodes[_pvar])[i] = _var.dofValues()[i] = porepressure of pressure-variable _pvar
-   * at node i
+   * So: (*_ps_at_nodes[_pvar])[i] = _var.nodalSln()[i] = porepressure of pressure-variable _pvar at
+   * node i
    */
   std::vector<const VariableValue *> _ps_at_nodes;
 
@@ -164,3 +162,5 @@ protected:
   /// derivative of residual wrt the wrt_num Richards variable
   Real jac(unsigned int wrt_num);
 };
+
+#endif // RichardsPiecewiseLinearSink

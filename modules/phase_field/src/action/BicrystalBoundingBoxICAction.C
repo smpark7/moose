@@ -1,26 +1,20 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "BicrystalBoundingBoxICAction.h"
 #include "Factory.h"
 #include "FEProblem.h"
 #include "Conversion.h"
-
-registerMooseAction("PhaseFieldApp", BicrystalBoundingBoxICAction, "add_ic");
 
 template <>
 InputParameters
 validParams<BicrystalBoundingBoxICAction>()
 {
   InputParameters params = validParams<Action>();
-  params.addClassDescription("Constructs a bicrystal, where one grain is on the inside of "
-                             "the box and the other grain is the outside of the box");
+  params.addClassDescription("Bicrystal using a bounding box");
   params.addRequiredParam<std::string>("var_name_base", "specifies the base name of the variables");
   params.addRequiredParam<unsigned int>("op_num", "Number of grains, should be 2");
   params.addRequiredParam<Real>("x1", "The x coordinate of the lower left-hand corner of the box");
@@ -38,7 +32,7 @@ BicrystalBoundingBoxICAction::BicrystalBoundingBoxICAction(const InputParameters
     _op_num(getParam<unsigned int>("op_num"))
 {
   if (_op_num != 2)
-    paramError("op_num", "Must equal 2 for bicrystal ICs");
+    mooseError("op_num must equal 2 for bicrystal ICs");
 }
 
 void
@@ -60,7 +54,7 @@ BicrystalBoundingBoxICAction::act()
     poly_params.set<VariableName>("variable") = var_name;
     if (op == 0)
     {
-      // Values for bounding box grain
+      // Values for bounding box
       poly_params.set<Real>("inside") = 1.0;
       poly_params.set<Real>("outside") = 0.0;
     }

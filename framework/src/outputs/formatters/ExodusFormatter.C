@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // MOOSE includes
 #include "ExodusFormatter.h"
@@ -14,6 +19,7 @@
 #include "SystemInfo.h"
 #include "CommandLine.h"
 
+// libMesh includes
 #include "libmesh/exodusII.h"
 
 // C++
@@ -32,10 +38,8 @@ ExodusFormatter::printInputFile(ActionWarehouse & wh)
   // Grab the command line arguments first
   _ss << "### Command Line Arguments ###\n";
   if (wh.mooseApp().commandLine())
-  {
-    for (const auto & arg : wh.mooseApp().commandLine()->getArguments())
-      _ss << " " << arg;
-  }
+    wh.mooseApp().commandLine()->print("", _ss, 1);
+
   if (wh.mooseApp().getSystemInfo() != NULL)
   {
     _ss << "### Version Info ###\n" << wh.mooseApp().getSystemInfo()->getInfo() << "\n";

@@ -1,13 +1,4 @@
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
-import os, traceback
+import os, sys, traceback
 import xml.etree.ElementTree as xml
 
 ##
@@ -138,6 +129,7 @@ class XMLDiffer(object):
 
         # Define local variables
         root = [self._root1, self._root2]
+        name = ['file 1', 'file 2']
 
         # Do nothing if the objects do not exist
         if root[0] == None or root[1] == None:

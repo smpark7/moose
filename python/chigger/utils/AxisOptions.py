@@ -1,23 +1,19 @@
 #pylint: disable=missing-docstring
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#################################################################
+#                   DO NOT MODIFY THIS HEADER                   #
+#  MOOSE - Multiphysics Object Oriented Simulation Environment  #
+#                                                               #
+#            (c) 2010 Battelle Energy Alliance, LLC             #
+#                      ALL RIGHTS RESERVED                      #
+#                                                               #
+#           Prepared by Battelle Energy Alliance, LLC           #
+#             Under Contract No. DE-AC07-05ID14517              #
+#              With the U. S. Department of Energy              #
+#                                                               #
+#              See COPYRIGHT for full restrictions              #
+#################################################################
 import vtk
-import mooseutils
 from Options import Options
-
-VTK_NOTATION_ENUM = [
-    vtk.vtkAxis.STANDARD_NOTATION,
-    vtk.vtkAxis.SCIENTIFIC_NOTATION,
-    vtk.vtkAxis.FIXED_NOTATION,
-    vtk.vtkAxis.PRINTF_NOTATION
-]
 
 def get_options():
     """
@@ -26,14 +22,14 @@ def get_options():
     opt = Options()
     opt.add('num_ticks', 5, "The number of tick marks to place on the axis.", vtype=int)
     opt.add('lim', "The axis extents.", vtype=list)
-    opt.add('font_color', [1, 1, 1], "The color of the axis, ticks, and labels.")
+    opt.add('color', [1, 1, 1], "The color of the axis, ticks, and labels.")
     opt.add('title', "The axis label.", vtype=str)
     opt.add('font_size', "The axis title and label font sizes, in points.", vtype=int)
     opt.add('title_font_size', "The axis title font size, in points.", vtype=int)
     opt.add('tick_font_size', "The axis tick label font size, in points.", vtype=int)
     opt.add('grid', True, "Show/hide the grid lines for this axis.")
     opt.add('grid_color', [0.25, 0.25, 0.25], "The color for the grid lines.")
-    opt.add('precision', "The axis numeric precision.", vtype=int)
+    opt.add('precision', 3, "The axis numeric precision.", vtype=int)
     opt.add('notation', "The type of notation, leave empty to let VTK decide", vtype=str,
             allow=['standard', 'scientific', 'fixed', 'printf'])
     opt.add('ticks_visible', True, "Control visibility of tickmarks on colorbar axis.")
@@ -43,10 +39,7 @@ def get_options():
             allow=['left', 'right', 'top', 'bottom'])
     opt.add('axis_point1', [0, 0], 'Starting location of axis, in absolute viewport coordinates.')
     opt.add('axis_point2', [0, 0], 'Ending location of axis, in absolute viewport coordinates.')
-    opt.add('axis_scale', 1, "The axis scaling factor.", vtype=float)
-    opt.add('axis_factor', 0, "Offset the axis by adding a factor.", vtype=float)
-    opt.add('axis_opacity', 1, "The vtkAxis opacity.", vtype=float)
-    opt.add('zero_tol', 1e-10, "Tolerance for considering limits to be the same.")
+    opt.add('axis_scale', 1, "The axis scaling factor.")
     return opt
 
 def set_options(vtkaxis, opt):
@@ -59,49 +52,21 @@ def set_options(vtkaxis, opt):
     vtkaxis.SetAxisVisible(opt['axis_visible'])
     vtkaxis.SetLabelsVisible(opt['labels_visible'])
 
-    # Opacity
-    if opt.isOptionValid('axis_opacity'):
-        opacity = opt['axis_opacity']
-        vtkaxis.SetOpacity(opacity)
-        vtkaxis.GetTitleProperties().SetOpacity(opacity)
-        vtkaxis.GetLabelProperties().SetOpacity(opacity)
-
     # Ticks
     if opt.isOptionValid('num_ticks'):
         vtkaxis.SetNumberOfTicks(opt['num_ticks'])
 
     # Limits
     if opt.isOptionValid('lim'):
-        lim = opt['lim']
-        if abs(lim[1] - lim[0]) < opt['zero_tol']:
-            vtkaxis.SetBehavior(vtk.vtkAxis.CUSTOM)
-            vtkaxis.SetRange(0, 1)
-
-            pos = vtk.vtkDoubleArray()
-            pos.SetNumberOfTuples(2)
-            pos.SetValue(0, 0)
-            pos.SetValue(1, 1)
-
-            labels = vtk.vtkStringArray()
-            labels.SetNumberOfTuples(2)
-            labels.SetValue(0, str(lim[0]))
-            labels.SetValue(1, str(lim[1]))
-
-            vtkaxis.SetCustomTickPositions(pos, labels)
-        else:
-            vtkaxis.SetCustomTickPositions(None, None)
-            vtkaxis.SetBehavior(vtk.vtkAxis.FIXED)
-            scale = opt['axis_scale']
-            factor = opt['axis_factor']
-            vtkaxis.SetRange(lim[0] * scale + factor, lim[1] * scale + factor)
-            vtkaxis.RecalculateTickSpacing()
+        vtkaxis.SetBehavior(vtk.vtkAxis.FIXED)
+        vtkaxis.SetRange(*opt['lim'])
+        vtkaxis.RecalculateTickSpacing()
     else:
         vtkaxis.SetBehavior(vtk.vtkAxis.AUTO)
-        vtkaxis.SetCustomTickPositions(None, None)
 
     # Color
-    if opt.isOptionValid('font_color'):
-        clr = opt['font_color']
+    if opt.isOptionValid('color'):
+        clr = opt['color']
         vtkaxis.GetTitleProperties().SetColor(*clr)
         vtkaxis.GetLabelProperties().SetColor(*clr)
         vtkaxis.GetPen().SetColorF(*clr)
@@ -121,17 +86,11 @@ def set_options(vtkaxis, opt):
         vtkaxis.GetLabelProperties().SetFontSize(opt['tick_font_size'])
 
     # Precision/notation
+    vtkaxis.SetPrecision(opt['precision'])
     if opt.isOptionValid('notation'):
         notation = opt['notation'].upper()
         vtk_notation = getattr(vtk.vtkAxis, notation + '_NOTATION')
         vtkaxis.SetNotation(vtk_notation)
-
-    if opt.isOptionValid('precision'):
-        if vtkaxis.GetNotation() in VTK_NOTATION_ENUM[1:3]:
-            vtkaxis.SetPrecision(opt['precision'])
-        else:
-            mooseutils.mooseWarning("When using 'precision' option, 'notation' option has to be "
-                                    "set to either 'scientific' or 'fixed'.")
 
     # Grid lines
     vtkaxis.SetGridVisible(opt['grid'])
@@ -148,3 +107,6 @@ def set_options(vtkaxis, opt):
 
     if opt.isOptionValid('axis_point2'):
         vtkaxis.SetPoint2(*opt['axis_point2'])
+
+    if opt.isOptionValid('axis_scale'):
+        vtkaxis.SetScalingFactor(opt['axis_scale'])

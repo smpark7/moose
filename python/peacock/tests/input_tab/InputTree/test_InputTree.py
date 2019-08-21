@@ -1,13 +1,4 @@
-#!/usr/bin/env python2
-#* This file is part of the MOOSE framework
-#* https://www.mooseframework.org
-#*
-#* All rights reserved, see COPYRIGHT for full restrictions
-#* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-#*
-#* Licensed under LGPL 2.1, please see LICENSE for details
-#* https://www.gnu.org/licenses/lgpl-2.1.html
-
+#!/usr/bin/env python
 from peacock.Input.ExecutableInfo import ExecutableInfo
 from peacock.Input.InputTree import InputTree
 import os
@@ -50,25 +41,25 @@ class Tests(Testing.PeacockTester):
         self.assertEqual(b, None)
         t.setInputFile(self.transient)
         self.assertNotEqual(t.input_file, None)
-        self.assertEqual(t.input_filename, os.path.abspath(self.transient))
+        self.assertEqual(t.input_filename, self.transient)
         b = t.getBlockInfo("/Mesh")
         self.assertEqual(b, None)
 
     def testTransient(self):
         t = self.createTree(input_file=self.transient)
-        self.checkFile(t.getInputFileString(), self.transient_gold, True)
+        self.checkFile(t.getInputFileString(), self.transient_gold)
 
     def testLCF(self):
         t = self.createTree(input_file=self.lcf1)
-        self.checkFile(t.getInputFileString(), self.lcf1_gold, True)
+        self.checkFile(t.getInputFileString(), self.lcf1_gold)
 
     def testFSP(self):
         t = self.createTree(input_file=self.fsp)
-        self.checkFile(t.getInputFileString(), self.fsp_gold, True)
+        self.checkFile(t.getInputFileString(), self.fsp_gold)
 
     def testSimpleDiffusion(self):
         t = self.createTree(input_file=self.simple_diffusion)
-        self.checkFile(t.getInputFileString(), self.simple_diffusion_gold, True)
+        self.checkFile(t.getInputFileString(), self.simple_diffusion_gold)
 
     def testChangingInputFiles(self):
         t = self.createTree(input_file=self.simple_diffusion)
@@ -123,7 +114,7 @@ class Tests(Testing.PeacockTester):
         self.assertEqual(c.paramValue("foo"), "bar")
         self.assertIn(c.path, t.path_map)
 
-        self.assertEqual(c.parent.children_list.index(c.name), 7)
+        self.assertEqual(c.parent.children_list.index(c.name), 5)
         t.moveBlock("/NoExist", 0)
         t.moveBlock(c.path, 0)
         self.assertEqual(c.parent.children_list.index(c.name), 0)
@@ -165,58 +156,6 @@ class Tests(Testing.PeacockTester):
         self.assertEqual(t.getBlockInfo(b.path), None)
         self.assertNotIn(b.name, p.children_list)
         self.assertNotIn(b.name, p.children)
-
-    def testIncompatible(self):
-        t = InputTree(ExecutableInfo())
-        app_info = ExecutableInfo()
-        # The original tree wasn't set, any new changes
-        # are not incompatible
-        self.assertFalse(t.incompatibleChanges(app_info))
-        app_info.json_data = {"bad_block": None}
-        self.assertFalse(t.incompatibleChanges(app_info))
-
-        # Current tree is good, new one is not
-        app_info.json_data = None
-        t = self.createTree(input_file=self.simple_diffusion)
-        self.assertTrue(t.incompatibleChanges(app_info))
-        app_info.json_data = {"bad_block": None}
-        self.assertFalse(app_info.valid())
-        self.assertTrue(t.incompatibleChanges(app_info))
-        app_info.path ="foo"
-        self.assertTrue(app_info.valid())
-        self.assertTrue(t.incompatibleChanges(app_info)) # No / which causes an exception
-        app_info.path_map = t.app_info.path_map.copy()
-        self.assertFalse(t.incompatibleChanges(app_info)) # Should be the same, no problems
-
-        # Simulate removing /BCs/*/<types>/DirichletBC/boundary
-        # This should be fine since users can have extra parameters
-        # in their input file
-        root = app_info.path_map["/"]
-        bcs = root.children["BCs"]
-        pname = "boundary"
-        tmp = bcs.star_node.types["DirichletBC"]
-        p = tmp.parameters[pname]
-        p.user_added = True
-        tmp.removeUserParam(pname)
-        p = bcs.star_node.parameters[pname]
-        p.user_added = True
-        bcs.star_node.removeUserParam(pname)
-        tmp_tree = InputTree(app_info)
-
-        tmp_tree.setInputFileData(t.getInputFileString())
-        left = tmp_tree.getBlockInfo("/BCs/left")
-        self.assertTrue(left.user_added)
-        boundary = left.parameters["boundary"]
-        self.assertTrue(boundary.user_added)
-        self.assertTrue(boundary.set_in_input_file)
-        self.assertFalse(t.incompatibleChanges(app_info))
-
-        # Simulate removing /BCs syntax
-        # This should cause a problem
-        del app_info.path_map["/BCs"]
-        root.children_list.remove("BCs")
-        del root.children["BCs"]
-        self.assertTrue(t.incompatibleChanges(app_info)) # Errors when reading the input file
 
 if __name__ == '__main__':
     Testing.run_tests()

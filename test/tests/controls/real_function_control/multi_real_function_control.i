@@ -59,6 +59,7 @@
 []
 
 [Executioner]
+  # Preconditioned JFNK (default)
   type = Transient
   num_steps = 5
   dt = 0.1

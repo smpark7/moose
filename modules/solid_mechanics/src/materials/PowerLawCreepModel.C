@@ -1,17 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "PowerLawCreepModel.h"
 
 #include "SymmIsotropicElasticityTensor.h"
-
-registerMooseObject("SolidMechanicsApp", PowerLawCreepModel);
 
 template <>
 InputParameters
@@ -26,6 +21,7 @@ validParams<PowerLawCreepModel>()
   params.addRequiredParam<Real>("activation_energy", "Activation energy");
   params.addParam<Real>("gas_constant", 8.3143, "Universal gas constant");
   params.addParam<Real>("start_time", 0, "Start time (if not zero)");
+  params.addCoupledVar("temp", "Coupled Temperature");
 
   return params;
 }
@@ -39,12 +35,13 @@ PowerLawCreepModel::PowerLawCreepModel(const InputParameters & parameters)
     _gas_constant(parameters.get<Real>("gas_constant")),
     _start_time(getParam<Real>("start_time")),
     _creep_strain(declareProperty<SymmTensor>("creep_strain")),
-    _creep_strain_old(getMaterialPropertyOld<SymmTensor>("creep_strain"))
+    _creep_strain_old(declarePropertyOld<SymmTensor>("creep_strain"))
 {
 }
 
 void
-PowerLawCreepModel::computeStressInitialize(Real /*effectiveTrialStress*/,
+PowerLawCreepModel::computeStressInitialize(unsigned qp,
+                                            Real /*effectiveTrialStress*/,
                                             const SymmElasticityTensor & elasticityTensor)
 {
   const SymmIsotropicElasticityTensor * eT =
@@ -58,33 +55,33 @@ PowerLawCreepModel::computeStressInitialize(Real /*effectiveTrialStress*/,
   _exponential = 1;
   if (_has_temp)
   {
-    _exponential = std::exp(-_activation_energy / (_gas_constant * _temperature[_qp]));
+    _exponential = std::exp(-_activation_energy / (_gas_constant * _temperature[qp]));
   }
 
   _expTime = std::pow(_t - _start_time, _m_exponent);
 
-  _creep_strain[_qp] = _creep_strain_old[_qp];
+  _creep_strain[qp] = _creep_strain_old[qp];
 }
 
 void
-PowerLawCreepModel::computeStressFinalize(const SymmTensor & plasticStrainIncrement)
+PowerLawCreepModel::computeStressFinalize(unsigned qp, const SymmTensor & plasticStrainIncrement)
 {
-  _creep_strain[_qp] += plasticStrainIncrement;
+  _creep_strain[qp] += plasticStrainIncrement;
 }
 
 Real
-PowerLawCreepModel::computeResidual(const Real effectiveTrialStress, const Real scalar)
+PowerLawCreepModel::computeResidual(unsigned /*qp*/, Real effectiveTrialStress, Real scalar)
 {
-  const Real stress_delta = effectiveTrialStress - 3.0 * _shear_modulus * scalar;
-  Real creep_rate = _coefficient * std::pow(stress_delta, _n_exponent) * _exponential * _expTime;
-  return creep_rate * _dt - scalar;
+  return _coefficient * std::pow(effectiveTrialStress - 3 * _shear_modulus * scalar, _n_exponent) *
+             _exponential * _expTime -
+         scalar / _dt;
 }
 
 Real
-PowerLawCreepModel::computeDerivative(const Real effectiveTrialStress, const Real scalar)
+PowerLawCreepModel::computeDerivative(unsigned /*qp*/, Real effectiveTrialStress, Real scalar)
 {
-  return -3.0 * _coefficient * _shear_modulus * _n_exponent *
-             std::pow(effectiveTrialStress - 3.0 * _shear_modulus * scalar, _n_exponent - 1.0) *
-             _exponential * _expTime * _dt -
-         1.0;
+  return -3 * _coefficient * _shear_modulus * _n_exponent *
+             std::pow(effectiveTrialStress - 3 * _shear_modulus * scalar, _n_exponent - 1) *
+             _exponential * _expTime -
+         1 / _dt;
 }

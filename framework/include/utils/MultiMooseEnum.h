@@ -1,29 +1,33 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MULTIMOOSEENUM_H
+#define MULTIMOOSEENUM_H
 
 // MOOSE includes
-#include "Moose.h"
 #include "MooseEnumBase.h"
 
 // C++ includes
-#include <vector>
+#include <set>
 
 // Forward declarations
-class ExecFlagEnum;
 namespace libMesh
 {
 class Parameters;
 }
 
-typedef std::vector<MooseEnumItem>::const_iterator MooseEnumIterator;
+typedef std::set<std::string>::const_iterator MooseEnumIterator;
 
 /**
  * This is a "smart" enum class intended to replace many of the
@@ -57,6 +61,13 @@ public:
    */
   MultiMooseEnum(const MultiMooseEnum & other_enum);
 
+  /**
+   * Named constructor to build an empty MultiMooseEnum with only the
+   * valid names and the allow_out_of_range flag taken from another enumeration
+   * @param other_enum - The other enumeration to copy the validity checking data from
+   */
+  static MultiMooseEnum withNamesFrom(const MooseEnumBase & other_enum);
+
   ///@{
   /**
    * Comparison operators for comparing with character constants, MultiMooseEnums
@@ -77,7 +88,6 @@ public:
   bool contains(int value) const;
   bool contains(unsigned short value) const;
   bool contains(const MultiMooseEnum & value) const;
-  bool contains(const MooseEnumItem & value) const;
   ///@}
 
   ///@{
@@ -124,9 +134,10 @@ public:
 
   /**
    * Indexing operator
-   * Operator to retrieve an item from the MultiMooseEnum.
+   * Operator to retrieve an item from the MultiMooseEnum. The reference may not be used to change
+   * the item.
    * @param i index
-   * @returns the id of the MooseEnumItem at the supplied index
+   * @returns a read/read-write reference to the item as an unsigned int.
    */
   unsigned int get(unsigned int i) const;
 
@@ -135,8 +146,8 @@ public:
    * Returns a begin/end iterator to all of the items in the enum. Items will
    * always be capitalized.
    */
-  MooseEnumIterator begin() const { return _current.begin(); }
-  MooseEnumIterator end() const { return _current.end(); }
+  MooseEnumIterator begin() const { return _current_names.begin(); }
+  MooseEnumIterator end() const { return _current_names.end(); }
   ///@}
 
   /**
@@ -145,15 +156,20 @@ public:
   void clear();
 
   /**
-   * Return the number of active items in the MultiMooseEnum
+   * Return the number of items in the MultiMooseEnum
    */
   unsigned int size() const;
+
+  /**
+   * Returns the number of unique items in the MultiMooseEnum
+   */
+  unsigned int unique_items_size() const;
 
   /**
    * IsValid
    * @return - a Boolean indicating whether this Enumeration has been set
    */
-  virtual bool isValid() const override { return !_current.empty(); }
+  virtual bool isValid() const override { return !_current_ids.empty(); }
 
   // InputParameters and Output is allowed to create an empty enum but is responsible for
   // filling it in after the fact
@@ -165,6 +181,18 @@ public:
 protected:
   /// Check whether any of the current values are deprecated when called
   virtual void checkDeprecated() const override;
+
+private:
+  /**
+   * Private constructor for use by libmesh::Parameters
+   */
+  MultiMooseEnum();
+
+  /**
+   * Private constructor that can accept a MooseEnumBase for ::withOptionsFrom()
+   * @param other_enum - MooseEnumBase type to copy names and out-of-range data from
+   */
+  MultiMooseEnum(const MooseEnumBase & other_enum);
 
   /**
    * Helper method for all inserts and assignment operators
@@ -178,23 +206,12 @@ protected:
   template <typename InputIterator>
   void remove(InputIterator first, InputIterator last);
 
-  /**
-   * Set the current items.
-   */
-  void setCurrentItems(const std::vector<MooseEnumItem> & current);
-
   /// The current id
-  std::vector<MooseEnumItem> _current;
+  std::vector<int> _current_ids;
 
-  /**
-   * Protected constructor for use by libmesh::Parameters
-   */
-  MultiMooseEnum();
-
-  /**
-   * Protected constructor that can accept a MooseEnumBase for ::withOptionsFrom()
-   * @param other_enum - MooseEnumBase type to copy names and out-of-range data from
-   */
-  MultiMooseEnum(const MooseEnumBase & other_enum);
+  /// The corresponding name
+  std::set<std::string> _current_names;
+  std::vector<std::string> _current_names_preserved;
 };
 
+#endif // MULTIMOOSEENUM_H

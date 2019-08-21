@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "MeshModifier.h"
 #include "MooseMesh.h"
@@ -22,17 +27,16 @@ validParams<MeshModifier>()
                         false,
                         "Normally all MeshModifiers run before the mesh is prepared for use. This "
                         "flag can be set on an individual modifier "
-                        "to force preparation between modifiers where they might be needed.");
-
-  params.addPrivateParam<MooseMesh *>("_mesh");
+                        "to force preperation between modifiers where they might be needed.");
 
   params.registerBase("MeshModifier");
+
   return params;
 }
 
 MeshModifier::MeshModifier(const InputParameters & parameters)
   : MooseObject(parameters),
-    Restartable(this, "MeshModifiers"),
+    Restartable(parameters, "MeshModifiers"),
     _mesh_ptr(NULL),
     _depends_on(getParam<std::vector<std::string>>("depends_on")),
     _force_prepare(getParam<bool>("force_prepare"))

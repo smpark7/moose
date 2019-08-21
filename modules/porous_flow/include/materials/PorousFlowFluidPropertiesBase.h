@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef POROUSFLOWFLUIDPROPERTIESBASE_H
+#define POROUSFLOWFLUIDPROPERTIESBASE_H
 
 #include "PorousFlowMaterialBase.h"
 #include "PorousFlowDictator.h"
@@ -35,6 +34,12 @@ protected:
   /// Fluid temperature at the nodes or quadpoints
   const MaterialProperty<Real> & _temperature;
 
+  /// Name of (dummy) pressure primary variable
+  const VariableName _pressure_variable_name;
+
+  /// Name of (dummy) temperature primary variable
+  const VariableName _temperature_variable_name;
+
   /// Conversion from degrees Celsius to degrees Kelvin
   const Real _t_c2k;
 
@@ -42,3 +47,4 @@ protected:
   const Real _R;
 };
 
+#endif // POROUSFLOWFLUIDPROPERTIESBASE_H

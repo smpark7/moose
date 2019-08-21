@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "gtest/gtest.h"
 
 #include "MooseEnum.h"
 #include "MultiMooseEnum.h"
-#include "ExecFlagEnum.h"
-#include "MooseUtils.h"
 
 #include <algorithm> // std::set_symmetric_difference
 
@@ -86,6 +89,7 @@ TEST(MooseEnum, multiTestOne)
 
   // Size
   EXPECT_EQ(mme.size(), 4);
+  EXPECT_EQ(mme.unique_items_size(), 3);
 
   // All but "two" should be in the Enum
   std::set<std::string> compare_set, return_set, difference;
@@ -113,27 +117,108 @@ TEST(MooseEnum, multiTestOne)
   EXPECT_EQ(mme[2], "four");
 }
 
-TEST(MooseEnum, testDeprecate)
+TEST(MooseEnum, withNamesFromTest)
 {
-  // Intentionally misspelling
+  //
+  // Construct MultiMooseEnum from MooseEnum
+  //
+  MooseEnum me1("one two three four");
+  MultiMooseEnum mme1 = MultiMooseEnum::withNamesFrom(me1);
+
+  // set in-range values
+  mme1 = "one two";
+  EXPECT_EQ(mme1.contains("one"), true);
+  EXPECT_EQ(mme1.contains("two"), true);
+  EXPECT_EQ(mme1.contains("three"), false);
+  EXPECT_EQ(mme1.contains("four"), false);
+
+  // compare against out-of-range value
   try
   {
-    MooseEnum me("one too three four", "too");
-    me.deprecate("too", "two");
+    bool foo = me1 == "five";
+    foo = foo;
+    // TODO: this test fails if you uncomment the following line. It was written incorrectly before
+    // FAIL() << "missing expected error";
+  }
+  catch (const std::exception & e)
+  {
+    std::string msg(e.what());
+
+    ASSERT_NE(msg.find("Invalid string comparison"), std::string::npos)
+        << "failed with unexpected error: " << msg;
+  }
+
+  // set out-of-range values
+  try
+  {
+    mme1 = "five";
     FAIL() << "missing expected error";
   }
   catch (const std::exception & e)
   {
     std::string msg(e.what());
-    ASSERT_NE(msg.find("Cannot deprecate the enum item too, since the replaced"), std::string::npos)
-        << "failed with unexpected error: " << msg;
+    ASSERT_NE(msg.find("Invalid option"), std::string::npos) << "failed with unexpected error: "
+                                                             << msg;
   }
+
+  // construct mme with out-of-range-allowed
+  MooseEnum me2("one two three four", "", true);
+  MultiMooseEnum mme2 = MultiMooseEnum::withNamesFrom(me2);
+  mme2 = "six";
+  EXPECT_EQ(mme2.contains("six"), true);
+
+  //
+  // Construct MooseEnum from MultiMooseEnum
+  //
+  MultiMooseEnum mme3("one two three four");
+  MooseEnum me3 = MooseEnum::withNamesFrom(mme3);
+
+  // set in-range values
+  me3 = "one";
+  EXPECT_EQ(me3, "one");
+
+  // set out-of-range values
+  try
+  {
+    me3 = "five";
+    FAIL() << "missing expected error";
+  }
+  catch (const std::exception & e)
+  {
+    std::string msg(e.what());
+    ASSERT_NE(msg.find("Invalid option"), std::string::npos) << "failed with unexpected error: "
+                                                             << msg;
+  }
+
+  // construct mme with out-of-range-allowed
+  MultiMooseEnum mme4("one two three four", "", true);
+  MooseEnum me4 = MooseEnum::withNamesFrom(mme4);
+  me4 = "six";
+  EXPECT_EQ(me4, "six");
+}
+
+TEST(MooseEnum, testDeprecate)
+{
+  // Intentionally misspelling
+  MooseEnum me1("one too three four", "too");
 
   try
   {
-    MooseEnum me("one too two three four", "one");
-    me.deprecate("too", "two");
-    me = "too";
+    me1.deprecate("too", "two");
+    FAIL() << "missing expected error";
+  }
+  catch (const std::exception & e)
+  {
+    std::string msg(e.what());
+
+    ASSERT_NE(msg.find("is deprecated, consider using"), std::string::npos)
+        << "failed with unexpected error: " << msg;
+  }
+
+  me1 = "one";
+  try
+  {
+    me1 = "too";
     FAIL() << "missing expected error";
   }
   catch (const std::exception & e)
@@ -143,12 +228,13 @@ TEST(MooseEnum, testDeprecate)
         << "failed with unexpected error: " << msg;
   }
 
+  MultiMooseEnum mme1("one too three four");
+  mme1.deprecate("too", "two");
+
+  mme1.push_back("one");
   try
   {
-    MultiMooseEnum mme("one too two three four");
-    mme.deprecate("too", "two");
-    mme.push_back("one");
-    mme = "too";
+    me1 = "too";
     FAIL() << "missing expected error";
   }
   catch (const std::exception & e)
@@ -187,176 +273,4 @@ TEST(MooseEnum, testErrors)
     ASSERT_NE(msg.find("You cannot place whitespace around the '=' character"), std::string::npos)
         << "failed with unexpected error: " << msg;
   }
-
-  // Duplicate IDs
-  try
-  {
-    MultiMooseEnum error_check("one=1 two=1");
-    FAIL() << "missing expected error";
-  }
-  catch (const std::exception & e)
-  {
-    std::string msg(e.what());
-    ASSERT_NE(
-        msg.find("The supplied id 1 already exists in the enumeration, cannot not add 'two'."),
-        std::string::npos)
-        << "failed with unexpected error: " << msg;
-  }
-
-  // Duplicate name
-  try
-  {
-    MultiMooseEnum error_check("one=1 two=2 one=3");
-    FAIL() << "missing expected error";
-  }
-  catch (const std::exception & e)
-  {
-    std::string msg(e.what());
-    ASSERT_NE(msg.find("The name 'ONE' already exists in the enumeration."), std::string::npos)
-        << "failed with unexpected error: " << msg;
-  }
-}
-
-TEST(MultiMooseEnum, testExecuteOn)
-{
-  ExecFlagEnum exec_enum = MooseUtils::getDefaultExecFlagEnum();
-  exec_enum = EXEC_INITIAL;
-
-  // Checks that names are added and removed
-  EXPECT_EQ(exec_enum.getRawNames(),
-            "NONE INITIAL LINEAR NONLINEAR TIMESTEP_END TIMESTEP_BEGIN FINAL CUSTOM");
-  std::vector<std::string> opts = {"NONE",
-                                   "INITIAL",
-                                   "LINEAR",
-                                   "NONLINEAR",
-                                   "TIMESTEP_END",
-                                   "TIMESTEP_BEGIN",
-                                   "FINAL",
-                                   "CUSTOM"};
-  EXPECT_EQ(exec_enum.getNames(), opts);
-
-  // Check that added names can be used
-  EXPECT_TRUE(exec_enum.contains("initial"));
-  EXPECT_TRUE(exec_enum.contains(EXEC_INITIAL));
-
-  exec_enum.addAvailableFlags(EXEC_FAILED);
-  EXPECT_FALSE(exec_enum.contains("failed"));
-  EXPECT_FALSE(exec_enum.contains(EXEC_FAILED));
-
-  exec_enum = "failed";
-  EXPECT_TRUE(exec_enum.contains("failed"));
-  EXPECT_TRUE(exec_enum.contains(EXEC_FAILED));
-
-  EXPECT_EQ(exec_enum.size(), 1);
-  EXPECT_EQ(exec_enum[0], "FAILED");
-  EXPECT_EQ(exec_enum.get(0), EXEC_FAILED);
-
-  // Error when bad name is removed
-  try
-  {
-    ExecFlagType WRONG("wrong", 99);
-    exec_enum.removeAvailableFlags(WRONG);
-    FAIL() << "missing expected error";
-  }
-  catch (const std::exception & e)
-  {
-    std::string msg(e.what());
-    ASSERT_NE(msg.find("The supplied item 'wrong' is not an available enum item for the "
-                       "MultiMooseEnum object"),
-              std::string::npos)
-        << "failed with unexpected error: " << msg;
-  }
-
-  try
-  {
-    exec_enum.removeAvailableFlags(EXEC_FAILED);
-    FAIL() << "missing expected error";
-  }
-  catch (const std::exception & e)
-  {
-    std::string msg(e.what());
-    ASSERT_NE(
-        msg.find("The supplied item 'FAILED' is a selected item, thus it can not be removed."),
-        std::string::npos)
-        << "failed with unexpected error: " << msg;
-  }
-
-  // MultiMooseEnum doc string generation
-  std::string doc = exec_enum.getDocString();
-  EXPECT_EQ(doc,
-            "The list of flag(s) indicating when this object should be executed, the "
-            "available options include NONE, INITIAL, LINEAR, NONLINEAR, TIMESTEP_END, "
-            "TIMESTEP_BEGIN, FINAL, FAILED, CUSTOM.");
-
-  // Tests with ExecFlagType assignment operators
-  exec_enum = EXEC_FINAL;
-  EXPECT_TRUE(exec_enum.contains(EXEC_FINAL));
-
-  exec_enum = {EXEC_FINAL, EXEC_LINEAR};
-  EXPECT_TRUE(exec_enum.contains(EXEC_LINEAR));
-
-  exec_enum += EXEC_CUSTOM;
-  EXPECT_TRUE(exec_enum.contains(EXEC_LINEAR));
-  EXPECT_TRUE(exec_enum.contains(EXEC_CUSTOM));
-
-  exec_enum += {EXEC_TIMESTEP_END, EXEC_TIMESTEP_BEGIN};
-  EXPECT_TRUE(exec_enum.contains(EXEC_CUSTOM));
-  EXPECT_TRUE(exec_enum.contains(EXEC_TIMESTEP_END));
-  EXPECT_TRUE(exec_enum.contains(EXEC_TIMESTEP_BEGIN));
-}
-
-TEST(MooseEnum, compareCurrent)
-{
-  MooseEnum a("a=1 b=2", "a");
-  MooseEnum b("a=1 b=2 c=3", "a");
-  MooseEnum c("a=2 b=1", "a");
-
-  EXPECT_TRUE(a.compareCurrent(b));
-  EXPECT_TRUE(a.compareCurrent(b, MooseEnum::CompareMode::COMPARE_ID));
-  EXPECT_TRUE(a.compareCurrent(b, MooseEnum::CompareMode::COMPARE_BOTH));
-
-  b = "b";
-  EXPECT_FALSE(a.compareCurrent(b));
-  EXPECT_FALSE(a.compareCurrent(b, MooseEnum::CompareMode::COMPARE_ID));
-  EXPECT_FALSE(a.compareCurrent(b, MooseEnum::CompareMode::COMPARE_BOTH));
-
-  b = "c";
-  EXPECT_FALSE(a.compareCurrent(b));
-  EXPECT_FALSE(a.compareCurrent(b, MooseEnum::CompareMode::COMPARE_ID));
-  EXPECT_FALSE(a.compareCurrent(b, MooseEnum::CompareMode::COMPARE_BOTH));
-
-  EXPECT_TRUE(a.compareCurrent(c));
-  EXPECT_FALSE(a.compareCurrent(c, MooseEnum::CompareMode::COMPARE_ID));
-  EXPECT_FALSE(a.compareCurrent(c, MooseEnum::CompareMode::COMPARE_BOTH));
-
-  c = "b";
-  EXPECT_FALSE(a.compareCurrent(c));
-  EXPECT_TRUE(a.compareCurrent(c, MooseEnum::CompareMode::COMPARE_ID));
-  EXPECT_FALSE(a.compareCurrent(c, MooseEnum::CompareMode::COMPARE_BOTH));
-}
-
-TEST(MooseEnum, operatorEqual)
-{
-  MooseEnum a("a=1 b=2", "a");
-  EXPECT_EQ(a, 1);
-  a = 2;
-  EXPECT_EQ(a, 2);
-
-  try
-  {
-    a = 3;
-    FAIL() << "missing error when setting MooseEnum to invalid int.";
-  }
-  catch (const std::exception & e)
-  {
-    std::string msg(e.what());
-    ASSERT_NE(msg.find("Invalid id \"3\" in MooseEnum. Valid ids are \"1,2\"."), std::string::npos)
-        << "failed with unexpected error: " << msg;
-  }
-}
-
-TEST(MooseEnum, getIDs)
-{
-  MooseEnum a("a=1980 e=1949", "e");
-  EXPECT_EQ(a.getIDs(), std::vector<int>({1949, 1980})); // stored as set so they come out sorted
 }

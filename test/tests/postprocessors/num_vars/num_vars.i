@@ -65,17 +65,27 @@
     type = Diffusion
     variable = u
   [../]
+  [./test1]
+    type = CoupledKernelValueTest
+    variable = u
+    var2 = v
+  [../]
   [./diff2]
     type = Diffusion
     variable = v
   [../]
+  [./test2]
+    type = CoupledKernelValueTest
+    variable = v
+    var2 = u
+  [../]
   [./forceu]
-    type = BodyForce
+    type = UserForcingFunction
     variable = u
     function = forcing_fnu
   [../]
   [./forcev]
-    type = BodyForce
+    type = UserForcingFunction
     variable = v
     function = forcing_fnv
   [../]
@@ -90,25 +100,25 @@
   # boundary = 'top left right bottom'
   # [../]
   [./bc_ut]
-    type = FunctionDirichletBC
+    type = FunctionNeumannBC
     variable = u
     boundary = top
     function = bc_fnut
   [../]
   [./bc_ub]
-    type = FunctionDirichletBC
+    type = FunctionNeumannBC
     variable = u
     boundary = bottom
     function = bc_fnub
   [../]
   [./bc_ul]
-    type = FunctionDirichletBC
+    type = FunctionNeumannBC
     variable = u
     boundary = left
     function = bc_fnul
   [../]
   [./bc_ur]
-    type = FunctionDirichletBC
+    type = FunctionNeumannBC
     variable = u
     boundary = right
     function = bc_fnur
@@ -135,6 +145,7 @@
   [../]
   [./h]
     type = AverageElementSize
+    variable = u
   [../]
   [./L2u]
     type = ElementL2Error
@@ -158,17 +169,14 @@
   [../]
   [./num_vars]
     type = NumVars
-    system = 'NL'
   [../]
 []
 
 [Executioner]
+  # petsc_options = '-snes_mf_operator'
   type = Steady
   solve_type = NEWTON
   nl_rel_tol = 1e-15
-
-  petsc_options_iname = '-pc_type -pc_hypre_type'
-  petsc_options_value = 'hypre    boomeramg'
 []
 
 [Outputs]

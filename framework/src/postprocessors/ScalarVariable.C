@@ -1,21 +1,22 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "ScalarVariable.h"
 
 // MOOSE includes
 #include "MooseVariableScalar.h"
 #include "SubProblem.h"
-
-#include "libmesh/dof_map.h"
-
-registerMooseObject("MooseApp", ScalarVariable);
 
 template <>
 InputParameters
@@ -48,14 +49,5 @@ Real
 ScalarVariable::getValue()
 {
   _var.reinit();
-
-  Real returnval = std::numeric_limits<Real>::max();
-  const DofMap & dof_map = _var.dofMap();
-  const dof_id_type dof = _var.dofIndices()[_idx];
-  if (dof >= dof_map.first_dof() && dof < dof_map.end_dof())
-    returnval = _var.sln()[_idx];
-
-  gatherMin(returnval);
-
-  return returnval;
+  return _var.sln()[_idx];
 }

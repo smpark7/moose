@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef DIRACKERNEL_H
+#define DIRACKERNEL_H
 
 // MOOSE includes
 #include "DiracKernelInfo.h"
@@ -20,11 +26,10 @@
 #include "TransientInterface.h"
 #include "PostprocessorInterface.h"
 #include "GeometricSearchInterface.h"
-#include "MooseVariableFE.h"
+#include "MooseVariable.h"
 #include "Restartable.h"
+#include "ZeroInterface.h"
 #include "MeshChangedInterface.h"
-#include "MooseVariableInterface.h"
-#include "TaggingInterface.h"
 
 // Forward Declarations
 class Assembly;
@@ -45,7 +50,6 @@ InputParameters validParams<DiracKernel>();
 class DiracKernel : public MooseObject,
                     public SetupInterface,
                     public CoupleableMooseVariableDependencyIntermediateInterface,
-                    public MooseVariableInterface<Real>,
                     public FunctionInterface,
                     public UserObjectInterface,
                     public TransientInterface,
@@ -53,8 +57,8 @@ class DiracKernel : public MooseObject,
                     public PostprocessorInterface,
                     protected GeometricSearchInterface,
                     public Restartable,
-                    public MeshChangedInterface,
-                    public TaggingInterface
+                    public ZeroInterface,
+                    public MeshChangedInterface
 {
 public:
   DiracKernel(const InputParameters & parameters);
@@ -110,13 +114,6 @@ public:
    * Remove all of the current points and elements.
    */
   void clearPoints();
-
-  /**
-   * Clear point cache when the mesh changes, so that element
-   * coarsening, element deletion, and distributed mesh repartitioning
-   * don't leave this with an invalid cache.
-   */
-  virtual void meshChanged() override;
 
 protected:
   /**
@@ -178,7 +175,7 @@ protected:
   Point _current_point;
 
   ///< Current element
-  const Elem * const & _current_elem;
+  const Elem *& _current_elem;
 
   /// Quadrature point index
   unsigned int _qp;
@@ -187,7 +184,7 @@ protected:
   /// Physical points
   const MooseArray<Point> & _physical_point;
   /// Quadrature rule
-  const QBase * const & _qrule;
+  QBase *& _qrule;
   /// Transformed Jacobian weights
   const MooseArray<Real> & _JxW;
 
@@ -212,6 +209,11 @@ protected:
   const VariableValue & _u;
   /// Holds the solution gradient at the current quadrature points
   const VariableGradient & _grad_u;
+
+  /// Time derivative of the solution
+  const VariableValue & _u_dot;
+  /// Derivative of u_dot wrt u
+  const VariableValue & _du_dot_du;
 
   /// drop duplicate points or consider them in residual and Jacobian
   const bool _drop_duplicate_points;
@@ -240,3 +242,4 @@ private:
   const Elem * addPointWithValidId(Point p, unsigned id);
 };
 
+#endif

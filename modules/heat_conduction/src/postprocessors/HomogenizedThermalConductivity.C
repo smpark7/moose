@@ -1,25 +1,18 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "HomogenizedThermalConductivity.h"
 #include "SubProblem.h"
 #include "MooseMesh.h"
-
-registerMooseObject("HeatConductionApp", HomogenizedThermalConductivity);
 
 template <>
 InputParameters
 validParams<HomogenizedThermalConductivity>()
 {
   InputParameters params = validParams<ElementAverageValue>();
-  params.addClassDescription(
-      "Postprocessor for asymptotic expansion homogenization for thermal conductivity");
   params.addRequiredCoupledVar("temp_x", "solution in x");
   params.addCoupledVar("temp_y", "solution in y");
   params.addCoupledVar("temp_z", "solution in z");

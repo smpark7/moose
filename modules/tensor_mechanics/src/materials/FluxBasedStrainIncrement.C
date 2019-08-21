@@ -1,16 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "FluxBasedStrainIncrement.h"
 #include "libmesh/quadrature.h"
-
-registerMooseObject("TensorMechanicsApp", FluxBasedStrainIncrement);
 
 template <>
 InputParameters
@@ -32,8 +27,8 @@ FluxBasedStrainIncrement::FluxBasedStrainIncrement(const InputParameters & param
     _grad_jx(&coupledGradient("xflux")),
     _has_yflux(isCoupled("yflux")),
     _has_zflux(isCoupled("zflux")),
-    _grad_jy(_has_yflux ? &coupledGradient("yflux") : nullptr),
-    _grad_jz(_has_zflux ? &coupledGradient("zflux") : nullptr),
+    _grad_jy(_has_yflux ? &coupledGradient("yflux") : NULL),
+    _grad_jz(_has_zflux ? &coupledGradient("zflux") : NULL),
     _gb(isCoupled("gb") ? coupledValue("gb") : _zero),
     _strain_increment(
         declareProperty<RankTwoTensor>(getParam<MaterialPropertyName>("property_name")))

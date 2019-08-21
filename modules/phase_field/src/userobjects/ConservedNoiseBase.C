@@ -1,14 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "ConservedNoiseBase.h"
 
+// libmesh includes
 #include "libmesh/quadrature.h"
 
 template <>
@@ -16,7 +15,10 @@ InputParameters
 validParams<ConservedNoiseBase>()
 {
   InputParameters params = validParams<ElementUserObject>();
-  params.set<ExecFlagEnum>("execute_on") = EXEC_TIMESTEP_BEGIN;
+
+  MultiMooseEnum setup_options(SetupInterface::getExecuteOptions());
+  setup_options = "timestep_begin";
+  params.set<MultiMooseEnum>("execute_on") = setup_options;
   return params;
 }
 

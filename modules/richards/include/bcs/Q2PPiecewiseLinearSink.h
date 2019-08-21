@@ -1,13 +1,12 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
-#pragma once
+#ifndef Q2PPIECEWISELINEARSINK
+#define Q2PPIECEWISELINEARSINK
 
 #include "IntegratedBC.h"
 #include "LinearInterpolation.h"
@@ -39,18 +38,17 @@ public:
   Q2PPiecewiseLinearSink(const InputParameters & parameters);
 
 protected:
-  virtual void computeResidual() override;
+  virtual void computeResidual();
 
-  virtual Real computeQpResidual() override;
+  virtual Real computeQpResidual();
 
-  virtual void computeJacobian() override;
+  virtual void computeJacobian();
 
-  virtual Real computeQpJacobian() override;
+  virtual Real computeQpJacobian();
 
-  virtual void computeJacobianBlock(MooseVariableFEBase & jvar) override;
-  using IntegratedBC::computeJacobianBlock;
+  virtual void computeJacobianBlock(unsigned int jvar);
 
-  virtual Real computeQpOffDiagJacobian(unsigned int jvar) override;
+  virtual Real computeQpOffDiagJacobian(unsigned int jvar);
 
   /// whether to multiply the sink flux by permeability*density/viscosity
   bool _use_mobility;
@@ -62,7 +60,7 @@ protected:
   LinearInterpolation _sink_func;
 
   /// sink flux gets multiplied by this function
-  const Function & _m_func;
+  Function & _m_func;
 
   /// fluid density
   const RichardsDensity & _density;
@@ -112,3 +110,5 @@ protected:
   /// derivative of residual wrt the wrt_num variable
   Real jac(unsigned int wrt_num);
 };
+
+#endif // Q2PPIECEWISELINEARSINK

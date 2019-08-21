@@ -1,22 +1,24 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 #include "InversePowerMethod.h"
-
-registerMooseObject("MooseApp", InversePowerMethod);
 
 template <>
 InputParameters
 validParams<InversePowerMethod>()
 {
   InputParameters params = validParams<EigenExecutionerBase>();
-  params.addClassDescription("Inverse power method for Eigen value problems.");
   params.addParam<PostprocessorName>(
       "xdiff", "", "To evaluate |x-x_previous| for power iterations");
   params.addParam<unsigned int>(
@@ -66,14 +68,6 @@ InversePowerMethod::init()
   }
 
   EigenExecutionerBase::init();
-
-  // Write the initial.
-  // Note: We need to tempararily change the system time to make the output system work properly.
-  _problem.timeStep() = 0;
-  Real t = _problem.time();
-  _problem.time() = _problem.timeStep();
-  _problem.outputStep(EXEC_INITIAL);
-  _problem.time() = t;
 }
 
 void
@@ -97,16 +91,16 @@ InversePowerMethod::takeStep()
 
   preSolve();
   Real initial_res;
-  _last_solve_converged = inversePowerIteration(_min_iter,
-                                                _max_iter,
-                                                _pfactor,
-                                                _cheb_on,
-                                                _eig_check_tol,
-                                                true,
-                                                _solution_diff_name,
-                                                _sol_check_tol,
-                                                _eigenvalue,
-                                                initial_res);
+  inversePowerIteration(_min_iter,
+                        _max_iter,
+                        _pfactor,
+                        _cheb_on,
+                        _eig_check_tol,
+                        true,
+                        _solution_diff_name,
+                        _sol_check_tol,
+                        _eigenvalue,
+                        initial_res);
   postSolve();
 
   if (lastSolveConverged())

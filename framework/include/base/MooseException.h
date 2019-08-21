@@ -1,18 +1,21 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
-
-#include "StreamArguments.h"
+#ifndef MOOSEEXCEPTION_H
+#define MOOSEEXCEPTION_H
 
 #include <exception>
-#include <sstream>
 
 /**
  * Provides a way for users to bail out of the current solve.
@@ -24,24 +27,6 @@ public:
    * @param message The message to display
    */
   MooseException(std::string message) : _message(message) {}
-
-  /**
-   * Set an explicit default constructor to avoid the variadic template constructor
-   * below catch the copy construction case.
-   */
-  MooseException(const MooseException &) = default;
-
-  /**
-   * @param args List of arguments that gets stringified and concatenated to form the message to
-   * display
-   */
-  template <typename... Args>
-  explicit MooseException(Args &&... args)
-  {
-    std::ostringstream ss;
-    streamArguments(ss, args...);
-    _message = ss.str();
-  }
 
   /**
    * For some reason, on GCC 4.6.3, I get 'error: looser throw
@@ -62,3 +47,5 @@ public:
 protected:
   std::string _message;
 };
+
+#endif /* MOOSEEXCEPTION_H */

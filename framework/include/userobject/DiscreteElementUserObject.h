@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef DISCRETEELEMENTUSEROBJECT_H
+#define DISCRETEELEMENTUSEROBJECT_H
 
 // MOOSE includes
 #include "ElementUserObject.h"
@@ -26,9 +32,10 @@ public:
   virtual void initialize() override;
 
   /// @{ Block all methods that are not used in explicitly called UOs
-  virtual void execute() override final;
-  virtual void finalize() override final;
-  virtual void threadJoin(const UserObject &) override final;
+  virtual void execute() override;                      // libmesh_final;
+  virtual void finalize() override;                     // libmesh_final;
+  virtual void threadJoin(const UserObject &) override; // libmesh_final;
   /// @}
 };
 
+#endif // DISCRETEELEMENTUSEROBJECT_H

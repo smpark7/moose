@@ -1,11 +1,9 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 
 #include "RichardsPiecewiseLinearSink.h"
 
@@ -14,8 +12,6 @@
 
 // C++ includes
 #include <iostream>
-
-registerMooseObject("RichardsApp", RichardsPiecewiseLinearSink);
 
 template <>
 InputParameters
@@ -92,15 +88,18 @@ RichardsPiecewiseLinearSink::RichardsPiecewiseLinearSink(const InputParameters &
 
     // in the following, getUserObjectByName returns a reference (an alias) to a RichardsBLAH user
     // object, and the & turns it into a pointer
-    _density_UO(_fully_upwind ? &getUserObjectByName<RichardsDensity>(
-                                    getParam<std::vector<UserObjectName>>("density_UO")[_pvar])
-                              : NULL),
-    _seff_UO(_fully_upwind ? &getUserObjectByName<RichardsSeff>(
-                                 getParam<std::vector<UserObjectName>>("seff_UO")[_pvar])
-                           : NULL),
-    _relperm_UO(_fully_upwind ? &getUserObjectByName<RichardsRelPerm>(
-                                    getParam<std::vector<UserObjectName>>("relperm_UO")[_pvar])
-                              : NULL),
+    _density_UO(_fully_upwind
+                    ? &getUserObjectByName<RichardsDensity>(
+                          getParam<std::vector<UserObjectName>>("density_UO")[_pvar])
+                    : NULL),
+    _seff_UO(_fully_upwind
+                 ? &getUserObjectByName<RichardsSeff>(
+                       getParam<std::vector<UserObjectName>>("seff_UO")[_pvar])
+                 : NULL),
+    _relperm_UO(_fully_upwind
+                    ? &getUserObjectByName<RichardsRelPerm>(
+                          getParam<std::vector<UserObjectName>>("relperm_UO")[_pvar])
+                    : NULL),
 
     _area_pp(getPostprocessorValue("area_pp")),
 
@@ -241,7 +240,7 @@ RichardsPiecewiseLinearSink::computeQpJacobian()
 }
 
 void
-RichardsPiecewiseLinearSink::computeJacobianBlock(MooseVariableFEBase & jvar)
+RichardsPiecewiseLinearSink::computeJacobianBlock(unsigned int jvar)
 {
   if (_fully_upwind)
     prepareNodalValues();

@@ -1,13 +1,11 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
-#pragma once
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
+#ifndef FINITESTRAINHYPERELASTICVISCOPLASTIC_H
+#define FINITESTRAINHYPERELASTICVISCOPLASTIC_H
 
 #include "ComputeStressBase.h"
 #include "HEVPFlowRateUOBase.h"
@@ -58,7 +56,7 @@ protected:
   template <typename T>
   void initPropOld(const std::vector<UserObjectName> &,
                    unsigned int,
-                   std::vector<const MaterialProperty<T> *> &);
+                   std::vector<MaterialProperty<T> *> &);
 
   /// This function initializes user objects
   template <typename T>
@@ -193,13 +191,9 @@ protected:
   std::string _pk2_prop_name;
   MaterialProperty<RankTwoTensor> & _pk2;
   MaterialProperty<RankTwoTensor> & _fp;
-  const MaterialProperty<RankTwoTensor> & _fp_old;
+  MaterialProperty<RankTwoTensor> & _fp_old;
   MaterialProperty<RankTwoTensor> & _ce;
 
-  /// Name of the elasticity tensor material property
-  const std::string _elasticity_tensor_name;
-  /// Elasticity tensor material property
-  const MaterialProperty<RankFourTensor> & _elasticity_tensor;
   const MaterialProperty<RankTwoTensor> & _deformation_gradient;
   const MaterialProperty<RankTwoTensor> & _deformation_gradient_old;
   const MaterialProperty<RankTwoTensor> & _rotation_increment;
@@ -207,7 +201,7 @@ protected:
   std::vector<MaterialProperty<Real> *> _flow_rate_prop;
   std::vector<MaterialProperty<Real> *> _strength_prop;
   std::vector<MaterialProperty<Real> *> _int_var_stateful_prop;
-  std::vector<const MaterialProperty<Real> *> _int_var_stateful_prop_old;
+  std::vector<MaterialProperty<Real> *> _int_var_stateful_prop_old;
   std::vector<MaterialProperty<Real> *> _int_var_rate_prop;
   std::vector<Real> _int_var_old;
 
@@ -244,3 +238,4 @@ protected:
   Real _dt_substep;
 };
 
+#endif // FINITESTRAINHYPERELASTICVISCOPLASTIC_H

@@ -1,0 +1,17 @@
+# CHBulkPFCTrad
+!description /Kernels/CHBulkPFCTrad
+
+Cahn-Hilliard kernel implementing the free energy density
+
+$$
+f = \frac12c^2\cdot(1-C_0)-\frac16ac^3+\frac1{12}bc^4,
+$$
+
+where $c$ is a PFC density and the coefficients $C_0,a,b$ are provided by
+the [PFCTradMaterial](PFCTradMaterial.md).
+
+!parameters /Kernels/CHBulkPFCTrad
+
+!inputfiles /Kernels/CHBulkPFCTrad
+
+!childobjects /Kernels/CHBulkPFCTrad

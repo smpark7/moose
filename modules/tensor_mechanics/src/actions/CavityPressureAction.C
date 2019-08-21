@@ -1,18 +1,13 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
-
+/****************************************************************/
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*          All contents are licensed under LGPL V2.1           */
+/*             See LICENSE for full restrictions                */
+/****************************************************************/
 #include "CavityPressureAction.h"
 #include "Factory.h"
 #include "FEProblem.h"
 #include "Conversion.h"
-
-registerMooseAction("TensorMechanicsApp", CavityPressureAction, "add_bc");
 
 template <>
 InputParameters
@@ -21,11 +16,11 @@ validParams<CavityPressureAction>()
   InputParameters params = validParams<Action>();
   params.addRequiredParam<std::vector<BoundaryName>>(
       "boundary", "The list of boundary IDs from the mesh where the pressure will be applied");
-  params.addRequiredParam<std::vector<VariableName>>("displacements",
-                                                     "The nonlinear displacement variables");
+  params.addRequiredParam<std::vector<NonlinearVariableName>>(
+      "displacements", "The nonlinear displacement variables");
   params.addParam<std::vector<AuxVariableName>>(
       "save_in", "Auxiliary variables to save the displacement residuals");
-  params.addParam<std::string>("output", "The name to use for the cavity pressure value");
+  params.addParam<std::string>("output", "The name to use for the plenum pressure value");
   params.addParam<bool>(
       "use_displaced_mesh", true, "Whether to use displaced mesh in the boundary condition");
   return params;
@@ -36,7 +31,7 @@ CavityPressureAction::CavityPressureAction(const InputParameters & params) : Act
 void
 CavityPressureAction::act()
 {
-  auto displacements = getParam<std::vector<VariableName>>("displacements");
+  auto displacements = getParam<std::vector<NonlinearVariableName>>("displacements");
   auto save_in = getParam<std::vector<AuxVariableName>>("save_in");
 
   unsigned int ndisp = displacements.size();

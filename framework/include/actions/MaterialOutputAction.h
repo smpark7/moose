@@ -1,13 +1,19 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
-#pragma once
+#ifndef MATERIALOUTPUTACTION_H
+#define MATERIALOUTPUTACTION_H
 
 // MOOSE includes
 #include "Action.h"
@@ -32,7 +38,13 @@ public:
    * @param params Input parameters for this action object
    */
   MaterialOutputAction(InputParameters params);
+
   virtual void act() override;
+
+  /**
+   * Builds the objects necessary for material property output
+   */
+  void buildMaterialOutputObjects(FEProblemBase * problem_ptr);
 
 private:
   /**
@@ -48,32 +60,27 @@ private:
    * @tparam T The type of material property that automatic output is being performed
    * @param property_name The name of the material property to output
    * @param material A pointer to the Material object containing the property of interest
-   * @param get_names_only A bool used to indicate that only the variable names should be returned
-   *
-   * @return A vector of names that can be used as AuxVariable names
    *
    * By default this function produces an mooseError, you must create a specialization for any type
-   * that you wish to have the automatic output capability. Also, you need to add a test for this
-   * type within the act() method.
+   * that you
+   * wish to have the automatic output capability. Also, you need to add a test for this type within
+   * the
+   * act() method.
    */
   template <typename T>
-  std::vector<std::string> materialOutputHelper(const std::string & property_name,
-                                                const Material & material,
-                                                bool get_names_only);
+  void materialOutputHelper(const std::string & property_name, std::shared_ptr<Material> material);
 
   /**
-   * A method for retrieving and partially filling the InputParameters object for an AuxVariable
-   * @param type The type of AuxVariable
+   * A method for creating an AuxVariable and associated action
+   * @param type The action type to create
    * @param property_name The property name to associated with that action
    * @param variable_name The AuxVariable name to create
-   * @param material A Material object containing the property of interest
-   *
-   * @return An InputParameter object with common properties added.
+   * @param material A pointer to the Material object containing the property of interest
    */
-  InputParameters getParams(const std::string & type,
-                            const std::string & property_name,
-                            const std::string & variable_name,
-                            const Material & material);
+  std::shared_ptr<MooseObjectAction> createAction(const std::string & type,
+                                                  const std::string & property_name,
+                                                  const std::string & variable_name,
+                                                  std::shared_ptr<Material> material);
 
   /// Pointer the MaterialData object storing the block restricted materials
   std::shared_ptr<MaterialData> _block_material_data;
@@ -83,6 +90,9 @@ private:
 
   /// Map of variable name that contains the blocks to which the variable should be restricted
   std::map<std::string, std::set<SubdomainID>> _block_variable_map;
+
+  /// Set of variable names for boundary
+  std::set<std::string> _variable_names;
 
   /// List of variables for the current Material object
   std::set<std::string> _material_variable_names;
@@ -95,10 +105,9 @@ private:
 };
 
 template <typename T>
-std::vector<std::string>
+void
 MaterialOutputAction::materialOutputHelper(const std::string & /*property_name*/,
-                                           const Material & /*material*/,
-                                           bool /*get_names_only*/)
+                                           std::shared_ptr<Material> /*material*/)
 {
   mooseError("Unknown type, you must create a specialization of materialOutputHelper");
 }
@@ -114,3 +123,4 @@ MaterialOutputAction::hasProperty(const std::string & property_name)
     return false;
 }
 
+#endif // MATERIALOUTPUTACTION_H

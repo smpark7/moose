@@ -10,13 +10,7 @@
 # FRAMEWORK_DIR - Location of the MOOSE framework
 #
 ###############################################################################
-# Use the MOOSE submodule if it exists and MOOSE_DIR is not set
-MOOSE_SUBMODULE    := $(CURDIR)/../moose
-ifneq ($(wildcard $(MOOSE_SUBMODULE)/framework/Makefile),)
-  MOOSE_DIR        ?= $(MOOSE_SUBMODULE)
-else
-  MOOSE_DIR        ?= $(shell dirname `pwd`)/../moose
-endif
+MOOSE_DIR          ?= $(shell dirname `pwd`)/../moose
 FRAMEWORK_DIR      ?= $(MOOSE_DIR)/framework
 ###############################################################################
 
@@ -38,6 +32,7 @@ RICHARDS                  := no
 SOLID_MECHANICS           := no
 STOCHASTIC_TOOLS          := no
 TENSOR_MECHANICS          := no
+WATER_STEAM_EOS           := no
 XFEM                      := no
 POROUS_FLOW               := no
 LEVEL_SET                 := no
@@ -45,8 +40,8 @@ include           $(MOOSE_DIR)/modules/modules.mk
 ###############################################################################
 
 # Extra stuff for GTEST
-ADDITIONAL_INCLUDES := -I$(FRAMEWORK_DIR)/contrib/gtest
-ADDITIONAL_LIBS     := $(FRAMEWORK_DIR)/contrib/gtest/libgtest.la
+ADDITIONAL_INCLUDES	:= -I$(FRAMEWORK_DIR)/contrib/gtest
+ADDITIONAL_LIBS 	:= $(FRAMEWORK_DIR)/contrib/gtest/libgtest.la
 
 # dep apps
 CURRENT_DIR        := $(shell pwd)
@@ -62,7 +57,7 @@ DEP_APPS    ?= $(shell $(FRAMEWORK_DIR)/scripts/find_dep_apps.py $(APPLICATION_N
 include $(FRAMEWORK_DIR)/app.mk
 
 # Find all the Stork unit test source files and include their dependencies.
-stork_unit_srcfiles := $(shell find $(CURRENT_DIR)/src -name "*.C")
+stork_unit_srcfiles := $(shell find $(MOOSE_DIR)/unit/src -name "*.C")
 stork_unit_deps := $(patsubst %.C, %.$(obj-suffix).d, $(stork_unit_srcfiles))
 -include $(stork_unit_deps)
 

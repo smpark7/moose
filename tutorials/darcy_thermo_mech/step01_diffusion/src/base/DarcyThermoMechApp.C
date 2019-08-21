@@ -1,11 +1,16 @@
-//* This file is part of the MOOSE framework
-//* https://www.mooseframework.org
-//*
-//* All rights reserved, see COPYRIGHT for full restrictions
-//* https://github.com/idaholab/moose/blob/master/COPYRIGHT
-//*
-//* Licensed under LGPL 2.1, please see LICENSE for details
-//* https://www.gnu.org/licenses/lgpl-2.1.html
+/****************************************************************/
+/*               DO NOT MODIFY THIS HEADER                      */
+/* MOOSE - Multiphysics Object Oriented Simulation Environment  */
+/*                                                              */
+/*           (c) 2010 Battelle Energy Alliance, LLC             */
+/*                   ALL RIGHTS RESERVED                        */
+/*                                                              */
+/*          Prepared by Battelle Energy Alliance, LLC           */
+/*            Under Contract No. DE-AC07-05ID14517              */
+/*            With the U. S. Department of Energy               */
+/*                                                              */
+/*            See COPYRIGHT for full restrictions               */
+/****************************************************************/
 
 // Tutorial Includes
 #include "DarcyThermoMechApp.h"
@@ -20,13 +25,18 @@ InputParameters
 validParams<DarcyThermoMechApp>()
 {
   InputParameters params = validParams<MooseApp>();
-  params.set<bool>("automatic_automatic_scaling") = false;
   return params;
 }
 
 DarcyThermoMechApp::DarcyThermoMechApp(InputParameters parameters) : MooseApp(parameters)
 {
-  DarcyThermoMechApp::registerAll(_factory, _action_factory, _syntax);
+  Moose::registerObjects(_factory);
+  ModulesApp::registerObjects(_factory);
+  DarcyThermoMechApp::registerObjects(_factory);
+
+  Moose::associateSyntax(_syntax, _action_factory);
+  ModulesApp::associateSyntax(_syntax, _action_factory);
+  DarcyThermoMechApp::associateSyntax(_syntax, _action_factory);
 }
 
 void
@@ -36,9 +46,11 @@ DarcyThermoMechApp::registerApps()
 }
 
 void
-DarcyThermoMechApp::registerAll(Factory & factory, ActionFactory & action_factory, Syntax & syntax)
+DarcyThermoMechApp::registerObjects(Factory & /*factory*/)
 {
-  Registry::registerObjectsTo(factory, {"DarcyThermoMechApp"});
-  Registry::registerActionsTo(action_factory, {"DarcyThermoMechApp"});
-  ModulesApp::registerAll(factory, action_factory, syntax);
+}
+
+void
+DarcyThermoMechApp::associateSyntax(Syntax & /*syntax*/, ActionFactory & /*action_factory*/)
+{
 }
