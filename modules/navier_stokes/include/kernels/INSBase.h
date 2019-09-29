@@ -56,7 +56,10 @@ protected:
   virtual RealVectorValue timeDerivativeTerm();
   virtual RealVectorValue dTimeDerivativeDUComp(unsigned comp);
 
+  virtual RealVectorValue a();
+  virtual Real diffusivity();
   virtual Real tau();
+  virtual Real d_tau_d_diff();
   virtual Real dTauDUComp(unsigned comp);
 
   /// Provides tau which yields superconvergence for 1D advection-diffusion

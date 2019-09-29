@@ -266,29 +266,50 @@ INSBase::dTimeDerivativeDUComp(unsigned comp)
   }
 }
 
+RealVectorValue
+INSBase::a()
+{
+  return RealVectorValue(_u_vel[_qp], _v_vel[_qp], _w_vel[_qp]);
+}
+
+Real
+INSBase::diffusivity()
+{
+  return _mu[_qp] / _rho[_qp];
+}
+
 Real
 INSBase::tau()
 {
-  Real nu = _mu[_qp] / _rho[_qp];
   RealVectorValue U(_u_vel[_qp], _v_vel[_qp], _w_vel[_qp]);
   Real h = _current_elem->hmax();
   Real transient_part = _transient_term ? 4. / (_dt * _dt) : 0.;
   return _alpha / std::sqrt(transient_part + (2. * U.norm() / h) * (2. * U.norm() / h) +
-                            9. * (4. * nu / (h * h)) * (4. * nu / (h * h)));
+                            9. * (4. * diffusivity() / (h * h)) * (4. * diffusivity() / (h * h)));
+}
+
+Real
+INSBase::d_tau_d_diff()
+{
+  Real diff = diffusivity();
+  Real h = _current_elem->hmax();
+  Real transient_part = _transient_term ? 4. / (_dt * _dt) : 0.;
+  Real root_arg = transient_part + (2. * a().norm() / h) * (2. * a().norm() / h) +
+                  9. * (4. * diff / (h * h)) * (4. * diff / (h * h));
+  return -0.5 * _alpha * std::pow(root_arg, -1.5) * 18. * (4. * diff / (h * h)) * 4. / (h * h);
 }
 
 Real
 INSBase::tauNodal()
 {
-  Real nu = _mu[_qp] / _rho[_qp];
   RealVectorValue U(_u_vel[_qp], _v_vel[_qp], _w_vel[_qp]);
   Real h = _current_elem->hmax();
   Real xi;
-  if (nu < std::numeric_limits<Real>::epsilon())
+  if (diffusivity() < std::numeric_limits<Real>::epsilon())
     xi = 1;
   else
   {
-    Real alpha = U.norm() * h / (2 * nu);
+    Real alpha = U.norm() * h / (2 * diffusivity());
     xi = 1. / std::tanh(alpha) - 1. / alpha;
   }
   return h / (2 * U.norm()) * xi;
@@ -297,13 +318,13 @@ INSBase::tauNodal()
 Real
 INSBase::dTauDUComp(unsigned comp)
 {
-  Real nu = _mu[_qp] / _rho[_qp];
   RealVectorValue U(_u_vel[_qp], _v_vel[_qp], _w_vel[_qp]);
   Real h = _current_elem->hmax();
   Real transient_part = _transient_term ? 4. / (_dt * _dt) : 0.;
-  return -_alpha / 2. * std::pow(transient_part + (2. * U.norm() / h) * (2. * U.norm() / h) +
-                                     9. * (4. * nu / (h * h)) * (4. * nu / (h * h)),
-                                 -1.5) *
+  return -_alpha / 2. *
+         std::pow(transient_part + (2. * U.norm() / h) * (2. * U.norm() / h) +
+                      9. * (4. * diffusivity() / (h * h)) * (4. * diffusivity() / (h * h)),
+                  -1.5) *
          2. * (2. * U.norm() / h) * 2. / h * U(comp) * _phi[_j][_qp] /
          (U.norm() + std::numeric_limits<double>::epsilon());
 }
